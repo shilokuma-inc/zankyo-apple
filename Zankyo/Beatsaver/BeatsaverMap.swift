@@ -168,12 +168,12 @@ nonisolated struct LossyDecodableArray<Element: Decodable>: Decodable {
     private struct DiscardedValue: Decodable {}
 }
 
-extension BeatsaverMap: Decodable {
+nonisolated extension BeatsaverMap: Decodable {
     private enum CodingKeys: String, CodingKey {
         case id, name, description, uploader, metadata, stats, automapper, declaredAi, nsfw, versions
     }
 
-    nonisolated init(from decoder: any Decoder) throws {
+    init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         let id = try container.decode(String.self, forKey: .id)
         guard BeatsaverValidation.isValidKey(id) else {
@@ -197,26 +197,26 @@ extension BeatsaverMap: Decodable {
     }
 }
 
-extension BeatsaverUser: Decodable {
+nonisolated extension BeatsaverUser: Decodable {
     private enum CodingKeys: String, CodingKey {
         case id, name
     }
 
-    nonisolated init(from decoder: any Decoder) throws {
+    init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.id = BeatsaverValidation.clamp(try? container.decodeIfPresent(Int.self, forKey: .id), to: 0...Int(Int32.max))
         self.name = BeatsaverValidation.clamp(try? container.decodeIfPresent(String.self, forKey: .name), maxLength: 100)
     }
 }
 
-extension BeatsaverMapMetadata: Decodable {
-    nonisolated static let empty = Self(songName: "", songSubName: "", songAuthorName: "", levelAuthorName: "", bpm: 0, duration: 0)
+nonisolated extension BeatsaverMapMetadata: Decodable {
+    static let empty = Self(songName: "", songSubName: "", songAuthorName: "", levelAuthorName: "", bpm: 0, duration: 0)
 
     private enum CodingKeys: String, CodingKey {
         case songName, songSubName, songAuthorName, levelAuthorName, bpm, duration
     }
 
-    nonisolated init(from decoder: any Decoder) throws {
+    init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.songName = BeatsaverValidation.clamp(try? container.decodeIfPresent(String.self, forKey: .songName), maxLength: 200)
         self.songSubName = BeatsaverValidation.clamp(try? container.decodeIfPresent(String.self, forKey: .songSubName), maxLength: 200)
@@ -234,14 +234,14 @@ extension BeatsaverMapMetadata: Decodable {
     }
 }
 
-extension BeatsaverMapStats: Decodable {
-    nonisolated static let empty = Self(upvotes: 0, downvotes: 0, score: 0)
+nonisolated extension BeatsaverMapStats: Decodable {
+    static let empty = Self(upvotes: 0, downvotes: 0, score: 0)
 
     private enum CodingKeys: String, CodingKey {
         case upvotes, downvotes, score
     }
 
-    nonisolated init(from decoder: any Decoder) throws {
+    init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.upvotes = BeatsaverValidation.clamp(try? container.decodeIfPresent(Int.self, forKey: .upvotes), to: 0...Int(Int32.max))
         self.downvotes = BeatsaverValidation.clamp(try? container.decodeIfPresent(Int.self, forKey: .downvotes), to: 0...Int(Int32.max))
@@ -249,12 +249,12 @@ extension BeatsaverMapStats: Decodable {
     }
 }
 
-extension BeatsaverMapVersion: Decodable {
+nonisolated extension BeatsaverMapVersion: Decodable {
     private enum CodingKeys: String, CodingKey {
         case hash, state, createdAt, downloadURL, coverURL, previewURL, diffs
     }
 
-    nonisolated init(from decoder: any Decoder) throws {
+    init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         let hash = try container.decode(String.self, forKey: .hash)
         guard BeatsaverValidation.isValidHash(hash) else {
@@ -279,12 +279,12 @@ extension BeatsaverMapVersion: Decodable {
     }
 }
 
-extension BeatsaverDifficulty: Decodable {
+nonisolated extension BeatsaverDifficulty: Decodable {
     private enum CodingKeys: String, CodingKey {
         case characteristic, difficulty, notes, nps, seconds
     }
 
-    nonisolated init(from decoder: any Decoder) throws {
+    init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.characteristic = BeatsaverValidation.clamp(try container.decode(String.self, forKey: .characteristic), maxLength: 64)
         self.difficulty = BeatsaverValidation.clamp(try container.decode(String.self, forKey: .difficulty), maxLength: 32)
@@ -294,8 +294,8 @@ extension BeatsaverDifficulty: Decodable {
     }
 }
 
-private extension String {
-    nonisolated var nonEmpty: String? {
+nonisolated private extension String {
+    var nonEmpty: String? {
         isEmpty ? nil : self
     }
 }
