@@ -11,6 +11,7 @@
 - MainActor 既定のため、`nonisolated struct` でも **extension に書いた `static let` は MainActor に隔離される**。nonisolated な `init(from:)` から参照するなら `nonisolated static let` にする（2026-10-07）
 - `swiftlint` も `DEVELOPER_DIR` が Xcode を指していないと sourcekitd を読めずに落ちる（2026-10-07）
 - テストの `URLProtocol` スタブは、セッションごとの ID をリクエストヘッダに載せ、`OSAllocatedUnfairLock` の辞書でハンドラを引き分けると、Swift Testing の並行実行でも混線しない（`ZankyoTests/Support/StubURLProtocol.swift`）（2026-10-07）
+- CI は Xcode 26.3（Swift 6.2）でローカルより古いことがある。Swift 6.2 では **extension で付けたプロトコル準拠（`extension X: Decodable`）が MainActor に隔離され**、nonisolated な文脈で使うとエラーになる（新しい Xcode では通ってしまう）。準拠を書く extension は `nonisolated extension` にする（2026-10-07）
 
 ## beatsaver / 譜面
 
