@@ -118,11 +118,11 @@ nonisolated enum BeatsaverHost {
 nonisolated enum BeatsaverValidation {
     /// beatsaver のキー。実際は 1〜6 桁程度の 16 進数だが、余裕を持たせて 8 桁まで受ける
     static func isValidKey(_ key: String) -> Bool {
-        (1...8).contains(key.count) && key.allSatisfy(\.isHexDigit)
+        (1...8).contains(key.count) && key.allSatisfy(\.isASCIIHexDigit)
     }
 
     static func isValidHash(_ hash: String) -> Bool {
-        hash.count == 40 && hash.allSatisfy(\.isHexDigit)
+        hash.count == 40 && hash.allSatisfy(\.isASCIIHexDigit)
     }
 
     /// 文字列の長さを抑える（巨大な説明文などで画面やメモリを圧迫させない）
@@ -291,6 +291,13 @@ nonisolated extension BeatsaverDifficulty: Decodable {
         self.notes = BeatsaverValidation.clamp(try? container.decodeIfPresent(Int.self, forKey: .notes), to: 0...1_000_000)
         self.notesPerSecond = BeatsaverValidation.clamp(try? container.decodeIfPresent(Double.self, forKey: .nps), to: 0...1_000)
         self.seconds = BeatsaverValidation.clamp(try? container.decodeIfPresent(Double.self, forKey: .seconds), to: 0...3_600)
+    }
+}
+
+nonisolated private extension Character {
+    /// `isHexDigit` は全角の数字・英字も真になるので、ASCII の 0-9・a-f・A-F に限る
+    var isASCIIHexDigit: Bool {
+        isASCII && isHexDigit
     }
 }
 

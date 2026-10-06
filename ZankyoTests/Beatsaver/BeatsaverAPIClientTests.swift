@@ -163,7 +163,7 @@ struct BeatsaverAPIClientTests {
         #expect(captured.withLock { $0 }?.path == "/maps/hash/\(BeatsaverFixtures.hash)")
     }
 
-    @Test(arguments: ["", "../../etc", "1f33/x", "123456789", "xyz"])
+    @Test(arguments: ["", "../../etc", "1f33/x", "123456789", "xyz", "１ｆ３３"])
     func mapRejectsInvalidID(id: String) async {
         let client = BeatsaverAPIClient(session: StubURLProtocol.makeSession(handler: StubURLProtocol.json("{}")))
 
@@ -172,7 +172,7 @@ struct BeatsaverAPIClientTests {
         }
     }
 
-    @Test(arguments: ["", "abc", String(repeating: "g", count: 40), String(repeating: "a", count: 41)])
+    @Test(arguments: ["", "abc", String(repeating: "g", count: 40), String(repeating: "a", count: 41), String(repeating: "Ａ", count: 40)])
     func mapRejectsInvalidHash(hash: String) async {
         let client = BeatsaverAPIClient(session: StubURLProtocol.makeSession(handler: StubURLProtocol.json("{}")))
 
