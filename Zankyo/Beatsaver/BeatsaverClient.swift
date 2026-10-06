@@ -114,10 +114,10 @@ nonisolated struct BeatsaverAPIClient: BeatsaverClient {
         request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
 
-        let data: Data
+        let bytes: URLSession.AsyncBytes
         let response: URLResponse
         do {
-            (data, response) = try await session.data(for: request)
+            (bytes, response) = try await session.bytes(for: request)
         } catch let error as URLError {
             throw .transport(error.code)
         } catch {
@@ -127,7 +127,7 @@ nonisolated struct BeatsaverAPIClient: BeatsaverClient {
         guard let http = response as? HTTPURLResponse else { throw .invalidResponse }
         if http.statusCode == 404 { throw .notFound }
         guard (200..<300).contains(http.statusCode) else { throw .httpStatus(http.statusCode) }
-        guard data.count <= Self.maxResponseBytes else { throw .responseTooLarge }
+        let data = try await readBody(bytes, expectedLength: http.expectedContentLength)
 
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .custom { decoder in
@@ -141,6 +141,37 @@ nonisolated struct BeatsaverAPIClient: BeatsaverClient {
         } catch {
             throw .invalidResponse
         }
+    }
+
+    /// 本文を上限まで読む。宣言された長さが上限を超えるときは読み始めず、受信中に上限を超えたらその時点で打ち切る
+    private func readBody(_ bytes: URLSession.AsyncBytes, expectedLength: Int64) async throws(BeatsaverClientError) -> Data {
+        guard expectedLength <= Int64(Self.maxResponseBytes) else {
+            bytes.task.cancel()
+            throw .responseTooLarge
+        }
+        var data = Data()
+        if expectedLength > 0 {
+            data.reserveCapacity(Int(expectedLength))
+        }
+        var exceeded = false
+        do {
+            for try await byte in bytes {
+                guard data.count < Self.maxResponseBytes else {
+                    exceeded = true
+                    break
+                }
+                data.append(byte)
+            }
+        } catch let error as URLError {
+            throw .transport(error.code)
+        } catch {
+            throw .transport(.unknown)
+        }
+        if exceeded {
+            bytes.task.cancel()
+            throw .responseTooLarge
+        }
+        return data
     }
 }
 

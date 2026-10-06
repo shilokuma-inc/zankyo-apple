@@ -226,6 +226,21 @@ struct BeatsaverAPIClientTests {
     }
 
     @Test
+    func declaredOversizedResponseIsRejectedBeforeReading() async {
+        let session = StubURLProtocol.makeSession { request in
+            let url = try #require(request.url)
+            let headers = ["Content-Length": String(BeatsaverAPIClient.maxResponseBytes + 1)]
+            let response = try #require(HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: headers))
+            return (response, Data("{}".utf8))
+        }
+        let client = BeatsaverAPIClient(session: session)
+
+        await #expect(throws: BeatsaverClientError.responseTooLarge) {
+            try await client.search(query: "a", page: 0)
+        }
+    }
+
+    @Test
     func malformedJSONIsInvalidResponse() async {
         let session = StubURLProtocol.makeSession(handler: StubURLProtocol.json("{not json"))
         let client = BeatsaverAPIClient(session: session)
