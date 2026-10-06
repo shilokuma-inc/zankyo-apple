@@ -184,7 +184,7 @@ nonisolated extension BeatsaverMap: Decodable {
             throw DecodingError.dataCorruptedError(forKey: .versions, in: container, debugDescription: "遊べるバージョンが無い")
         }
         self.id = id
-        self.name = BeatsaverValidation.clamp(try container.decodeIfPresent(String.self, forKey: .name), maxLength: 200)
+        self.name = BeatsaverValidation.clamp(try? container.decodeIfPresent(String.self, forKey: .name), maxLength: 200)
         self.description = BeatsaverValidation.clamp(try? container.decodeIfPresent(String.self, forKey: .description), maxLength: 2_000)
         self.uploader = (try? container.decodeIfPresent(BeatsaverUser.self, forKey: .uploader)) ?? BeatsaverUser(id: 0, name: "")
         self.metadata = (try? container.decodeIfPresent(BeatsaverMapMetadata.self, forKey: .metadata)) ?? .empty

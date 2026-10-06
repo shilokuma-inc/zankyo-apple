@@ -22,6 +22,15 @@ struct BeatsaverMapTests {
     }
 
     @Test
+    func toleratesWrongTypesInOptionalFields() throws {
+        let map = try decode(#"{"id": "ab", "name": 42, "description": [], "nsfw": "yes", "versions": [\#(BeatsaverFixtures.version())]}"#)
+
+        #expect(map.name.isEmpty)
+        #expect(map.description.isEmpty)
+        #expect(!map.isNSFW)
+    }
+
+    @Test
     func clampsOutOfRangeValues() throws {
         let json = #"""
         {
