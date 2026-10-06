@@ -6,8 +6,8 @@
 //
 
 import Foundation
-@testable import Zankyo
 import Testing
+@testable import Zankyo
 
 struct ZankyoTests {
     /// Configs/Project.xcconfig の MARKETING_VERSION が「x.y.z」形式で Info.plist に反映されていることを確認する
