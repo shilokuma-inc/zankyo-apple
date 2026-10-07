@@ -201,21 +201,6 @@ nonisolated private struct VersionProbe: Decodable {
     }
 }
 
-/// 任意の値の型が違っても、全体のデコードを失敗させない
-nonisolated private struct Lenient<Value: Decodable>: Decodable {
-    let value: Value?
-
-    init(from decoder: any Decoder) throws {
-        self.value = try? decoder.singleValueContainer().decode(Value.self)
-    }
-}
-
-nonisolated private extension KeyedDecodingContainer {
-    func lenient<Value: Decodable>(_ type: Value.Type, forKey key: Key) -> Value? {
-        (try? decodeIfPresent(Lenient<Value>.self, forKey: key))?.value
-    }
-}
-
 nonisolated private struct InfoV2: Decodable {
     let songName: String?
     let songSubName: String?
