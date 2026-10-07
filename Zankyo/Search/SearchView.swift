@@ -3,6 +3,7 @@ import SwiftUI
 /// beatsaver の曲をテキストで検索する画面。入力欄は片手で届くように画面下に置く
 struct SearchView: View {
     @Bindable var model: SearchModel
+    let downloads: DownloadModel
     @FocusState private var isQueryFocused: Bool
 
     var body: some View {
@@ -45,7 +46,7 @@ struct SearchView: View {
     private var results: some View {
         List {
             ForEach(model.maps) { map in
-                SearchResultRow(map: map)
+                SearchResultRow(map: map, downloads: downloads)
             }
             if model.hasNextPage || model.nextPageError != nil {
                 nextPageRow
@@ -108,5 +109,5 @@ struct SearchView: View {
 }
 
 #Preview {
-    SearchView(model: SearchModel(client: BeatsaverAPIClient()))
+    SearchView(model: SearchModel(client: BeatsaverAPIClient()), downloads: DownloadModel(downloader: MapDownloader()))
 }

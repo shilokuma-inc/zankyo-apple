@@ -9,9 +9,11 @@ struct RootView: View {
 
     @State private var selection: Tab = .library
     @State private var searchModel: SearchModel
+    @State private var downloads: DownloadModel
 
-    init(client: any BeatsaverClient) {
+    init(client: any BeatsaverClient, downloader: any MapDownloading) {
         _searchModel = State(initialValue: SearchModel(client: client))
+        _downloads = State(initialValue: DownloadModel(downloader: downloader))
     }
 
     var body: some View {
@@ -19,7 +21,7 @@ struct RootView: View {
             LibraryView(onSearch: { selection = .search })
                 .tabItem { Label("ライブラリ", systemImage: "music.note.list") }
                 .tag(Tab.library)
-            SearchView(model: searchModel)
+            SearchView(model: searchModel, downloads: downloads)
                 .tabItem { Label("検索", systemImage: "magnifyingglass") }
                 .tag(Tab.search)
         }
@@ -27,5 +29,5 @@ struct RootView: View {
 }
 
 #Preview {
-    RootView(client: BeatsaverAPIClient())
+    RootView(client: BeatsaverAPIClient(), downloader: MapDownloader())
 }
