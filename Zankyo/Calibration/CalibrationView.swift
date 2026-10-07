@@ -9,11 +9,7 @@ struct CalibrationView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 16) {
-                if model.isMeasuring {
-                    // 測っている間は説明を引っ込め、振るタイミングの手がかりを大きく出す。頭の動きはプレイ中と同じく小さく出す
-                    CalibrationCueView(cue: model.cue, cutTimes: model.cutTimes, now: { model.currentTime }, motion: motion)
-                    controls
-                } else if model.canMeasure {
+                if model.canMeasure || model.isMeasuring {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 16) {
                             explanation
@@ -30,6 +26,32 @@ struct CalibrationView: View {
             .padding()
             .navigationTitle("キャリブレーション")
         }
+        // 測っている間は、プレイ画面と同じく全面に出す
+        .measuringCover(isPresented: measuringPresented) { measuringContent }
+    }
+
+    /// 測り終える・中止すると閉じる
+    private var measuringPresented: Binding<Bool> {
+        Binding(get: { model.isMeasuring }, set: { isPresented in
+            if !isPresented, model.isMeasuring { model.cancel() }
+        })
+    }
+
+    /// 測っている間の画面。プレイ画面と同じネオンの空間に、振るタイミングの手がかりと中止だけを置く。
+    /// 頭の動きはプレイ中と同じく小さく出す
+    private var measuringContent: some View {
+        VStack(spacing: 16) {
+            CalibrationCueView(cue: model.cue, cutTimes: model.cutTimes, now: { model.currentTime }, motion: motion)
+            Button(role: .cancel, action: model.cancel) {
+                Text("中止").frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.large)
+            .padding([.horizontal, .bottom])
+        }
+        .padding(.top)
+        .background { PlayfieldBackdrop() }
+        .preferredColorScheme(.dark)
     }
 
     private var explanation: some View {
@@ -37,7 +59,7 @@ struct CalibrationView: View {
             Text("イヤホンを付けて、クリック音に合わせて首を振ってください。")
             Text("最初の 4 回の高い音は聞くだけ。続く低い音ごとに、左右か上下に 1 回ずつ振ります。")
                 .foregroundStyle(.secondary)
-            Text("測っている間は、上から降りてくる印が線に重なる瞬間に音が鳴ります。")
+            Text("測っている間はプレイ画面と同じく、上から降りてくる印が判定の線に重なる瞬間に音が鳴ります。")
                 .foregroundStyle(.secondary)
             Text("保存中のずれ: \(savedOffsetText)")
                 .font(.footnote)
@@ -118,4 +140,22 @@ private final class SilentMetronome: Metronome {
     }
 
     func stop() {}
+}
+
+private extension View {
+    /// 測っている間の画面を全面に出す。macOS には全面のモーダルが無いのでシートにする（`SongDetailView` のプレイ画面と同じ）
+    func measuringCover<Content: View>(
+        isPresented: Binding<Bool>,
+        @ViewBuilder content: @escaping () -> Content
+    ) -> some View {
+        #if os(macOS)
+        sheet(isPresented: isPresented) {
+            content()
+                .frame(minWidth: 420, minHeight: 640)
+                .interactiveDismissDisabled()
+        }
+        #else
+        fullScreenCover(isPresented: isPresented, content: content)
+        #endif
+    }
 }
