@@ -124,6 +124,26 @@ final class CalibrationModel {
         }
         defer { stopper.cancel() }
 
+        let cuts = await detectCuts(in: stream, until: deadline, generation: currentGeneration)
+        // 中止の後に新しい回が始まっていたら、その回の入力と音を止めない
+        guard generation == currentGeneration else { return }
+        input.stop()
+        metronome.stop()
+        guard !Task.isCancelled else { return }
+
+        if let result = CalibrationAnalyzer.analyze(clickTimes: clicks, cutTimes: cuts) {
+            phase = .finished(result)
+        } else {
+            phase = .failed("振りを十分に検出できませんでした。低い音に合わせて、首を左右か上下にはっきり振ってください。")
+        }
+    }
+
+    /// 列が終わるか `deadline` を過ぎるまで振りを検出し、その時刻を返す。検出するたびに `cutTimes` に出す
+    private func detectCuts(
+        in stream: AsyncStream<MotionSample>,
+        until deadline: TimeInterval,
+        generation currentGeneration: Int
+    ) async -> [TimeInterval] {
         var detector = CutDetector()
         var cuts: [TimeInterval] = []
         for await sample in stream {
@@ -136,16 +156,6 @@ final class CalibrationModel {
             }
             if sample.timestamp > deadline { break }
         }
-        // 中止の後に新しい回が始まっていたら、その回の入力と音を止めない
-        guard generation == currentGeneration else { return }
-        input.stop()
-        metronome.stop()
-        guard !Task.isCancelled else { return }
-
-        if let result = CalibrationAnalyzer.analyze(clickTimes: clicks, cutTimes: cuts) {
-            phase = .finished(result)
-        } else {
-            phase = .failed("振りを十分に検出できませんでした。低い音に合わせて、首を左右か上下にはっきり振ってください。")
-        }
+        return cuts
     }
 }
