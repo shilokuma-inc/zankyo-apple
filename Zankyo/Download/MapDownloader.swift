@@ -77,12 +77,16 @@ nonisolated struct MapDownloader: MapDownloading {
         }
         let temporary = try await fetch(version.downloadURL, progress: progress)
         defer { try? FileManager.default.removeItem(at: temporary) }
+        // 受信し終えた直後に中止されたら、検証も保存もしない
+        guard !Task.isCancelled else { throw .cancelled }
 
         let size = (try? temporary.resourceValues(forKeys: [.fileSizeKey]).fileSize).map(Int64.init) ?? .max
         guard size <= maxBytes else { throw .tooLarge }
         guard try Self.hasZipSignature(temporary) else { throw .notZip }
         guard try Self.sha1(of: temporary) == version.hash.lowercased() else { throw .hashMismatch }
 
+        // ハッシュの計算中に中止されたら保存しない（取り込み済みにしない）
+        guard !Task.isCancelled else { throw .cancelled }
         let destination = fileURL(hash: version.hash)
         do {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
