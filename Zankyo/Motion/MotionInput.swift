@@ -8,6 +8,16 @@ nonisolated struct MotionSample: Sendable, Hashable {
     let yawRate: Double
     /// うなずき（pitch）の角速度。上を向く向きを正とする
     let pitchRate: Double
+    /// その時点の頭の向き。取れない入力（録画した列など）は nil。画面に向きを出すためだけに使い、判定には使わない
+    var orientation: HeadOrientation?
+}
+
+/// 頭の向き（ラジアン）。基準（取得を始めたときの向きなど）は入力ごとに違ってよい
+nonisolated struct HeadOrientation: Sendable, Hashable {
+    /// 左右の向き。右を向く向きを正とする
+    let yaw: Double
+    /// 上下の向き。上を向く向きを正とする
+    let pitch: Double
 }
 
 /// モーション入力を使えるかどうか。使えないときは、プレイを始めずに案内を出す（Discussion #3 Q3）
