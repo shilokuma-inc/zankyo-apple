@@ -98,6 +98,18 @@ struct BeatsaverMapTests {
     }
 
     @Test
+    func dropsVersionWithMalformedStateButKeepsMissingState() throws {
+        let published = #""state": "Published""#
+        let versions = [
+            BeatsaverFixtures.version(hash: String(repeating: "3", count: 40)).replacingOccurrences(of: published, with: #""state": 1"#),
+            BeatsaverFixtures.version(hash: String(repeating: "4", count: 40)).replacingOccurrences(of: published, with: #""state": null"#)
+        ].joined(separator: ",")
+        let map = try decode(#"{"id": "ab", "versions": [\#(versions)]}"#)
+
+        #expect(map.versions.map(\.hash) == [String(repeating: "4", count: 40)])
+    }
+
+    @Test
     func latestVersionIsTheNewest() throws {
         let versions = [
             BeatsaverFixtures.version(hash: String(repeating: "a", count: 40), createdAt: "2020-01-01T00:00:00Z"),

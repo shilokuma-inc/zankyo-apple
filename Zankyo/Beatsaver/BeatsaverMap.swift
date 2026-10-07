@@ -260,8 +260,9 @@ nonisolated extension BeatsaverMapVersion: Decodable {
         guard BeatsaverValidation.isValidHash(hash) else {
             throw DecodingError.dataCorruptedError(forKey: .hash, in: container, debugDescription: "不正なハッシュ")
         }
-        // 公開中のもの以外（テスト中・下書き）は遊ぶ対象にしない。state が無ければ公開中とみなす
-        let state = try? container.decodeIfPresent(String.self, forKey: .state)
+        // 公開中のもの以外（テスト中・下書き）は遊ぶ対象にしない。state が無ければ公開中とみなす。
+        // 型が不正なときは公開中とみなさず、このバージョンごと捨てる
+        let state = try container.decodeIfPresent(String.self, forKey: .state)
         guard state == nil || state == "Published" else {
             throw DecodingError.dataCorruptedError(forKey: .state, in: container, debugDescription: "公開中ではない")
         }
