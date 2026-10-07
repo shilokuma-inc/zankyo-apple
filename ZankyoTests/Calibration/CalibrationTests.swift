@@ -167,6 +167,27 @@ struct CalibrationModelTests {
     }
 
     @Test
+    func finishesWhenLiveInputStaysOpen() async {
+        // AirPods の入力は止めるまで列を終えない。最後のクリックを過ぎたら締め切りで止めて終えること
+        let clicks = (0..<CalibrationModel.beats).map { Double($0) * 0.6 }
+        let input = OpenMotionInput()
+        let model = CalibrationModel(
+            input: input,
+            metronome: FakeMetronome(clicks: clicks),
+            store: CalibrationStore(suiteName: "ZankyoTests.Calibration.\(UUID().uuidString)"),
+            now: { clicks[clicks.count - 1] + 0.6 }
+        )
+
+        await model.measure()
+
+        #expect(input.stopCount >= 1)
+        guard case .failed = model.phase else {
+            Issue.record("振りが無いまま締め切りで終えるはず: \(model.phase)")
+            return
+        }
+    }
+
+    @Test
     func cannotMeasureWithoutMotionInput() {
         let model = CalibrationModel(input: UnavailableMotionInput(), metronome: FakeMetronome(clicks: []))
 
@@ -195,5 +216,24 @@ private final class FakeMetronome: Metronome {
 
     func stop() {
         isStopped = true
+    }
+}
+
+/// 止めるまで列を終えない入力（AirPods の入力と同じふるまい）
+private final class OpenMotionInput: MotionInput {
+    let status: MotionInputStatus = .ready
+    private(set) var stopCount = 0
+    private var continuation: AsyncStream<MotionSample>.Continuation?
+
+    func start() -> AsyncStream<MotionSample> {
+        let (stream, continuation) = AsyncStream.makeStream(of: MotionSample.self)
+        self.continuation = continuation
+        return stream
+    }
+
+    func stop() {
+        stopCount += 1
+        continuation?.finish()
+        continuation = nil
     }
 }
