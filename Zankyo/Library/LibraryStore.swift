@@ -121,9 +121,14 @@ final class LibraryStore {
     func delete(_ entry: LibraryEntry) -> Bool {
         guard !isReadOnly else { return false }
         // hash は読み込み時と追加時に 16 進数 40 桁に検証済みなので、パスの区切りや `..` は入らない
-        for url in files(ofHash: entry.hash) where FileManager.default.fileExists(atPath: url.path(percentEncoded: false)) {
+        for url in files(ofHash: entry.hash) {
+            // 先に有無を確かめると、親フォルダを読めないときに「無い」と見誤るので、消してみてから判断する
             do {
                 try FileManager.default.removeItem(at: url)
+            } catch let error as CocoaError where error.code == .fileNoSuchFile {
+                continue
+            } catch let error as POSIXError where error.code == .ENOENT {
+                continue
             } catch {
                 logger.error("曲のファイルを消せなかった: \(error.localizedDescription, privacy: .public)")
                 sizes[entry.hash] = size(ofHash: entry.hash)
