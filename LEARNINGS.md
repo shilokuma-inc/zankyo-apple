@@ -15,6 +15,7 @@
 - `scrollDismissesKeyboard` は visionOS で使えない（コンパイルエラー）。iOS / macOS だけ通っても visionOS で落ちる SwiftUI の修飾子があるので、共通の View では visionOS のビルドまで確かめる（2026-10-07）
 - テストターゲットも MainActor が既定。`StubURLProtocol` のハンドラ（`@Sendable`）からテスト型の static を呼ぶなら、テストの型を `nonisolated struct` にする（2026-10-07）
 - 同じ Simulator で 2 つの `xcodebuild test` を同時に走らせると、互いのテストホストを落とす（「Test crashed with signal term before establishing connection」と `simctl` が見つからないというログが出る）。テストは直列に流す（2026-10-07）
+- Swift Testing の `#expect` / `#require` の中で `mutating` なメソッドを呼ぶと、マクロの展開先で「immutable value」のコンパイルエラーになる。結果をいったん `let` に受けてから検証する（2026-10-07）
 
 ## beatsaver / 譜面
 
