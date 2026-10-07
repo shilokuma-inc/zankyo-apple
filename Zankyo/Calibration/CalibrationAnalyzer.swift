@@ -23,28 +23,46 @@ nonisolated enum CalibrationAnalyzer {
         var outlierThreshold: TimeInterval = 0.1
     }
 
+    /// クリックと組にできた振り
+    nonisolated struct Match: Sendable, Hashable {
+        /// `clickTimes` の中のクリックの位置
+        let clickIndex: Int
+        /// 振りの時刻 − クリックの時刻（秒）
+        let delta: TimeInterval
+    }
+
     /// 振りが足りないときは nil
     static func analyze(
         clickTimes: [TimeInterval],
         cutTimes: [TimeInterval],
         configuration: Configuration = Configuration()
     ) -> CalibrationResult? {
-        let clicks = clickTimes.dropFirst(configuration.countIn)
-        var remaining = cutTimes.filter(\.isFinite).sorted()
-        var deltas: [TimeInterval] = []
-        for click in clicks where click.isFinite {
-            // 各クリックに最も近い振りを 1 つだけ使う（同じ振りを 2 つのクリックに数えない）
-            guard let index = remaining.indices.min(by: { abs(remaining[$0] - click) < abs(remaining[$1] - click) }),
-                  abs(remaining[index] - click) <= configuration.matchWindow else { continue }
-            deltas.append(remaining[index] - click)
-            remaining.remove(at: index)
-        }
+        let deltas = match(clickTimes: clickTimes, cutTimes: cutTimes, configuration: configuration).map(\.delta)
         guard let median = median(deltas) else { return nil }
         let kept = deltas.filter { abs($0 - median) <= configuration.outlierThreshold }
         guard kept.count >= configuration.minimumMatches else { return nil }
         let mean = kept.reduce(0, +) / Double(kept.count)
         let variance = kept.map { ($0 - mean) * ($0 - mean) }.reduce(0, +) / Double(kept.count)
         return CalibrationResult(offset: mean, matchedCount: kept.count, spread: variance.squareRoot())
+    }
+
+    /// 前打ちの後の各クリックに、`matchWindow` の中で最も近い振りを 1 つずつ組にする。はずれ値はまだ捨てない
+    static func match(
+        clickTimes: [TimeInterval],
+        cutTimes: [TimeInterval],
+        configuration: Configuration = Configuration()
+    ) -> [Match] {
+        var remaining = cutTimes.filter(\.isFinite).sorted()
+        var matches: [Match] = []
+        for clickIndex in clickTimes.indices.dropFirst(configuration.countIn) where clickTimes[clickIndex].isFinite {
+            let click = clickTimes[clickIndex]
+            // 各クリックに最も近い振りを 1 つだけ使う（同じ振りを 2 つのクリックに数えない）
+            guard let index = remaining.indices.min(by: { abs(remaining[$0] - click) < abs(remaining[$1] - click) }),
+                  abs(remaining[index] - click) <= configuration.matchWindow else { continue }
+            matches.append(Match(clickIndex: clickIndex, delta: remaining[index] - click))
+            remaining.remove(at: index)
+        }
+        return matches
     }
 
     private static func median(_ values: [TimeInterval]) -> TimeInterval? {
