@@ -40,14 +40,11 @@ nonisolated struct Judge: Sendable {
     var remainingNotes: ArraySlice<FaceNote> { notes[nextIndex...] }
     var maxScore: Int { ScoreKeeper.maxScore(noteCount: notes.count) }
 
-    /// 時刻 `time` までに時間窓を過ぎたノーツをミスにする。毎フレーム呼ぶ
+    /// 曲の時刻 `songTime` までに時間窓を過ぎたノーツをミスにする。毎フレーム呼ぶ。
+    /// 振りと同じくオフセットを引いてから比べる（遅めに振る人の正しい振りを、窓の手前でミスにしないため）
     @discardableResult
-    mutating func advance(to time: TimeInterval) -> [Judgement] {
-        var result: [Judgement] = []
-        while nextIndex < notes.count, notes[nextIndex].time + rules.hitWindow < time {
-            result.append(record(.miss(notes[nextIndex])))
-        }
-        return result
+    mutating func advance(to songTime: TimeInterval) -> [Judgement] {
+        missPassedNotes(before: songTime - offset)
     }
 
     /// 振りを照合する。時間窓の中にノーツが無い振りは何もしない（減点しない）
@@ -56,7 +53,7 @@ nonisolated struct Judge: Sendable {
         let time = songTime - offset
         guard time.isFinite else { return nil }
         // 振りより前に窓を過ぎたノーツは、先にミスにしておく
-        advance(to: time)
+        _ = missPassedNotes(before: time)
         guard nextIndex < notes.count else { return nil }
         let note = notes[nextIndex]
         let timingError = time - note.time
@@ -66,6 +63,16 @@ nonisolated struct Judge: Sendable {
         }
         let score = CutScore(peakRate: event.peakRate, timingError: timingError, rules: rules)
         return record(.hit(note, score, timingError: timingError))
+    }
+
+    /// オフセットを引いた時刻 `time` までに時間窓を過ぎたノーツをミスにする
+    private mutating func missPassedNotes(before time: TimeInterval) -> [Judgement] {
+        guard time.isFinite else { return [] }
+        var result: [Judgement] = []
+        while nextIndex < notes.count, notes[nextIndex].time + rules.hitWindow < time {
+            result.append(record(.miss(notes[nextIndex])))
+        }
+        return result
     }
 
     private mutating func record(_ judgement: Judgement) -> Judgement {

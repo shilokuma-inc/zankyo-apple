@@ -193,6 +193,26 @@ struct JudgeTests {
     }
 
     @Test
+    func advanceAppliesCalibrationOffset() throws {
+        // 動きが 0.12 秒遅れる人の、曲の時刻 1.2 の振りは補正後 1.08 で窓の中。その手前のフレームでミスにしない
+        var judge = Judge(notes: Self.notes, offset: 0.12)
+
+        let missed = judge.advance(to: 1.16)
+        let result = judge.cut(Self.cut(.left), at: 1.2)
+        let judgement = try #require(result)
+
+        #expect(missed.isEmpty)
+        guard case .hit = judgement else {
+            Issue.record("ヒットになるはず: \(judgement)")
+            return
+        }
+        let late = judge.advance(to: 2.26)
+        #expect(late.isEmpty)
+        let passed = judge.advance(to: 2.3)
+        #expect(passed == [.miss(Self.notes[1])])
+    }
+
+    @Test
     func perfectRunReachesMaxScore() {
         var judge = Judge(notes: Self.notes)
         judge.cut(Self.cut(.left), at: 1)
