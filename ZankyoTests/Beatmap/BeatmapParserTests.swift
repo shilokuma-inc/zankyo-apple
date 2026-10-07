@@ -132,6 +132,31 @@ struct BeatmapParserTests {
         #expect(beatmap.notes.last?.beat == Double(BeatmapParser.maxNotes - 1))
     }
 
+    @Test
+    func limitCountsOnlyPlayableNotes() throws {
+        // 上限を超える数の不正なノーツの後ろにある、切れるノーツを捨てない
+        let invalid = (0..<BeatmapParser.maxNotes)
+            .map { #"{ "b": \#($0), "x": 0, "y": 0, "c": 0, "d": 99 }"# }
+            .joined(separator: ",")
+        let json = #"{ "version": "3.0.0", "colorNotes": [\#(invalid), { "b": 30000, "x": 0, "y": 0, "c": 1, "d": 0 }] }"#
+        let beatmap = try BeatmapParser.parse(Data(json.utf8), bpm: 120)
+
+        #expect(beatmap.notes.map(\.beat) == [30_000])
+    }
+
+    @Test
+    func dropsNotesWhoseTimeIsNotFinite() throws {
+        let json = """
+        { "_version": "2.0.0", "_notes": [
+          { "_time": 1e308, "_type": 0, "_cutDirection": 0 },
+          { "_time": 1, "_type": 1, "_cutDirection": 0 }
+        ] }
+        """
+        let beatmap = try BeatmapParser.parse(Data(json.utf8), bpm: 1)
+
+        #expect(beatmap.notes.map(\.beat) == [1])
+    }
+
     @Test(arguments: [
         #"{ "_version": "2.0.0", "_notes": [{ "_time": 1, "_type": 3, "_cutDirection": 0 }] }"#,
         #"{ "version": "3.0.0", "colorNotes": [], "bombNotes": [{ "b": 1, "x": 0, "y": 0 }] }"#,
@@ -179,6 +204,14 @@ struct BeatTimelineTests {
         #expect(timeline.bpm(atBeat: 5) == 60)
         // 拍 0 より前は最初の BPM で延ばす
         #expect(timeline.seconds(atBeat: -2) == 0)
+    }
+
+    @Test
+    func limitCountsOnlyValidChanges() {
+        let invalid = Array(repeating: (beat: 1.0, bpm: 0.0), count: BeatTimeline.maxChanges)
+        let timeline = BeatTimeline(bpm: 120, changes: invalid + [(beat: 0, bpm: 60)])
+
+        #expect(timeline.bpm(atBeat: 1) == 60)
     }
 
     @Test

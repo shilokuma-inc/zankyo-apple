@@ -47,28 +47,28 @@ nonisolated enum BeatmapParser {
         }
 
         let timeline = BeatTimeline(bpm: bpm, changes: raw.bpmChanges, offset: songTimeOffset)
+        // 切れるノーツだけを選んでから拍の順に並べ、上限を当てる（不正なノーツで上限を使い切らないため）
         let notes = raw.notes
-            .compactMap { note -> (beat: Double, note: RawNote)? in
-                guard let beat = note.beat, beat.isFinite, beat >= 0 else { return nil }
-                return (beat, note)
-            }
-            .sorted { $0.beat < $1.beat }
-            .prefix(maxNotes)
-            .compactMap { entry -> BeatmapNote? in
-                let (beat, note) = entry
-                guard let color = note.color.flatMap(NoteColor.init(rawValue:)),
+            .compactMap { note -> BeatmapNote? in
+                guard let beat = note.beat, beat.isFinite, beat >= 0,
+                      let color = note.color.flatMap(NoteColor.init(rawValue:)),
                       let direction = note.cutDirection.flatMap(CutDirection.init(rawValue:)) else { return nil }
+                // 極端に大きな拍は秒に直すと有限でなくなる
+                let time = timeline.seconds(atBeat: beat)
+                guard time.isFinite else { return nil }
                 return BeatmapNote(
                     beat: beat,
-                    time: timeline.seconds(atBeat: beat),
+                    time: time,
                     lineIndex: BeatsaverValidation.clamp(note.lineIndex, to: 0...3),
                     lineLayer: BeatsaverValidation.clamp(note.lineLayer, to: 0...2),
                     color: color,
                     cutDirection: direction
                 )
             }
+            .sorted { $0.beat < $1.beat }
+            .prefix(maxNotes)
         guard !notes.isEmpty else { throw .noNotes }
-        return Beatmap(format: format, notes: notes, timeline: timeline)
+        return Beatmap(format: format, notes: Array(notes), timeline: timeline)
     }
 
     private static func decode<Value: Decodable>(_ type: Value.Type, from data: Data) throws(BeatmapParseError) -> Value {

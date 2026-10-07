@@ -20,9 +20,10 @@ nonisolated struct BeatTimeline: Sendable, Hashable {
     ///   - changes: 譜面の BPM 変化。範囲外の BPM・負の拍・同じ拍の重複（後のものを使う）は除く
     ///   - offset: 拍 0 の秒（曲の先頭からのずれ）
     init(bpm: Double, changes: [(beat: Double, bpm: Double)] = [], offset: Double = 0) {
+        // 不正な変化で上限を使い切らないよう、検証してから上限を当てる
         let valid = changes
-            .prefix(Self.maxChanges)
             .filter { $0.beat.isFinite && $0.beat >= 0 && $0.bpm.isFinite && SongInfoParser.bpmRange.contains($0.bpm) }
+            .prefix(Self.maxChanges)
             .enumerated()
             // 同じ拍の変化は後に書かれたものを使うので、元の順を保って並べ替える
             .sorted { $0.element.beat == $1.element.beat ? $0.offset < $1.offset : $0.element.beat < $1.element.beat }
