@@ -2,7 +2,8 @@ import SwiftUI
 
 /// プレイ画面。縦持ち・片手が前提で、手で触るのは画面下 1/3 の一時停止だけ（Discussion #3）
 ///
-/// ノーツは上から判定の線へ降りてきて、線に重なる時刻に向きの矢印の方へ首を振る
+/// ノーツは上から判定の線へ降りてきて、線に重なる時刻に向きの矢印の方へ首を振る。
+/// 画面を開くとカウントダウンのあと自動で曲が始まる。一時停止すると、再開・最初から・終了を選べる
 struct PlayView: View {
     let session: GameSession
     /// 頭の動きの見える化に使う。nil なら出さない
@@ -11,9 +12,19 @@ struct PlayView: View {
     var cover: CGImage?
     /// 譜面 ZIP に画像が無いときに取りに行く beatsaver の画像
     var coverURL: URL?
-    /// もう一度遊ぶ（nil ならボタンを出さない）
+    /// 最初からやり直す・もう一度遊ぶ（nil ならボタンを出さない）
     var onRetry: (() -> Void)?
     let onExit: () -> Void
+
+    /// カウントダウンで出している数字。数えていなければ nil
+    @State private var countdown: Int?
+    @State private var countdownTask: Task<Void, Never>?
+    /// 曲が始まる前に一時停止を押した（カウントダウンを止めてメニューを出している）
+    @State private var isHoldingStart = false
+
+    /// カウントダウンの始めの数と、1 つ数える秒
+    static let countdownFrom = 3
+    static let countdownStep: TimeInterval = 0.8
 
     /// ノーツが画面の上端から判定の線に届くまでの秒
     static let approachTime: TimeInterval = 1.5
@@ -37,9 +48,20 @@ struct PlayView: View {
                 playContent
             }
         }
-        .onAppear { Self.setIdleTimerDisabled(true) }
+        .onAppear {
+            Self.setIdleTimerDisabled(true)
+            startIfReady()
+        }
+        // イヤホンが外れたら（始める前でも再開の前でも）数えるのを止める。つながって始められるようになったら、自動で数え始める
+        .onChange(of: session.canStart) {
+            if !session.canStart {
+                cancelCountdown()
+            }
+            startIfReady()
+        }
         .onDisappear {
             Self.setIdleTimerDisabled(false)
+            cancelCountdown()
             session.pause()
         }
     }
@@ -57,18 +79,45 @@ struct PlayView: View {
             }
             .frame(maxHeight: .infinity)
             .overlay {
-                // 始める前は、首を振って入力が届くか確かめられるよう大きく出す
-                if session.phase == .ready, let motion {
-                    HeadIndicatorView(monitor: motion)
+                if let countdown {
+                    CountdownOverlay(value: countdown)
+                } else if session.phase == .ready, !session.canStart {
+                    MotionRequirementView(status: session.input.status)
+                        .padding()
+                        .background(.black.opacity(0.6), in: .rect(cornerRadius: 24))
+                        .padding()
                 }
             }
             controls
                 .frame(maxWidth: .infinity)
-                .frame(minHeight: 160)
+                .frame(minHeight: 120)
                 .padding([.horizontal, .bottom])
         }
+        .overlay(alignment: .bottom) {
+            if isMenuShown {
+                ZStack(alignment: .bottom) {
+                    Color.black.opacity(0.45)
+                        .ignoresSafeArea()
+                    PauseMenu(
+                        notice: session.pausedByDisconnection ? "イヤホンが外れたので止めました。つなぎ直すと再開できます。" : nil,
+                        canResume: session.canStart,
+                        onResume: resume,
+                        onRestart: session.phase == .paused ? onRetry.map { retry in { cancelCountdown(); retry() } } : nil,
+                        onQuit: quit
+                    )
+                    .padding()
+                }
+                .transition(.opacity)
+            }
+        }
+        .animation(.easeOut(duration: 0.2), value: isMenuShown)
         .background { PlayfieldBackdrop() }
         .preferredColorScheme(.dark)
+    }
+
+    /// 一時停止のメニューを出している（再開のカウントダウン中は隠す）
+    private var isMenuShown: Bool {
+        isHoldingStart || (session.phase == .paused && countdown == nil)
     }
 
     private var header: some View {
@@ -77,9 +126,9 @@ struct PlayView: View {
             ScoreReadout(score: session.score, combo: session.combo)
                 .accessibilityElement(children: .combine)
             Spacer()
-            // プレイ中は小さく出す（取得はゲームが行うので、自分では始めない）
-            if session.phase != .ready, let motion {
-                HeadIndicatorView(monitor: motion, style: .compact, previewsWhenIdle: false)
+            // 始める前は自分で取得して向きを見せ、プレイ中はゲームが取得したものを見せる
+            if let motion {
+                HeadIndicatorView(monitor: motion, style: .compact, previewsWhenIdle: session.phase == .ready)
                 Spacer()
             }
             MultiplierRing(multiplier: session.multiplier, progress: session.judge.keeper.progressToNextMultiplier)
@@ -124,59 +173,80 @@ struct PlayView: View {
     }
 
     @ViewBuilder private var controls: some View {
-        switch session.phase {
-        case .ready:
-            VStack(spacing: 8) {
-                if session.canStart {
-                    Button(action: session.start) {
-                        Text("始める").frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.borderedProminent)
-                } else {
-                    MotionRequirementView(status: session.input.status)
-                }
-                Button(action: onExit) {
-                    Text("戻る").frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
-            }
-            .controlSize(.large)
-        case .playing:
-            Button(action: session.pause) {
-                Label("一時停止", systemImage: "pause.fill")
-                    .frame(maxWidth: .infinity, minHeight: 56)
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.large)
-        case .paused:
-            VStack(spacing: 8) {
-                if session.pausedByDisconnection {
-                    Text("イヤホンが外れたので止めました。つなぎ直すと再開できます。")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
-                Button(action: session.resume) {
-                    Text("再開").frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(!session.canStart)
-                Button(role: .destructive, action: session.finish) {
-                    Text("やめる").frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
-            }
-            .controlSize(.large)
-        case .finished:
+        if session.phase == .finished {
             // 結果があれば body がリザルト画面に切り替わる。ここに来るのは始められずに終えたとき
-            VStack(spacing: 8) {
+            VStack(spacing: 12) {
                 Text("曲を再生できませんでした。")
-                Button(action: onExit) {
-                    Text("閉じる").frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
+                    .foregroundStyle(.white)
+                Button("閉じる", action: onExit)
+                    .buttonStyle(NeonButtonStyle(prominent: true))
             }
+        } else if session.phase == .ready, !session.canStart {
+            Button("戻る", action: onExit)
+                .buttonStyle(NeonButtonStyle())
+        } else if !isMenuShown {
+            Button(action: pause) {
+                Label("一時停止", systemImage: "pause.fill")
+            }
+            .buttonStyle(NeonButtonStyle())
         }
+    }
+
+    /// 始められる状態になっていれば、カウントダウンのあと曲を始める
+    private func startIfReady() {
+        guard session.phase == .ready, session.canStart, countdown == nil, !isHoldingStart else { return }
+        runCountdown {
+            // 数えている間に外れていたら始めない（つながり直したら数え直す）
+            guard session.phase == .ready, session.canStart else { return }
+            session.start()
+        }
+    }
+
+    private func pause() {
+        if session.phase == .ready {
+            // 曲が始まる前なら、カウントダウンを止めて待つ
+            cancelCountdown()
+            isHoldingStart = true
+        } else if countdown != nil {
+            // 再開のカウントダウン中なら、止めたままにする
+            cancelCountdown()
+        } else {
+            session.pause()
+        }
+    }
+
+    private func resume() {
+        if isHoldingStart {
+            isHoldingStart = false
+            startIfReady()
+        } else {
+            runCountdown { session.resume() }
+        }
+    }
+
+    private func quit() {
+        cancelCountdown()
+        onExit()
+    }
+
+    /// 数え終えたら `action` を呼ぶ。途中で取り消されたら呼ばない
+    private func runCountdown(then action: @escaping () -> Void) {
+        countdownTask?.cancel()
+        countdownTask = Task {
+            for value in (1...Self.countdownFrom).reversed() {
+                withAnimation(.easeOut(duration: 0.25)) { countdown = value }
+                try? await Task.sleep(for: .seconds(Self.countdownStep))
+                guard !Task.isCancelled else { return }
+            }
+            countdown = nil
+            action()
+        }
+    }
+
+    private func cancelCountdown() {
+        countdownTask?.cancel()
+        countdownTask = nil
+        countdown = nil
     }
 
     /// プレイ中は画面を消さない（iOS のみ。macOS / visionOS は OS に任せる）
