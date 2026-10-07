@@ -7,7 +7,11 @@ struct CalibrationView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 16) {
-                if model.canMeasure || model.isMeasuring {
+                if model.isMeasuring {
+                    // 測っている間は説明を引っ込め、振るタイミングの手がかりを大きく出す
+                    CalibrationCueView(cue: model.cue, cutTimes: model.cutTimes) { model.currentTime }
+                    controls
+                } else if model.canMeasure {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 16) {
                             explanation
@@ -30,6 +34,8 @@ struct CalibrationView: View {
             Text("イヤホンを付けて、クリック音に合わせて首を振ってください。")
             Text("最初の 4 回の高い音は聞くだけ。続く低い音ごとに、左右か上下に 1 回ずつ振ります。")
                 .foregroundStyle(.secondary)
+            Text("測っている間は、上から降りてくる印が線に重なる瞬間に音が鳴ります。")
+                .foregroundStyle(.secondary)
             Text("保存中のずれ: \(savedOffsetText)")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
@@ -38,12 +44,9 @@ struct CalibrationView: View {
 
     @ViewBuilder private var phaseContent: some View {
         switch model.phase {
-        case .idle:
+        case .idle, .measuring:
+            // 測っている間は `CalibrationCueView` が進み具合を出す
             EmptyView()
-        case let .measuring(beat, total):
-            ProgressView(value: Double(beat), total: Double(max(total, 1))) {
-                Text(beat < CalibrationAnalyzer.Configuration().countIn ? "聞いてください" : "音に合わせて振ってください")
-            }
         case .finished(let result):
             VStack(alignment: .leading, spacing: 4) {
                 Text("ずれ: \(Self.format(result.offset))")
