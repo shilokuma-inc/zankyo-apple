@@ -39,6 +39,41 @@ struct MotionGuidance: Hashable {
 extension MotionInputStatus {
     /// 使えないときの案内。使えるときは nil
     var guidance: MotionGuidance? {
+        #if os(visionOS)
+        visionGuidance
+        #else
+        headphoneGuidance
+        #endif
+    }
+
+    /// visionOS（頭の向き）の案内
+    var visionGuidance: MotionGuidance? {
+        switch self {
+        case .ready:
+            nil
+        case .unsupported:
+            MotionGuidance(
+                title: "頭の向きを取得できません",
+                message: "この環境では頭の向きの追跡に対応していません。",
+                systemImage: "visionpro"
+            )
+        case .notDetermined, .disconnected:
+            MotionGuidance(
+                title: "頭の向きの追跡を準備しています",
+                message: "しばらく待っても変わらないときは、アプリを開き直してください。",
+                systemImage: "visionpro"
+            )
+        case .notAuthorized:
+            MotionGuidance(
+                title: "頭の向きの追跡を始められません",
+                message: "設定で斬響の利用を許可しているか確かめてください。",
+                systemImage: "hand.raised"
+            )
+        }
+    }
+
+    /// iOS / macOS（イヤホンのモーションセンサー）の案内
+    var headphoneGuidance: MotionGuidance? {
         switch self {
         case .ready:
             nil
