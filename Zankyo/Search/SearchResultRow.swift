@@ -6,8 +6,14 @@ struct SearchResultRow: View {
     let downloads: DownloadModel
 
     var body: some View {
+        AsyncImage(url: map.latestVersion?.coverURL) { phase in
+            content(cover: phase.image)
+        }
+    }
+
+    private func content(cover: Image?) -> some View {
         HStack(alignment: .top, spacing: 12) {
-            cover
+            thumbnail(cover)
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
                     .font(.headline)
@@ -44,14 +50,16 @@ struct SearchResultRow: View {
         .padding(.vertical, 4)
     }
 
-    private var cover: some View {
-        AsyncImage(url: map.latestVersion?.coverURL) { image in
-            image.resizable().scaledToFill()
-        } placeholder: {
-            Image(systemName: "music.note")
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(.quaternary)
+    private func thumbnail(_ cover: Image?) -> some View {
+        Group {
+            if let cover {
+                cover.resizable().scaledToFill()
+            } else {
+                Image(systemName: "music.note")
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(.quaternary)
+            }
         }
         .frame(width: 64, height: 64)
         .clipShape(.rect(cornerRadius: 8))
