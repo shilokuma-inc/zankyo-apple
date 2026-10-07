@@ -124,6 +124,10 @@ struct CalibrationModelTests {
         #expect(abs(result.offset - 0.1) < 0.001)
         #expect(result.matchedCount == 16)
         #expect(metronome.isStopped)
+        // 画面の手がかりに使う、クリックと振りの時刻
+        #expect(model.cue.clickTimes == clicks)
+        #expect(model.cutTimes.count == 16)
+        #expect(model.cue.caughtBeats(cutTimes: model.cutTimes) == Set(4..<CalibrationModel.beats))
 
         model.save()
         #expect(model.phase == .idle)
