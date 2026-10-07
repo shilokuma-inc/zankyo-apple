@@ -75,6 +75,9 @@ struct AudioDataParserTests {
         #"{ "bpmData": [{ "si": 0, "ei": 100, "sb": 0, "eb": 1 }] }"#,
         #"{ "songFrequency": 0, "bpmData": [{ "si": 0, "ei": 100, "sb": 0, "eb": 1 }] }"#,
         #"{ "songFrequency": 44100, "bpmData": [{ "si": 100, "ei": 100, "sb": 0, "eb": 1 }] }"#,
+        // 区間の境界で時刻が戻る並び（拍 10 の手前が 5 秒なのに、拍 10 が 1 秒から始まる）
+        #"{ "songFrequency": 1000, "bpmData": [{ "si": 0, "ei": 10000, "sb": 0, "eb": 20 }, "#
+            + #"{ "si": 1000, "ei": 2000, "sb": 10, "eb": 12 }] }"#,
         // 秒が戻る区間の並び
         #"{ "songFrequency": 1000, "bpmData": [{ "si": 5000, "ei": 6000, "sb": 0, "eb": 1 }, { "si": 0, "ei": 1000, "sb": 1, "eb": 2 }] }"#
     ])

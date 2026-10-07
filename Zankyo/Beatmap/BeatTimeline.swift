@@ -43,11 +43,16 @@ nonisolated struct BeatTimeline: Sendable, Hashable {
 
     /// 区間の始まりの拍と秒を直接与えて作る（v4 の `AudioData.dat` のように、区間ごとに秒が決まっている形式用）
     ///
-    /// - Parameter segments: 拍の順に並び、拍も秒も増えていくこと。BPM は正で有限であること。空なら nil
+    /// - Parameter segments: 拍の順に並び、拍も秒も増えていくこと。BPM は正で有限であること。
+    ///   次の区間は、前の区間を次の区間の拍まで延ばした時刻より前に始まらないこと（境界で時刻が戻らない）。満たさなければ nil
     init?(segments: [Segment]) {
         guard let first = segments.first, first.beat >= 0, segments.count <= Self.maxChanges + 1 else { return nil }
         guard segments.allSatisfy({ $0.beat.isFinite && $0.seconds.isFinite && $0.bpm.isFinite && $0.bpm > 0 }),
-              zip(segments, segments.dropFirst()).allSatisfy({ $0.beat < $1.beat && $0.seconds <= $1.seconds }) else { return nil }
+              zip(segments, segments.dropFirst()).allSatisfy({ $0.beat < $1.beat && $0.seconds <= $1.seconds }),
+              zip(segments, segments.dropFirst()).allSatisfy({ previous, next in
+                  // 区間がつながっていれば等しい。計算の丸めの分だけ許す
+                  next.seconds >= previous.seconds + (next.beat - previous.beat) * 60 / previous.bpm - 1e-6
+              }) else { return nil }
         // 最初の区間より前の拍は、最初の区間の BPM で延ばす
         let lead = Segment(beat: 0, seconds: first.seconds - first.beat * 60 / first.bpm, bpm: first.bpm)
         self.segments = first.beat > 0 ? [lead] + segments : segments
