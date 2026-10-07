@@ -56,6 +56,16 @@ nonisolated struct PlayfieldGeometry: Sendable, Hashable {
         return Double(max(1 - (y - hitY) / depth, 0))
     }
 
+    /// 判定の表示（点数など）を判定の線からずらす量。線の上のノーツと重ならないよう線の下に出し、
+    /// レーンの下の余白に収まらないときは線の上に出す（レーンは切り取られるので、はみ出すと読めない）
+    func judgementLabelOffset(noteSize: CGFloat, labelHeight: CGFloat) -> CGFloat {
+        let preferred = noteSize * 0.95
+        // 線の上のノーツと重ならない最小のずれと、レーンの下端に収まる最大のずれ
+        let clearance = (noteSize + labelHeight) / 2
+        let room = size.height - hitY - labelHeight / 2
+        return room >= clearance ? min(preferred, room) : -preferred
+    }
+
     /// ノーツの不透明度。上端から現れるところで薄く出し、判定の線を過ぎたら消す
     func noteOpacity(remaining: TimeInterval) -> Double {
         guard approachTime > 0, remaining >= -Self.fadeOutDelay else { return 0 }

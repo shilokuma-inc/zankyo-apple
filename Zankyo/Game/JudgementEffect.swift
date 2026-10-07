@@ -1,11 +1,13 @@
 import SwiftUI
 
-/// 直近の判定の表示。切ったときはノーツの色の斬撃と光の輪を走らせ、判定の線の下に点数を出す。
+/// 直近の判定の表示。切ったときはノーツの色の斬撃と光の輪を走らせ、判定の線の近くに点数を出す。
 /// 判定ごとに作り直す（`.id(judgement)`）前提で、現れたときに 1 度だけ動く
 struct JudgementEffect: View {
     let judgement: Judgement
     /// 判定の線の上でのノーツの大きさ
     let noteSize: CGFloat
+    /// 点数などの文字を判定の線からずらす量（`PlayfieldGeometry.judgementLabelOffset`）
+    let labelOffset: CGFloat
 
     @State private var progress: CGFloat = 0
 
@@ -16,7 +18,7 @@ struct JudgementEffect: View {
             }
             label
                 .scaleEffect(1.3 - 0.3 * progress)
-                .offset(y: noteSize * 0.95)
+                .offset(y: labelOffset)
         }
         .onAppear {
             withAnimation(.easeOut(duration: 0.4)) {

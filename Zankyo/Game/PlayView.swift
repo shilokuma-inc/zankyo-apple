@@ -20,6 +20,9 @@ struct PlayView: View {
     /// 判定の線の上でのノーツの大きさ
     static let noteSize: CGFloat = 64
 
+    /// 判定の表示の文字の高さ（文字の大きさの設定に合わせる）
+    @ScaledMetric(relativeTo: .title2) private var judgementLabelHeight: CGFloat = 36
+
     var body: some View {
         Group {
             if session.phase == .finished, let result = session.result {
@@ -97,9 +100,13 @@ struct PlayView: View {
                         .opacity(geometry.noteOpacity(remaining: remaining))
                 }
                 if let judgement = session.lastJudgement {
-                    JudgementEffect(judgement: judgement, noteSize: Self.noteSize)
-                        .position(x: geometry.centerX, y: geometry.hitY)
-                        .id(judgement)
+                    JudgementEffect(
+                        judgement: judgement,
+                        noteSize: Self.noteSize,
+                        labelOffset: geometry.judgementLabelOffset(noteSize: Self.noteSize, labelHeight: judgementLabelHeight)
+                    )
+                    .position(x: geometry.centerX, y: geometry.hitY)
+                    .id(judgement)
                 }
             }
         }
