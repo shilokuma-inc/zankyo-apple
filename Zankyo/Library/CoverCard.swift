@@ -8,6 +8,10 @@ extension View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background { CoverBackdrop(cover: cover) }
             .clipShape(.rect(cornerRadius: 20))
+            #if !os(macOS)
+            // 長押しのプレビューもカードの形にする（行の上下の余白まで白く出さない）。macOS のメニューにはプレビューが無い
+            .contentShape(.contextMenuPreview, .rect(cornerRadius: 20))
+            #endif
     }
 
     /// `coverCard` を並べる List の行の設定。カードの色を見せるため、行の背景と区切り線を消し、カードの間を空ける
