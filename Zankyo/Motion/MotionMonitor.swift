@@ -21,6 +21,9 @@ final class MotionMonitor: MotionInput {
     @ObservationIgnored private var generation = 0
     /// プレビューの回の番号。プレビューでなければ nil
     @ObservationIgnored private var previewGeneration: Int?
+    /// 入力の側で終わったプレビューの、そのときの状態。状態が変わるまでプレビューを始め直さない
+    /// （visionOS で空間を開く前など、始めてもすぐ終わる状態で取得を繰り返さないため）
+    @ObservationIgnored private var previewEndedStatus: MotionInputStatus?
     @ObservationIgnored private let now: () -> TimeInterval
 
     init(base: any MotionInput, now: @escaping () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }) {
@@ -38,6 +41,7 @@ final class MotionMonitor: MotionInput {
 
     func start() -> AsyncStream<MotionSample> {
         stop()
+        previewEndedStatus = nil
         generation += 1
         let current = generation
         state.reset()
@@ -71,7 +75,7 @@ final class MotionMonitor: MotionInput {
 
     /// 受け取る側がいなければ、向きを見せるためだけに取得を始める。権限を尋ねる前（`notDetermined`）は始めない
     func startPreview() {
-        guard continuation == nil, status == .ready || status == .disconnected else { return }
+        guard continuation == nil, status == .ready || status == .disconnected, previewEndedStatus != status else { return }
         let stream = start()
         previewGeneration = generation
         Task {
@@ -97,7 +101,9 @@ final class MotionMonitor: MotionInput {
 
     private func terminated(generation: Int) {
         guard generation == self.generation, continuation != nil else { return }
+        let endedStatus = previewGeneration == generation ? status : nil
         stop()
+        previewEndedStatus = endedStatus
     }
 
     nonisolated private static func terminationHandler(
