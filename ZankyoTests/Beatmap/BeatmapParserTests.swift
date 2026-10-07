@@ -203,6 +203,19 @@ struct BeatmapParserTests {
     }
 
     @Test
+    func skipsV4NotesWithMistypedValues() throws {
+        // キーがあって型が違う値は 0 とみなさず、そのノーツを除く
+        let json = """
+        { "version": "4.1.0",
+          "colorNotes": [{ "b": "12" }, { "b": 2, "i": "0" }, { "b": 3, "i": 1 }, { "b": 4, "i": 2 }, { "b": 5 }],
+          "colorNotesData": [{ "d": 1 }, { "c": "blue", "d": 1 }, { "c": 1, "d": [3] }] }
+        """
+        let beatmap = try BeatmapParser.parse(Data(json.utf8), bpm: 60)
+
+        #expect(beatmap.notes.map(\.beat) == [5])
+    }
+
+    @Test
     func usesAudioTimelineForV4() throws {
         let json = #"{ "version": "4.1.0", "colorNotes": [{ "b": 2 }, { "b": 6 }], "colorNotesData": [{ "d": 1 }] }"#
         // 拍 4 から BPM が倍になる

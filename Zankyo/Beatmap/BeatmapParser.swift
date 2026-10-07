@@ -212,7 +212,7 @@ nonisolated private struct BeatmapV3: Decodable {
 }
 
 /// v4 はノーツを「拍と、見た目の番号（`b` / `i`）」と「見た目（`colorNotesData`）」に分け、同じ見た目を使い回す。
-/// 値が 0 のキーは省かれることがあるので、無いキーは 0 として読む
+/// 値が 0 のキーは省かれることがあるので、無いキーは 0 として読む。キーがあって型が違う値は nil にして、そのノーツを除く
 nonisolated private struct BeatmapV4: Decodable {
     let colorNotes: [BeatmapV4Object]
     /// 番号で引くので、読めない要素も詰めずに nil として残す
@@ -221,7 +221,7 @@ nonisolated private struct BeatmapV4: Decodable {
     var raw: RawBeatmap {
         RawBeatmap(
             notes: colorNotes.map { note in
-                let data = colorNotesData.indices.contains(note.index) ? colorNotesData[note.index] : nil
+                let data = note.index.flatMap { colorNotesData.indices.contains($0) ? colorNotesData[$0] : nil }
                 // 見た目が無いノーツは、拍を nil にして除く
                 return RawNote(
                     beat: data == nil ? nil : note.beat,
@@ -248,8 +248,8 @@ nonisolated private struct BeatmapV4: Decodable {
 }
 
 nonisolated private struct BeatmapV4Object: Decodable {
-    let beat: Double
-    let index: Int
+    let beat: Double?
+    let index: Int?
 
     private enum CodingKeys: String, CodingKey {
         case beat = "b"
@@ -258,16 +258,16 @@ nonisolated private struct BeatmapV4Object: Decodable {
 
     init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        beat = container.lenient(Double.self, forKey: .beat) ?? 0
-        index = container.lenient(Int.self, forKey: .index) ?? 0
+        beat = container.omittedAsZero(Double.self, forKey: .beat)
+        index = container.omittedAsZero(Int.self, forKey: .index)
     }
 }
 
 nonisolated private struct BeatmapV4ColorNoteData: Decodable {
-    let lineIndex: Int
-    let lineLayer: Int
-    let color: Int
-    let direction: Int
+    let lineIndex: Int?
+    let lineLayer: Int?
+    let color: Int?
+    let direction: Int?
 
     private enum CodingKeys: String, CodingKey {
         case lineIndex = "x"
@@ -278,10 +278,17 @@ nonisolated private struct BeatmapV4ColorNoteData: Decodable {
 
     init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        lineIndex = container.lenient(Int.self, forKey: .lineIndex) ?? 0
-        lineLayer = container.lenient(Int.self, forKey: .lineLayer) ?? 0
-        color = container.lenient(Int.self, forKey: .color) ?? 0
-        direction = container.lenient(Int.self, forKey: .direction) ?? 0
+        lineIndex = container.omittedAsZero(Int.self, forKey: .lineIndex)
+        lineLayer = container.omittedAsZero(Int.self, forKey: .lineLayer)
+        color = container.omittedAsZero(Int.self, forKey: .color)
+        direction = container.omittedAsZero(Int.self, forKey: .direction)
+    }
+}
+
+nonisolated private extension KeyedDecodingContainer {
+    /// v4 の数値を読む。キーが無ければ 0（0 は省かれる）、キーがあって型が違えば nil
+    func omittedAsZero<Value: Decodable & Numeric>(_ type: Value.Type, forKey key: Key) -> Value? {
+        contains(key) ? lenient(type, forKey: key) : .zero
     }
 }
 
