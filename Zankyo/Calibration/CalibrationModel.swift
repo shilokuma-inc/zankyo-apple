@@ -79,6 +79,8 @@ final class CalibrationModel {
 
     /// 測る。終わる（最後のクリックを過ぎる・入力が終わる・中止する）まで返らない
     func measure() async {
+        // 開始を続けて押したときなど、始まる前に中止された回は何もしない（新しい回の入力と音を奪わない）
+        guard !Task.isCancelled else { return }
         generation += 1
         let currentGeneration = generation
         let stream = input.start()
@@ -118,6 +120,8 @@ final class CalibrationModel {
             updateProgress(clicks: clicks, at: sample.timestamp)
             if sample.timestamp > deadline { break }
         }
+        // 中止の後に新しい回が始まっていたら、その回の入力と音を止めない
+        guard generation == currentGeneration else { return }
         input.stop()
         metronome.stop()
         guard !Task.isCancelled else { return }
