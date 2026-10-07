@@ -63,7 +63,7 @@ struct CalibrationCueView: View {
                     // 線に届いた印はそこに留め、広がりながら消える
                     let fade = click.remaining < 0 ? -click.remaining / Self.flashDuration : 0
                     let fadeIn = min((Self.approachTime - click.remaining) / Self.fadeInDuration, 1)
-                    CueMark(isCountIn: cue.isCountIn(click.index))
+                    CueMark(index: click.index, isCountIn: cue.isCountIn(click.index))
                         .scaleEffect(1 + 0.6 * fade)
                         .opacity((1 - fade) * fadeIn)
                         .position(x: centerX, y: hitY - max(click.remaining, 0) / Self.approachTime * hitY)
@@ -106,13 +106,22 @@ struct CalibrationCueView: View {
 
 /// 降りてくる 1 つの印
 private struct CueMark: View {
+    /// `clickTimes` の中の位置
+    let index: Int
     let isCountIn: Bool
 
     var body: some View {
         if isCountIn {
+            // 何回目の前打ちかを添え、あと何回で振り始めるかを先に見せる
             Image(systemName: "ear")
                 .font(.system(size: 32, weight: .semibold))
                 .foregroundStyle(.secondary)
+                .overlay(alignment: .bottomTrailing) {
+                    Text("\(index + 1)")
+                        .font(.headline.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .offset(x: 16, y: 4)
+                }
         } else {
             Image(systemName: "circle.circle.fill")
                 .font(.system(size: 48, weight: .bold))
