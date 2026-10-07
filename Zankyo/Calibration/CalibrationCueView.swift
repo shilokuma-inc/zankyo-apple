@@ -93,8 +93,8 @@ struct CalibrationCueView: View {
                 .foregroundStyle(.secondary)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("振りを数えた拍")
-        .accessibilityValue("\(caught.count) / \(cue.swingCount)")
+        .accessibilityLabel("進み具合")
+        .accessibilityValue("\(passed) / \(cue.clickTimes.count) 拍、振りを数えた拍 \(caught.count) / \(cue.swingCount)")
     }
 
     /// クリックが聞こえた瞬間に 1、`flashDuration` で 0 に戻る
