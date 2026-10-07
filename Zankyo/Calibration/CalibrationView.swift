@@ -10,8 +10,8 @@ struct CalibrationView: View {
         NavigationStack {
             VStack(spacing: 16) {
                 if model.isMeasuring {
-                    // 測っている間は説明を引っ込め、振るタイミングの手がかりを大きく出す
-                    CalibrationCueView(cue: model.cue, cutTimes: model.cutTimes) { model.currentTime }
+                    // 測っている間は説明を引っ込め、振るタイミングの手がかりを大きく出す。頭の動きはプレイ中と同じく小さく出す
+                    CalibrationCueView(cue: model.cue, cutTimes: model.cutTimes, now: { model.currentTime }, motion: motion)
                     controls
                 } else if model.canMeasure {
                     ScrollView {

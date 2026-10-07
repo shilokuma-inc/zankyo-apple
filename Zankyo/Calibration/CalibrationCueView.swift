@@ -9,6 +9,8 @@ struct CalibrationCueView: View {
     let cutTimes: [TimeInterval]
     /// クリックと同じ物差し（起動からの秒）の今の時刻
     let now: () -> TimeInterval
+    /// 頭の動きの見える化に使う。nil なら出さない
+    var motion: MotionMonitor?
 
     /// 印が上端から線に届くまでの秒。プレイ画面にそろえる
     private static let approachTime = PlayView.approachTime
@@ -70,6 +72,12 @@ struct CalibrationCueView: View {
         }
         .clipped()
         .accessibilityHidden(true)
+        .overlay(alignment: .topTrailing) {
+            // プレイ中と同じく小さく出す。印はレーンの真ん中を降りるので、端に置けば重ならない（取得はキャリブレーションが行う）
+            if let motion {
+                HeadIndicatorView(monitor: motion, style: .compact, previewsWhenIdle: false)
+            }
+        }
     }
 
     private func beatDots(passed: Int) -> some View {
