@@ -146,6 +146,10 @@
 				4FA0000000000000000000B1 /* Zankyo */,
 			);
 			name = Zankyo;
+			packageProductDependencies = (
+				C67FD6EC30769021001D67E6 /* ZIPFoundation */,
+				C67FD6EF307690B0001D67E6 /* LibVorbis */,
+			);
 			productName = Zankyo;
 			productReference = 4FC9E1E92BF1049B00F630AB /* Zankyo.app */;
 			productType = "com.apple.product-type.application";
