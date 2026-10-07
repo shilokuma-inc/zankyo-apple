@@ -52,9 +52,9 @@ struct PlayView: View {
             Self.setIdleTimerDisabled(true)
             startIfReady()
         }
-        // イヤホンが外れたら数えるのを止め、つながって始められるようになったら、自動で数え始める
+        // イヤホンが外れたら（始める前でも再開の前でも）数えるのを止める。つながって始められるようになったら、自動で数え始める
         .onChange(of: session.canStart) {
-            if !session.canStart, session.phase == .ready {
+            if !session.canStart {
                 cancelCountdown()
             }
             startIfReady()
