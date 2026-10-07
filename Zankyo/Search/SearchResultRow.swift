@@ -13,6 +13,7 @@ struct SearchResultRow: View {
         }
     }
 
+    /// 1 曲分のカード。`cover` は読み込んだジャケット画像（読み込み中・失敗時は nil）で、サムネイルと背景の両方に使う
     private func content(cover: Image?) -> some View {
         HStack(alignment: .top, spacing: 12) {
             thumbnail(cover)
@@ -55,6 +56,7 @@ struct SearchResultRow: View {
         .clipShape(.rect(cornerRadius: 20))
     }
 
+    /// 左に出すジャケット画像のサムネイル。画像が無いあいだは音符を出す
     private func thumbnail(_ cover: Image?) -> some View {
         Group {
             if let cover {
