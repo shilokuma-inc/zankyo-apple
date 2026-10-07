@@ -9,6 +9,8 @@ struct PlaySetup: Identifiable {
     let difficulty: DifficultyInfo
     let notes: [FaceNote]
     let song: DecodedSong
+    /// 譜面 ZIP のジャケット画像。無ければ nil
+    let cover: CGImage?
 
     var scoreKey: ScoreKey {
         ScoreKey(mapHash: entry.hash, characteristic: difficulty.characteristic, difficulty: difficulty.difficulty)
@@ -79,7 +81,7 @@ final class SongDetailModel {
             let notes = try await maps.loadNotes(hash: entry.hash, info: info, difficulty: difficulty)
             let song = try await loadedSong(info: info)
             guard !Task.isCancelled else { return }
-            play = PlaySetup(entry: entry, difficulty: difficulty, notes: notes, song: song)
+            play = PlaySetup(entry: entry, difficulty: difficulty, notes: notes, song: song, cover: cover)
         } catch {
             guard !Task.isCancelled else { return }
             playError = error.message

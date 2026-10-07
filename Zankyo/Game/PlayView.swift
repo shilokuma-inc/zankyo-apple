@@ -5,6 +5,10 @@ import SwiftUI
 /// ノーツは上から判定の線へ降りてきて、線に重なる時刻に向きの矢印の方へ首を振る
 struct PlayView: View {
     let session: GameSession
+    /// 曲のジャケット画像（譜面 ZIP の画像）
+    var cover: CGImage?
+    /// 譜面 ZIP に画像が無いときに取りに行く beatsaver の画像
+    var coverURL: URL?
     /// もう一度遊ぶ（nil ならボタンを出さない）
     var onRetry: (() -> Void)?
     let onExit: () -> Void
@@ -58,6 +62,7 @@ struct PlayView: View {
 
     private var header: some View {
         HStack(alignment: .center, spacing: 12) {
+            CoverThumbnail(image: cover, url: coverURL)
             ScoreReadout(score: session.score, combo: session.combo)
             Spacer()
             MultiplierRing(multiplier: session.multiplier, progress: session.judge.keeper.progressToNextMultiplier)

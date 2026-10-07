@@ -130,8 +130,14 @@ struct PlayScreen: View {
     var body: some View {
         Group {
             if let session {
-                PlayView(session: session, onRetry: { self.session = makeSession() }, onExit: onExit)
-                    .id(ObjectIdentifier(session))
+                PlayView(
+                    session: session,
+                    cover: setup.cover,
+                    coverURL: setup.entry.coverURL,
+                    onRetry: { self.session = makeSession() },
+                    onExit: onExit
+                )
+                .id(ObjectIdentifier(session))
             } else {
                 Color.clear
             }

@@ -41,3 +41,20 @@ struct MultiplierRing: View {
         .animation(.easeOut(duration: 0.2), value: progress)
     }
 }
+
+/// プレイ中の曲のジャケット画像。ノーツの邪魔にならないよう、スコアの横に小さく出す
+struct CoverThumbnail: View {
+    let image: CGImage?
+    let url: URL?
+
+    var body: some View {
+        CoverArtwork(image: image, url: url)
+            .frame(width: 56, height: 56)
+            .clipShape(.rect(cornerRadius: 8))
+            .overlay {
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(NeonTheme.laser.opacity(0.8), lineWidth: 1.5)
+            }
+            .shadow(color: NeonTheme.laser.opacity(0.6), radius: 6)
+    }
+}
