@@ -11,7 +11,12 @@ import SwiftUI
 struct Zankyo: App {
     var body: some Scene {
         WindowGroup {
-            RootView(client: BeatsaverAPIClient(), downloader: MapDownloader())
+            RootView(
+                client: BeatsaverAPIClient(),
+                downloader: MapDownloader(),
+                motionInput: MotionInputFactory.makeDefault(),
+                metronome: ClickMetronome()
+            )
         }
     }
 }
