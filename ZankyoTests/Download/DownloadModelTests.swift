@@ -96,6 +96,29 @@ struct DownloadModelTests {
         #expect(model.state(for: try Self.map(id: "1f33")) == .downloaded)
     }
 
+    @Test
+    func addsDownloadedMapToLibraryAndForgetsDeleted() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: "ZankyoTests-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let library = LibraryStore(
+            directory: root.appending(path: "Library"),
+            downloadsDirectory: root.appending(path: "Downloads"),
+            mapsDirectory: root.appending(path: "Maps")
+        )
+        let model = DownloadModel(downloader: FakeMapDownloader { _, _ in URL(filePath: "/tmp/a.zip") }, library: library)
+        let map = try Self.map(id: "1f33")
+
+        model.start(map)
+        await model.waitUntilFinished()
+
+        #expect(library.entries.map(\.mapID) == ["1f33"])
+        #expect(library.contains(hash: BeatsaverFixtures.hash))
+        let entry = try #require(library.entries.first)
+        library.delete(entry)
+        model.forget(hash: entry.hash)
+        #expect(model.state(for: map) == .notDownloaded)
+    }
+
     nonisolated private static func map(id: String) throws -> BeatsaverMap {
         try JSONDecoder().decode(BeatsaverMap.self, from: Data(BeatsaverFixtures.map(id: id).utf8))
     }
