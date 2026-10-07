@@ -6,8 +6,8 @@ import Observation
 final class CalibrationModel {
     enum Phase: Equatable {
         case idle
-        /// `beat` 回目のクリックまで鳴った
-        case measuring(beat: Int, total: Int)
+        /// 何拍目かは、サンプルの届き方に左右されないよう時刻から求める（`CalibrationCue`）
+        case measuring
         case finished(CalibrationResult)
         case failed(String)
     }
@@ -19,6 +19,9 @@ final class CalibrationModel {
 
     private(set) var phase: Phase = .idle
     private(set) var savedOffset: TimeInterval?
+    /// 測っている回のクリックが聞こえる時刻と、検出した振りの時刻。画面の手がかり（`CalibrationCue`）に使う
+    private(set) var clickTimes: [TimeInterval] = []
+    private(set) var cutTimes: [TimeInterval] = []
 
     let input: any MotionInput
     @ObservationIgnored private let metronome: any Metronome
@@ -42,13 +45,21 @@ final class CalibrationModel {
     }
 
     var isMeasuring: Bool {
-        if case .measuring = phase { return true }
-        return false
+        phase == .measuring
     }
 
     /// 入力が使えるか、使い始めれば許可を尋ねられる状態なら測れる
     var canMeasure: Bool {
         input.status == .ready || input.status == .notDetermined
+    }
+
+    var cue: CalibrationCue {
+        CalibrationCue(clickTimes: clickTimes)
+    }
+
+    /// クリックと同じ物差し（起動からの秒）の今の時刻
+    var currentTime: TimeInterval {
+        now()
     }
 
     func start() {
@@ -99,7 +110,9 @@ final class CalibrationModel {
             phase = .failed("音を鳴らせませんでした。")
             return
         }
-        phase = .measuring(beat: 0, total: clicks.count)
+        clickTimes = clicks
+        cutTimes = []
+        phase = .measuring
 
         let deadline = lastClick + Self.tail
         // 振りが届かなくても、最後のクリックを過ぎたら入力を止めて終える
@@ -111,15 +124,7 @@ final class CalibrationModel {
         }
         defer { stopper.cancel() }
 
-        var detector = CutDetector()
-        var cuts: [TimeInterval] = []
-        for await sample in stream {
-            if let cut = detector.process(sample) {
-                cuts.append(cut.timestamp)
-            }
-            updateProgress(clicks: clicks, at: sample.timestamp)
-            if sample.timestamp > deadline { break }
-        }
+        let cuts = await detectCuts(in: stream, until: deadline, generation: currentGeneration)
         // 中止の後に新しい回が始まっていたら、その回の入力と音を止めない
         guard generation == currentGeneration else { return }
         input.stop()
@@ -133,11 +138,24 @@ final class CalibrationModel {
         }
     }
 
-    private func updateProgress(clicks: [TimeInterval], at time: TimeInterval) {
-        guard case .measuring(let current, let total) = phase else { return }
-        let beat = clicks.prefix { $0 <= time }.count
-        if beat != current {
-            phase = .measuring(beat: beat, total: total)
+    /// 列が終わるか `deadline` を過ぎるまで振りを検出し、その時刻を返す。検出するたびに `cutTimes` に出す
+    private func detectCuts(
+        in stream: AsyncStream<MotionSample>,
+        until deadline: TimeInterval,
+        generation currentGeneration: Int
+    ) async -> [TimeInterval] {
+        var detector = CutDetector()
+        var cuts: [TimeInterval] = []
+        for await sample in stream {
+            if let cut = detector.process(sample) {
+                cuts.append(cut.timestamp)
+                // 中止の後に残ったサンプルで、新しい回の表示を書き換えない
+                if generation == currentGeneration {
+                    cutTimes = cuts
+                }
+            }
+            if sample.timestamp > deadline { break }
         }
+        return cuts
     }
 }

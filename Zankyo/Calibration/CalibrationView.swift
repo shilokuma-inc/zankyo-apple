@@ -13,8 +13,9 @@ struct CalibrationView: View {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 16) {
                             explanation
-                            HeadIndicatorView(monitor: motion)
+                            // 測り終えた結果は、頭の動きの表示に押し出されて隠れないよう先に出す
                             phaseContent
+                            HeadIndicatorView(monitor: motion)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
@@ -26,12 +27,40 @@ struct CalibrationView: View {
             .padding()
             .navigationTitle("キャリブレーション")
         }
+        // 測っている間は、プレイ画面と同じく全面に出す
+        .measuringCover(isPresented: measuringPresented) { measuringContent }
+    }
+
+    /// 測り終える・中止すると閉じる
+    private var measuringPresented: Binding<Bool> {
+        Binding(get: { model.isMeasuring }, set: { isPresented in
+            if !isPresented, model.isMeasuring { model.cancel() }
+        })
+    }
+
+    /// 測っている間の画面。プレイ画面と同じネオンの空間に、振るタイミングの手がかりと中止だけを置く。
+    /// 頭の動きはプレイ中と同じく小さく出す
+    private var measuringContent: some View {
+        VStack(spacing: 16) {
+            CalibrationCueView(cue: model.cue, cutTimes: model.cutTimes, now: { model.currentTime }, motion: motion)
+            Button(role: .cancel, action: model.cancel) {
+                Text("中止").frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.large)
+            .padding([.horizontal, .bottom])
+        }
+        .padding(.top)
+        .background { PlayfieldBackdrop() }
+        .preferredColorScheme(.dark)
     }
 
     private var explanation: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("イヤホンを付けて、クリック音に合わせて首を振ってください。")
             Text("最初の 4 回の高い音は聞くだけ。続く低い音ごとに、左右か上下に 1 回ずつ振ります。")
+                .foregroundStyle(.secondary)
+            Text("測っている間はプレイ画面と同じく、上から降りてくる印が判定の線に重なる瞬間に音が鳴ります。")
                 .foregroundStyle(.secondary)
             Text("保存中のずれ: \(savedOffsetText)")
                 .font(.footnote)
@@ -41,12 +70,9 @@ struct CalibrationView: View {
 
     @ViewBuilder private var phaseContent: some View {
         switch model.phase {
-        case .idle:
+        case .idle, .measuring:
+            // 測っている間は `CalibrationCueView` が進み具合を出す
             EmptyView()
-        case let .measuring(beat, total):
-            ProgressView(value: Double(beat), total: Double(max(total, 1))) {
-                Text(beat < CalibrationAnalyzer.Configuration().countIn ? "聞いてください" : "音に合わせて振ってください")
-            }
         case .finished(let result):
             VStack(alignment: .leading, spacing: 4) {
                 Text("ずれ: \(Self.format(result.offset))")
@@ -115,4 +141,22 @@ private final class SilentMetronome: Metronome {
     }
 
     func stop() {}
+}
+
+private extension View {
+    /// 測っている間の画面を全面に出す。macOS には全面のモーダルが無いのでシートにする（`SongDetailView` のプレイ画面と同じ）
+    func measuringCover<Content: View>(
+        isPresented: Binding<Bool>,
+        @ViewBuilder content: @escaping () -> Content
+    ) -> some View {
+        #if os(macOS)
+        sheet(isPresented: isPresented) {
+            content()
+                .frame(minWidth: 420, minHeight: 640)
+                .interactiveDismissDisabled()
+        }
+        #else
+        fullScreenCover(isPresented: isPresented, content: content)
+        #endif
+    }
 }
