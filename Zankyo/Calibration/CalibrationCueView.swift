@@ -14,6 +14,8 @@ struct CalibrationCueView: View {
     private static let approachTime = PlayView.approachTime
     /// クリックが聞こえた後、線と印を光らせる秒
     private static let flashDuration: TimeInterval = 0.25
+    /// 印が上端から出てくるときに、浮かび上がらせる秒（上端で途切れて見えないように）
+    private static let fadeInDuration: TimeInterval = 0.3
 
     var body: some View {
         TimelineView(.animation) { _ in
@@ -58,9 +60,10 @@ struct CalibrationCueView: View {
                 ForEach(clicks, id: \.index) { click in
                     // 線に届いた印はそこに留め、広がりながら消える
                     let fade = click.remaining < 0 ? -click.remaining / Self.flashDuration : 0
+                    let fadeIn = min((Self.approachTime - click.remaining) / Self.fadeInDuration, 1)
                     CueMark(isCountIn: cue.isCountIn(click.index))
                         .scaleEffect(1 + 0.6 * fade)
-                        .opacity(1 - fade)
+                        .opacity((1 - fade) * fadeIn)
                         .position(x: centerX, y: hitY - max(click.remaining, 0) / Self.approachTime * hitY)
                 }
             }
