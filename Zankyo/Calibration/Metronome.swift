@@ -10,8 +10,9 @@ protocol Metronome: AnyObject {
 
 /// `AVAudioEngine` でクリック音を鳴らす。出力の遅延（Bluetooth のイヤホンを含む）を、聞こえる時刻に足す
 final class ClickMetronome: Metronome {
-    /// 鳴らし始めるまでの余裕（エンジンの起動を待つ）
-    private static let leadTime: TimeInterval = 0.5
+    /// 鳴らし始めるまでの余裕。エンジンの起動を待つ 0.5 秒に、画面の印（`CalibrationCueView`）が
+    /// 最初のクリックの前にレーンの上端から降りてこられるよう、印が降りる 1.5 秒を足す
+    private static let leadTime: TimeInterval = 2.0
     /// 前打ち（最初の数回）は高い音にして、数えないことを伝える
     private let countIn: Int
 
