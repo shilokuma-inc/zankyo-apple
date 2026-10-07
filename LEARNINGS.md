@@ -27,3 +27,4 @@
 ## モーション入力（AirPods）
 
 - 「切る」は角速度のピークで取る。振った直後に首を戻す動きは逆向きの強いピークになるので、直前と逆向きの振りを短い時間（既定 0.35 秒）出さない。強い振りは減っていく途中でも閾値を超えたままなので、同じ向きは閾値をいったん下回るまで次の振りにしない（2026-10-07）
+- `CMHeadphoneMotionManager` の更新ハンドラと delegate は CoreMotion のキューで呼ばれる。MainActor 既定のメソッドの中でクロージャを書くと MainActor に隔離され、別スレッドで呼ばれた時点で実行時に落ちうるので、`nonisolated static func` で作って渡す。ハンドラの型は Swift では `CMHeadphoneMotionManager.DeviceMotionHandler`（`CMHeadphoneDeviceMotionHandler` は改名済みでエラー）。Simulator では `isDeviceMotionAvailable` が false（2026-10-07）
