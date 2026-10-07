@@ -66,7 +66,7 @@ nonisolated struct BeatsaverMapStats: Sendable, Hashable {
 }
 
 nonisolated struct BeatsaverMapVersion: Sendable, Hashable {
-    /// 譜面 ZIP の SHA-1（40 桁の 16 進数・小文字）
+    /// 譜面ハッシュ（40 桁の 16 進数・小文字）。ZIP 全体の SHA-1 ではなく、`Info.dat` と譜面ファイルの SHA-1（`MapHash`）
     let hash: String
     let createdAt: Date
     let downloadURL: URL

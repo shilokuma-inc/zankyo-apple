@@ -1,4 +1,3 @@
-import CryptoKit
 import Foundation
 import os
 
@@ -20,8 +19,10 @@ nonisolated enum MapDownloadError: Error, Equatable, Sendable {
     case tooLarge
     /// 2xx 以外の応答
     case httpStatus(Int)
-    /// 取得した ZIP のハッシュが API の値と一致しない（壊れた・すり替えられた）
+    /// 取得した ZIP の譜面ハッシュが API の値と一致しない（壊れた・すり替えられた）
     case hashMismatch
+    /// ZIP は取得できたが、譜面として読めない（`Info.dat` や譜面ファイルが無いなど）
+    case invalidMap
     /// ZIP の形式ではない（エラーページなどが返ってきた）
     case notZip
     /// 中止した
@@ -83,7 +84,7 @@ nonisolated struct MapDownloader: MapDownloading {
         let size = (try? temporary.resourceValues(forKeys: [.fileSizeKey]).fileSize).map(Int64.init) ?? .max
         guard size <= maxBytes else { throw .tooLarge }
         guard try Self.hasZipSignature(temporary) else { throw .notZip }
-        guard try Self.sha1(of: temporary) == version.hash.lowercased() else { throw .hashMismatch }
+        guard try Self.mapHash(of: temporary) == version.hash.lowercased() else { throw .hashMismatch }
 
         // ハッシュの計算中に中止されたら保存しない（取り込み済みにしない）
         guard !Task.isCancelled else { throw .cancelled }
@@ -148,23 +149,15 @@ nonisolated struct MapDownloader: MapDownloading {
         return head.map { [Data([0x50, 0x4B, 0x03, 0x04]), Data([0x50, 0x4B, 0x05, 0x06])].contains($0) } ?? false
     }
 
-    /// ファイルの SHA-1（beatsaver の `hash` と同じ形式の小文字 16 進数）
-    private static func sha1(of file: URL) throws(MapDownloadError) -> String {
-        guard let handle = try? FileHandle(forReadingFrom: file) else { throw .storage }
-        defer { try? handle.close() }
-        var hasher = Insecure.SHA1()
-        while true {
-            let chunk: Data?
-            do {
-                chunk = try handle.read(upToCount: 1_024 * 1_024)
-            } catch {
-                throw .storage
-            }
-            // 末尾に達すると空の Data ではなく nil が返る
-            guard let chunk, !chunk.isEmpty else { break }
-            hasher.update(data: chunk)
+    /// 譜面ハッシュ（beatsaver の `hash` と同じ形式の小文字 16 進数）
+    private static func mapHash(of file: URL) throws(MapDownloadError) -> String {
+        do {
+            return try MapHash.compute(zipAt: file)
+        } catch .tooLarge {
+            throw .tooLarge
+        } catch {
+            throw .invalidMap
         }
-        return hasher.finalize().map { String(format: "%02x", $0) }.joined()
     }
 }
 

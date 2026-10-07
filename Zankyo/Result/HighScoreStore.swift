@@ -3,7 +3,7 @@ import os
 
 /// ハイスコアを分ける単位（曲・characteristic・難易度）
 nonisolated struct ScoreKey: Sendable, Hashable {
-    /// 譜面 ZIP の SHA-1（beatsaver の `hash`）。同じ曲でも譜面が更新されたら別のハイスコアにする
+    /// beatsaver の譜面ハッシュ（`hash`。ZIP 全体の SHA-1 ではない）。同じ曲でも譜面が更新されたら別のハイスコアにする
     let mapHash: String
     let characteristic: BeatmapCharacteristic
     let difficulty: BeatmapDifficulty

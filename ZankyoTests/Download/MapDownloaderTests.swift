@@ -5,14 +5,20 @@ import Testing
 @testable import Zankyo
 
 nonisolated struct MapDownloaderTests {
-    /// 自作の小さな ZIP の代わり（中身は検証しないので、任意のバイト列でよい）
-    private static let body = Data("PK\u{3}\u{4} zankyo test archive".utf8)
+    private static let info = Data(
+        #"{"_version":"2.0.0","_difficultyBeatmapSets":[{"_difficultyBeatmaps":[{"_beatmapFilename":"Easy.dat"}]}]}"#.utf8
+    )
+    private static let beatmap = Data("easy".utf8)
+    /// 譜面として読める最小の ZIP
+    private static let body = TestZip.make([("Info.dat", info), ("Easy.dat", beatmap)])
+    /// `body` の譜面ハッシュ（ZIP 全体の SHA-1 ではない）
+    private static let mapHash = sha1(info + beatmap)
 
     @Test
     func savesZipNamedByHash() async throws {
         let directory = try Self.temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
-        let hash = Self.sha1(Self.body)
+        let hash = Self.mapHash
         let captured = OSAllocatedUnfairLock<URLRequest?>(initialState: nil)
         let session = StubURLProtocol.makeSession { request in
             captured.withLock { $0 = request }
@@ -43,6 +49,22 @@ nonisolated struct MapDownloaderTests {
         let downloader = MapDownloader(session: session, directory: directory)
 
         await #expect(throws: MapDownloadError.hashMismatch) {
+            try await downloader.download(try Self.version(hash: hash)) { _ in }
+        }
+        #expect(downloader.downloadedFile(hash: hash) == nil)
+    }
+
+    @Test
+    func rejectsZipWithoutBeatmaps() async throws {
+        let directory = try Self.temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        // ZIP の署名はあっても、Info.dat が無いものは保存しない
+        let body = TestZip.make([("readme.txt", Data("hello".utf8))])
+        let hash = Self.mapHash
+        let session = StubURLProtocol.makeSession { try Self.response($0, body: body) }
+        let downloader = MapDownloader(session: session, directory: directory)
+
+        await #expect(throws: MapDownloadError.invalidMap) {
             try await downloader.download(try Self.version(hash: hash)) { _ in }
         }
         #expect(downloader.downloadedFile(hash: hash) == nil)

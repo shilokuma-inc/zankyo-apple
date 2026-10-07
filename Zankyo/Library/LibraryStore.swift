@@ -4,7 +4,7 @@ import os
 
 /// 取り込んだ 1 曲。画面に出す情報は取り込んだ時点の beatsaver の値（オフラインでも出せるように保存する）
 nonisolated struct LibraryEntry: Sendable, Hashable, Codable, Identifiable {
-    /// 譜面 ZIP の SHA-1（beatsaver の `hash`）。保存先のファイル名にも使う
+    /// beatsaver の譜面ハッシュ（`hash`。ZIP 全体の SHA-1 ではない）。保存先のファイル名にも使う
     let hash: String
     /// beatsaver のキー
     let mapID: String
