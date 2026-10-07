@@ -13,8 +13,9 @@ struct CalibrationView: View {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 16) {
                             explanation
-                            HeadIndicatorView(monitor: motion)
+                            // 測り終えた結果は、頭の動きの表示に押し出されて隠れないよう先に出す
                             phaseContent
+                            HeadIndicatorView(monitor: motion)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
