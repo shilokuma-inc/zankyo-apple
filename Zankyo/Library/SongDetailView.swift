@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 取り込んだ曲の詳細。難易度を選ぶと、ノーツと音源を用意してプレイ画面を出す
+/// 取り込んだ曲の詳細。難易度を選んで「スタート」を押すと、ノーツと音源を用意してプレイ画面を出す（曲は自動で始まる）
 struct SongDetailView: View {
     let motion: MotionMonitor
     let highScores: HighScoreStore
@@ -8,6 +8,8 @@ struct SongDetailView: View {
     @State private var model: SongDetailModel
     /// 難易度を選んでからの準備。画面を離れたら取り消す
     @State private var preparation: Task<Void, Never>?
+    /// 選んでいる難易度。未選択なら最初の難易度を使う
+    @State private var selection: DifficultyInfo?
 
     init(entry: LibraryEntry, motion: MotionMonitor, highScores: HighScoreStore) {
         self.motion = motion
@@ -58,22 +60,56 @@ struct SongDetailView: View {
                     }
                 }
             }
+            // スタートは片手の親指が届く画面下に置く
+            .safeAreaInset(edge: .bottom) {
+                startButton
+                    .padding()
+                    .background(.bar)
+            }
         }
+    }
+
+    /// 選んでいる難易度（未選択なら一覧の最初）
+    private var selectedDifficulty: DifficultyInfo? {
+        selection ?? model.difficultyGroups.first?.difficulties.first
+    }
+
+    private var startButton: some View {
+        Button {
+            guard let difficulty = selectedDifficulty else { return }
+            preparation?.cancel()
+            preparation = Task { await model.prepare(difficulty) }
+        } label: {
+            HStack(spacing: 8) {
+                if model.preparing != nil {
+                    ProgressView()
+                } else {
+                    Image(systemName: "play.fill")
+                }
+                Text(selectedDifficulty.map { "\($0.difficulty.displayName) でスタート" } ?? "スタート")
+            }
+            .font(.headline)
+            .frame(maxWidth: .infinity, minHeight: 32)
+        }
+        .buttonStyle(.borderedProminent)
+        .controlSize(.large)
+        .disabled(selectedDifficulty == nil || model.preparing != nil)
     }
 
     private func difficultyRow(_ difficulty: DifficultyInfo) -> some View {
         let key = ScoreKey(mapHash: model.entry.hash, characteristic: difficulty.characteristic, difficulty: difficulty.difficulty)
+        let isSelected = difficulty == selectedDifficulty
         return Button {
-            preparation?.cancel()
-            preparation = Task { await model.prepare(difficulty) }
+            selection = difficulty
         } label: {
             HStack {
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .foregroundStyle(isSelected ? AnyShapeStyle(.tint) : AnyShapeStyle(.tertiary))
                 Text(difficulty.difficulty.displayName)
                     .font(.headline)
+                    .foregroundStyle(.primary)
                 Spacer()
-                if model.preparing == difficulty {
-                    ProgressView()
-                } else if let best = highScores.best(for: key) {
+                if let best = highScores.best(for: key) {
                     Text("\(best.rank.rawValue)  \(best.score)")
                         .font(.subheadline.monospacedDigit())
                         .foregroundStyle(.secondary)
@@ -82,8 +118,11 @@ struct SongDetailView: View {
             .frame(minHeight: 44)
             .contentShape(.rect)
         }
+        // リンクの色にせず、ふつうの文字で読ませる
+        .buttonStyle(.plain)
         .disabled(model.preparing != nil)
-        .accessibilityHint("この難易度で遊びます")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .accessibilityHint("この難易度を選びます")
     }
 }
 
@@ -135,7 +174,7 @@ struct PlayScreen: View {
                     motion: motion,
                     cover: setup.cover,
                     coverURL: setup.entry.coverURL,
-                    onRetry: { self.session = makeSession() },
+                    onRetry: restart,
                     onExit: onExit
                 )
                 .id(ObjectIdentifier(session))
@@ -155,6 +194,12 @@ struct PlayScreen: View {
                 session?.input.stop()
             }
         }
+    }
+
+    /// 最初からやり直す。前の回の音を止めてから、同じノーツと音源で作り直す（入力は新しい回が取り直す）
+    private func restart() {
+        session?.clock.stop()
+        session = makeSession()
     }
 
     private func makeSession() -> GameSession {
