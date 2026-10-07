@@ -69,6 +69,18 @@ struct PlayfieldGeometryTests {
     }
 
     @Test
+    func judgementLabelStaysInsideLane() {
+        // 下の余白（90）に収まるので、決めた分だけ線の下に出す
+        #expect(isClose(geometry.judgementLabelOffset(noteSize: 64, labelHeight: 36), 64 * 0.95))
+        // 下の余白（72）が少ないので、下端に収まるところまで縮める
+        let short = PlayfieldGeometry(size: CGSize(width: 400, height: 480), approachTime: 1.5)
+        #expect(isClose(short.judgementLabelOffset(noteSize: 64, labelHeight: 36), 72 - 18))
+        // 下の余白（60）ではノーツと重なるので、線の上に出す
+        let shorter = PlayfieldGeometry(size: CGSize(width: 400, height: 400), approachTime: 1.5)
+        #expect(isClose(shorter.judgementLabelOffset(noteSize: 64, labelHeight: 36), -64 * 0.95))
+    }
+
+    @Test
     func gridTimesCoverVisibleRange() {
         let times = geometry.gridTimes(at: 10.1, interval: 0.25)
 
