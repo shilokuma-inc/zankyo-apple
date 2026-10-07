@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		C67FD6ED30769021001D67E6 /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = C67FD6EC30769021001D67E6 /* ZIPFoundation */; };
+		C67FD6F0307690B0001D67E6 /* LibVorbis in Frameworks */ = {isa = PBXBuildFile; productRef = C67FD6EF307690B0001D67E6 /* LibVorbis */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -73,6 +74,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				C67FD6ED30769021001D67E6 /* ZIPFoundation in Frameworks */,
+				C67FD6F0307690B0001D67E6 /* LibVorbis in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -227,6 +229,7 @@
 			packageReferences = (
 				4F27869D2BF373B800E9F5EF /* XCRemoteSwiftPackageReference "SwiftLintPlugins" */,
 				C67FD6EB30769021001D67E6 /* XCRemoteSwiftPackageReference "ZIPFoundation" */,
+				C67FD6EE307690B0001D67E6 /* XCRemoteSwiftPackageReference "vorbis-swift" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 4FC9E1EA2BF1049B00F630AB /* Products */;
@@ -635,6 +638,14 @@
 				minimumVersion = 0.9.20;
 			};
 		};
+		C67FD6EE307690B0001D67E6 /* XCRemoteSwiftPackageReference "vorbis-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/HealsCodes/vorbis-swift";
+			requirement = {
+				kind = exactVersion;
+				version = 1.3.7;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -657,6 +668,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = C67FD6EB30769021001D67E6 /* XCRemoteSwiftPackageReference "ZIPFoundation" */;
 			productName = ZIPFoundation;
+		};
+		C67FD6EF307690B0001D67E6 /* LibVorbis */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C67FD6EE307690B0001D67E6 /* XCRemoteSwiftPackageReference "vorbis-swift" */;
+			productName = LibVorbis;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
