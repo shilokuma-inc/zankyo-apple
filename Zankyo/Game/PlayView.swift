@@ -52,8 +52,13 @@ struct PlayView: View {
             Self.setIdleTimerDisabled(true)
             startIfReady()
         }
-        // イヤホンがつながって始められるようになったら、自動で数え始める
-        .onChange(of: session.canStart) { startIfReady() }
+        // イヤホンが外れたら数えるのを止め、つながって始められるようになったら、自動で数え始める
+        .onChange(of: session.canStart) {
+            if !session.canStart, session.phase == .ready {
+                cancelCountdown()
+            }
+            startIfReady()
+        }
         .onDisappear {
             Self.setIdleTimerDisabled(false)
             cancelCountdown()
@@ -190,7 +195,11 @@ struct PlayView: View {
     /// 始められる状態になっていれば、カウントダウンのあと曲を始める
     private func startIfReady() {
         guard session.phase == .ready, session.canStart, countdown == nil, !isHoldingStart else { return }
-        runCountdown { session.start() }
+        runCountdown {
+            // 数えている間に外れていたら始めない（つながり直したら数え直す）
+            guard session.phase == .ready, session.canStart else { return }
+            session.start()
+        }
     }
 
     private func pause() {
