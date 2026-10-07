@@ -2,15 +2,15 @@ import SwiftUI
 
 /// 取り込んだ曲の詳細。難易度を選ぶと、ノーツと音源を用意してプレイ画面を出す
 struct SongDetailView: View {
-    let input: any MotionInput
+    let motion: MotionMonitor
     let highScores: HighScoreStore
 
     @State private var model: SongDetailModel
     /// 難易度を選んでからの準備。画面を離れたら取り消す
     @State private var preparation: Task<Void, Never>?
 
-    init(entry: LibraryEntry, input: any MotionInput, highScores: HighScoreStore) {
-        self.input = input
+    init(entry: LibraryEntry, motion: MotionMonitor, highScores: HighScoreStore) {
+        self.motion = motion
         self.highScores = highScores
         _model = State(initialValue: SongDetailModel(entry: entry))
     }
@@ -32,7 +32,7 @@ struct SongDetailView: View {
                 Text(model.playError ?? "")
             }
             .playCover(item: $model.play) { setup in
-                PlayScreen(setup: setup, input: input, highScores: highScores) {
+                PlayScreen(setup: setup, motion: motion, highScores: highScores) {
                     model.play = nil
                 }
             }
@@ -121,7 +121,7 @@ private struct SongHeader: View {
 /// 1 回のプレイ。もう一度遊ぶときは、同じノーツと音源で新しいセッションを作る
 struct PlayScreen: View {
     let setup: PlaySetup
-    let input: any MotionInput
+    let motion: MotionMonitor
     let highScores: HighScoreStore
     let onExit: () -> Void
 
@@ -132,6 +132,7 @@ struct PlayScreen: View {
             if let session {
                 PlayView(
                     session: session,
+                    motion: motion,
                     cover: setup.cover,
                     coverURL: setup.entry.coverURL,
                     onRetry: { self.session = makeSession() },
@@ -160,7 +161,7 @@ struct PlayScreen: View {
         GameSession(
             notes: setup.notes,
             clock: AudioSongClock(song: setup.song),
-            input: input,
+            input: motion,
             offset: CalibrationStore().offset,
             scoreKey: setup.scoreKey,
             highScores: highScores

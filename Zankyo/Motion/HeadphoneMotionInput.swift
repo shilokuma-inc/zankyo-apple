@@ -131,7 +131,11 @@ final class HeadphoneMotionInput: MotionInput {
                 return
             }
             guard let motion else { return }
-            continuation.yield(MotionSample(headphoneTimestamp: motion.timestamp, rotationRate: motion.rotationRate))
+            continuation.yield(MotionSample(
+                headphoneTimestamp: motion.timestamp,
+                rotationRate: motion.rotationRate,
+                attitude: motion.attitude
+            ))
             let isFirst = hasReceived.withLock { received in
                 defer { received = true }
                 return !received
@@ -177,9 +181,14 @@ nonisolated private final class ConnectionDelegate: NSObject, CMHeadphoneMotionM
 
 extension MotionSample {
     /// AirPods の角速度から作る。`CMRotationRate` は右手系で x 軸まわり = うなずき（上を向くと正）、
-    /// z 軸まわり = 首振り（左を向くと正）なので、右を向く向きを正にするため z の符号を反転する
-    nonisolated init(headphoneTimestamp: TimeInterval, rotationRate: CMRotationRate) {
-        self.init(timestamp: headphoneTimestamp, yawRate: -rotationRate.z, pitchRate: rotationRate.x)
+    /// z 軸まわり = 首振り（左を向くと正）なので、右を向く向きを正にするため z の符号を反転する。姿勢（`CMAttitude`）も同じ向きにそろえる
+    nonisolated init(headphoneTimestamp: TimeInterval, rotationRate: CMRotationRate, attitude: CMAttitude? = nil) {
+        self.init(
+            timestamp: headphoneTimestamp,
+            yawRate: -rotationRate.z,
+            pitchRate: rotationRate.x,
+            orientation: attitude.map { HeadOrientation(yaw: -$0.yaw, pitch: $0.pitch) }
+        )
     }
 }
 #endif

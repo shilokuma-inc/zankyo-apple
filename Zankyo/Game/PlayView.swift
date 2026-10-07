@@ -5,6 +5,8 @@ import SwiftUI
 /// ノーツは上から判定の線へ降りてきて、線に重なる時刻に向きの矢印の方へ首を振る
 struct PlayView: View {
     let session: GameSession
+    /// 頭の動きの見える化に使う。nil なら出さない
+    var motion: MotionMonitor?
     /// 曲のジャケット画像（譜面 ZIP の画像）
     var cover: CGImage?
     /// 譜面 ZIP に画像が無いときに取りに行く beatsaver の画像
@@ -51,6 +53,12 @@ struct PlayView: View {
                     }
             }
             .frame(maxHeight: .infinity)
+            .overlay {
+                // 始める前は、首を振って入力が届くか確かめられるよう大きく出す
+                if session.phase == .ready, let motion {
+                    HeadIndicatorView(monitor: motion)
+                }
+            }
             controls
                 .frame(maxWidth: .infinity)
                 .frame(minHeight: 160)
@@ -64,10 +72,15 @@ struct PlayView: View {
         HStack(alignment: .center, spacing: 12) {
             CoverThumbnail(image: cover, url: coverURL)
             ScoreReadout(score: session.score, combo: session.combo)
+                .accessibilityElement(children: .combine)
             Spacer()
+            // プレイ中は小さく出す（取得はゲームが行うので、自分では始めない）
+            if session.phase != .ready, let motion {
+                HeadIndicatorView(monitor: motion, style: .compact, previewsWhenIdle: false)
+                Spacer()
+            }
             MultiplierRing(multiplier: session.multiplier, progress: session.judge.keeper.progressToNextMultiplier)
         }
-        .accessibilityElement(children: .combine)
     }
 
     private var lane: some View {
@@ -171,12 +184,14 @@ struct PlayView: View {
     let notes = (0..<16).map { index in
         FaceNote(beat: Double(index * 2), time: 2 + Double(index) * 0.6, direction: SwingDirection.allCases[index % 4])
     }
+    let motion = MotionMonitor(base: RecordedMotionInput(samples: []))
     PlayView(
         session: GameSession(
             notes: notes,
             clock: SilentSongClock(duration: 14),
-            input: RecordedMotionInput(samples: [])
+            input: motion
         ),
+        motion: motion,
         onExit: {}
     )
 }
