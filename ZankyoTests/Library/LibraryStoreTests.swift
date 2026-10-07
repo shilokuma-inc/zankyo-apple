@@ -59,6 +59,40 @@ struct LibraryStoreTests {
     }
 
     @Test
+    func keepsEntryWhenFilesCannotBeRemoved() throws {
+        let root = try Self.makeRoot()
+        let maps = root.appending(path: "Maps")
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: maps.path(percentEncoded: false))
+            try? FileManager.default.removeItem(at: root)
+        }
+        try Self.writeFiles(root: root, zipBytes: 10, mapFileBytes: 10)
+        let store = Self.store(root: root)
+        try store.add(map: Self.map(id: "1f33"), version: Self.version())
+        // 展開したフォルダの親を書き込み不可にして、消せない状態を作る
+        try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: maps.path(percentEncoded: false))
+
+        let deleted = store.delete(try #require(store.entries.first))
+
+        #expect(!deleted)
+        #expect(store.entries.count == 1)
+        #expect(Self.store(root: root).entries.count == 1)
+    }
+
+    @Test
+    func treatsAlreadyMissingFilesAsDeleted() throws {
+        let root = try Self.makeRoot()
+        defer { try? FileManager.default.removeItem(at: root) }
+        try Self.writeFiles(root: root, zipBytes: 10, mapFileBytes: nil)
+        let store = Self.store(root: root)
+        try store.add(map: Self.map(id: "1f33"), version: Self.version())
+        try FileManager.default.removeItem(at: Self.zip(root: root))
+
+        #expect(store.delete(try #require(store.entries.first)))
+        #expect(store.entries.isEmpty)
+    }
+
+    @Test
     func dropsEntriesWhoseFilesAreGone() throws {
         let root = try Self.makeRoot()
         defer { try? FileManager.default.removeItem(at: root) }
@@ -109,7 +143,8 @@ struct LibraryStoreTests {
         #expect(try Data(contentsOf: Self.index(root: root)) == newer)
 
         // 一覧を書けないときは、ファイルだけを消して一覧と食い違わせない
-        store.delete(try #require(store.entries.first))
+        let deleted = store.delete(try #require(store.entries.first))
+        #expect(!deleted)
         #expect(FileManager.default.fileExists(atPath: Self.zip(root: root).path(percentEncoded: false)))
     }
 

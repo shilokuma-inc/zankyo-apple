@@ -113,17 +113,27 @@ final class LibraryStore {
         save()
     }
 
-    /// 曲を消す。取得した ZIP・展開したフォルダ・一覧の行をまとめて消す。
-    /// 新しいアプリが書いた一覧を読んでいるとき（読み取り専用）は、一覧と食い違わないようファイルも消さない
-    func delete(_ entry: LibraryEntry) {
-        guard !isReadOnly else { return }
+    /// 曲を消す。取得した ZIP・展開したフォルダ・一覧の行をまとめて消し、消せたら true を返す
+    ///
+    /// - ファイルを消せなかったときは一覧の行を残す（残ったファイルを、一覧からもう一度消せるように）。もう無いファイルは消せたものとして扱う
+    /// - 新しいアプリが書いた一覧を読んでいるとき（読み取り専用）は、一覧と食い違わないようファイルも消さない
+    @discardableResult
+    func delete(_ entry: LibraryEntry) -> Bool {
+        guard !isReadOnly else { return false }
         // hash は読み込み時と追加時に 16 進数 40 桁に検証済みなので、パスの区切りや `..` は入らない
-        for url in files(ofHash: entry.hash) {
-            try? FileManager.default.removeItem(at: url)
+        for url in files(ofHash: entry.hash) where FileManager.default.fileExists(atPath: url.path(percentEncoded: false)) {
+            do {
+                try FileManager.default.removeItem(at: url)
+            } catch {
+                logger.error("曲のファイルを消せなかった: \(error.localizedDescription, privacy: .public)")
+                sizes[entry.hash] = size(ofHash: entry.hash)
+                return false
+            }
         }
         entries.removeAll { $0.hash == entry.hash }
         sizes[entry.hash] = nil
         save()
+        return true
     }
 
     /// 容量を測り直す（画面を開いたときなど）

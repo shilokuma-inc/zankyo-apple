@@ -7,6 +7,7 @@ struct LibraryView: View {
     let onSearch: () -> Void
 
     @State private var pendingDeletion: LibraryEntry?
+    @State private var failedDeletion: LibraryEntry?
 
     var body: some View {
         NavigationStack {
@@ -36,6 +37,15 @@ struct LibraryView: View {
             } message: { entry in
                 Text("「\(entry.title)」の譜面と音源を端末から消します。もう一度遊ぶには取り込み直してください。")
             }
+            .alert(
+                "消せませんでした",
+                isPresented: Binding(get: { failedDeletion != nil }, set: { if !$0 { failedDeletion = nil } }),
+                presenting: failedDeletion
+            ) { _ in
+                Button("OK", role: .cancel) {}
+            } message: { entry in
+                Text("「\(entry.title)」のファイルを消せませんでした。しばらくしてからもう一度試してください。")
+            }
         }
     }
 
@@ -60,9 +70,12 @@ struct LibraryView: View {
     }
 
     private func delete(_ entry: LibraryEntry) {
-        library.delete(entry)
-        downloads.forget(hash: entry.hash)
         pendingDeletion = nil
+        if library.delete(entry) {
+            downloads.forget(hash: entry.hash)
+        } else {
+            failedDeletion = entry
+        }
     }
 
     static func format(_ bytes: Int64) -> String {
