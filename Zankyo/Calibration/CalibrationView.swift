@@ -16,6 +16,8 @@ struct CalibrationView: View {
                             // 測り終えた結果は、頭の動きの表示に押し出されて隠れないよう先に出す
                             phaseContent
                             HeadIndicatorView(monitor: motion)
+                            // うなずいて頭の動きの表示で確かめながら変えられるよう、そのすぐ下に置く
+                            SwingSensitivityView(monitor: motion)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
