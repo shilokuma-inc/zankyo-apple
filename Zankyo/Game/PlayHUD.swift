@@ -7,8 +7,11 @@ struct ScoreReadout: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
+            // ヘッダーにはジャケット・頭の動き・倍率も並ぶので、桁が増えたら縮めて 1 行に収める
             Text(score, format: .number)
                 .font(.system(.largeTitle, design: .rounded, weight: .heavy).monospacedDigit())
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
                 .foregroundStyle(.white)
                 .shadow(color: NeonTheme.laser.opacity(0.8), radius: 8)
             Text("コンボ \(combo)")
