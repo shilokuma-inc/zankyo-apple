@@ -23,5 +23,6 @@
 - OS 標準の Ogg Vorbis デコードは iOS 18.4 / macOS 15.4 から。Deployment Target（iOS 17 / macOS 14 / visionOS 2）では OS 標準に頼れない（2026-10-07）
 - `URLSession.bytes(for:)` を 1 バイトずつ読むのは遅い（Debug の Simulator で 2MB に 40 秒近くかかる）。譜面 ZIP のような数 MB 以上はデータタスクの delegate で塊ごとに受ける（2026-10-07）
 - `FileHandle.read(upToCount:)` は末尾に達すると空の `Data` ではなく `nil` を返す。`nil` をエラー扱いすると、ファイルを読み終えたところで失敗する（2026-10-07）
+- 難易度譜面 v2 の BPM 変化は `_events` の type 100（`_floatValue` が BPM）と、エディタ拡張の `_BPMChanges`（`_BPM`。`_bpm` の表記もある）の 2 通りで書かれる。v3 は `bpmEvents`（`b` / `m`）で、拍 0 の変化は Info.dat の BPM を置き換える。初期の v2 には `_version` が無いものがある（2026-10-07）
 
 ## モーション入力（AirPods）
