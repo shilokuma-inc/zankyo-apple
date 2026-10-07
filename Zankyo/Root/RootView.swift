@@ -14,20 +14,20 @@ struct RootView: View {
     @State private var calibration: CalibrationModel
     @State private var library: LibraryStore
     @State private var highScores = HighScoreStore()
-    private let motionInput: any MotionInput
+    private let motion: MotionMonitor
 
     init(
         client: any BeatsaverClient,
         downloader: any MapDownloading,
-        motionInput: any MotionInput,
+        motion: MotionMonitor,
         metronome: any Metronome,
         library: LibraryStore = LibraryStore()
     ) {
         _searchModel = State(initialValue: SearchModel(client: client))
         _library = State(initialValue: library)
         _downloads = State(initialValue: DownloadModel(downloader: downloader, library: library))
-        _calibration = State(initialValue: CalibrationModel(input: motionInput, metronome: metronome))
-        self.motionInput = motionInput
+        _calibration = State(initialValue: CalibrationModel(input: motion, metronome: metronome))
+        self.motion = motion
     }
 
     var body: some View {
@@ -35,7 +35,7 @@ struct RootView: View {
             LibraryView(
                 library: library,
                 downloads: downloads,
-                input: motionInput,
+                motion: motion,
                 highScores: highScores,
                 onSearch: { selection = .search }
             )
@@ -44,7 +44,7 @@ struct RootView: View {
             SearchView(model: searchModel, downloads: downloads)
                 .tabItem { Label("検索", systemImage: "magnifyingglass") }
                 .tag(Tab.search)
-            CalibrationView(model: calibration)
+            CalibrationView(model: calibration, motion: motion)
                 .tabItem { Label("キャリブレーション", systemImage: "metronome") }
                 .tag(Tab.calibration)
         }
@@ -55,7 +55,7 @@ struct RootView: View {
     RootView(
         client: BeatsaverAPIClient(),
         downloader: MapDownloader(),
-        motionInput: RecordedMotionInput(samples: []),
+        motion: MotionMonitor(base: RecordedMotionInput(samples: [])),
         metronome: ClickMetronome()
     )
 }

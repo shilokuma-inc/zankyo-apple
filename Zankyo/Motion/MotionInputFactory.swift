@@ -3,10 +3,15 @@ import Foundation
 /// 端末に合ったモーション入力を作る
 enum MotionInputFactory {
     static func makeDefault() -> any MotionInput {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains(DemoMotionInput.launchArgument) {
+            return DemoMotionInput()
+        }
+        #endif
         #if os(visionOS)
-        HeadTrackingMotionInput()
+        return HeadTrackingMotionInput()
         #else
-        HeadphoneMotionInput()
+        return HeadphoneMotionInput()
         #endif
     }
 }

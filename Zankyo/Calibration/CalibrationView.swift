@@ -3,6 +3,8 @@ import SwiftUI
 /// 音に合わせて首を振ってもらい、音と動きのずれを測る画面。操作は片手の親指が届く画面下に置く
 struct CalibrationView: View {
     let model: CalibrationModel
+    /// 頭の動きの見える化に使う
+    let motion: MotionMonitor
 
     var body: some View {
         NavigationStack {
@@ -11,6 +13,7 @@ struct CalibrationView: View {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 16) {
                             explanation
+                            HeadIndicatorView(monitor: motion)
                             phaseContent
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -100,7 +103,8 @@ struct CalibrationView: View {
 }
 
 #Preview {
-    CalibrationView(model: CalibrationModel(input: RecordedMotionInput(samples: []), metronome: SilentMetronome()))
+    let motion = MotionMonitor(base: RecordedMotionInput(samples: []))
+    CalibrationView(model: CalibrationModel(input: motion, metronome: SilentMetronome()), motion: motion)
 }
 
 /// プレビュー用。音を鳴らさず、今から 0.6 秒おきのクリックの時刻だけを返す
