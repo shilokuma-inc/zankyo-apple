@@ -16,7 +16,9 @@ nonisolated enum MotionInputStatus: Sendable, Hashable {
     case ready
     /// この端末・OS では使えない
     case unsupported
-    /// 動きの取得が許可されていない（未決定を含む）
+    /// 動きの取得をまだ尋ねていない。取得を始めると OS が許可を尋ねる
+    case notDetermined
+    /// 動きの取得が許可されていない（拒否・制限）
     case notAuthorized
     /// 対応するイヤホンがつながっていない
     case disconnected

@@ -4,5 +4,7 @@
 <dict>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSMotionUsageDescription</key>
+	<string>イヤホン（AirPods など）のモーションセンサーで頭の動きを読み取り、ノーツを切る判定に使います。動きのデータは端末の外に送りません。</string>
 </dict>
 </plist>
