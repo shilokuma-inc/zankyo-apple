@@ -21,6 +21,12 @@ final class GameSession {
     private(set) var currentTime: TimeInterval = 0
     /// イヤホンが外れて一時停止した
     private(set) var pausedByDisconnection = false
+    /// 終えたときの結果。始められずに終えたときは nil
+    private(set) var result: PlayResult?
+    /// この回より前のハイスコア
+    private(set) var previousBest: PlayResult?
+    /// この回でハイスコアを更新した
+    private(set) var isNewRecord = false
 
     let input: any MotionInput
     @ObservationIgnored let clock: any SongClock
@@ -28,17 +34,23 @@ final class GameSession {
     @ObservationIgnored private var task: Task<Void, Never>?
     /// 一度でも入力が使える状態になった（始めた直後の、接続の通知が届く前の状態で止めないため）
     @ObservationIgnored private var wasInputReady = false
+    @ObservationIgnored private let scoreKey: ScoreKey?
+    @ObservationIgnored private let highScores: HighScoreStore?
 
     init(
         notes: [FaceNote],
         clock: any SongClock,
         input: any MotionInput,
         offset: TimeInterval = 0,
-        rules: ScoringRules = ScoringRules()
+        rules: ScoringRules = ScoringRules(),
+        scoreKey: ScoreKey? = nil,
+        highScores: HighScoreStore? = nil
     ) {
         judge = Judge(notes: notes, rules: rules, offset: offset)
         self.clock = clock
         self.input = input
+        self.scoreKey = scoreKey
+        self.highScores = highScores
     }
 
     /// 入力が使えるか、使い始めれば許可を尋ねられる状態なら始められる
@@ -120,7 +132,7 @@ final class GameSession {
         phase = .playing
     }
 
-    /// 終える。残ったノーツはすべてミスにする
+    /// 終える。残ったノーツはすべてミスにし、結果をまとめてハイスコアに記録する
     func finish() {
         guard phase != .finished else { return }
         judge.advance(to: .greatestFiniteMagnitude)
@@ -128,6 +140,12 @@ final class GameSession {
         input.stop()
         task?.cancel()
         task = nil
+        let result = judge.result()
+        self.result = result
+        if let scoreKey, let highScores {
+            previousBest = highScores.best(for: scoreKey)
+            isNewRecord = highScores.record(result, for: scoreKey)
+        }
         phase = .finished
     }
 }

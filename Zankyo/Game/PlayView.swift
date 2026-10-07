@@ -5,12 +5,35 @@ import SwiftUI
 /// ノーツは上から判定の線へ降りてきて、線に重なる時刻に向きの矢印の方へ首を振る
 struct PlayView: View {
     let session: GameSession
+    /// もう一度遊ぶ（nil ならボタンを出さない）
+    var onRetry: (() -> Void)?
     let onExit: () -> Void
 
     /// ノーツが画面の上端から判定の線に届くまでの秒
     static let approachTime: TimeInterval = 1.5
 
     var body: some View {
+        Group {
+            if session.phase == .finished, let result = session.result {
+                ResultView(
+                    result: result,
+                    previousBest: session.previousBest,
+                    isNewRecord: session.isNewRecord,
+                    onRetry: onRetry,
+                    onClose: onExit
+                )
+            } else {
+                playContent
+            }
+        }
+        .onAppear { Self.setIdleTimerDisabled(true) }
+        .onDisappear {
+            Self.setIdleTimerDisabled(false)
+            session.pause()
+        }
+    }
+
+    private var playContent: some View {
         VStack(spacing: 0) {
             header
             TimelineView(.animation(paused: session.phase != .playing)) { context in
@@ -25,11 +48,6 @@ struct PlayView: View {
                 .frame(minHeight: 160)
         }
         .padding()
-        .onAppear { Self.setIdleTimerDisabled(true) }
-        .onDisappear {
-            Self.setIdleTimerDisabled(false)
-            session.pause()
-        }
     }
 
     private var header: some View {
@@ -122,9 +140,9 @@ struct PlayView: View {
             }
             .controlSize(.large)
         case .finished:
+            // 結果があれば body がリザルト画面に切り替わる。ここに来るのは始められずに終えたとき
             VStack(spacing: 8) {
-                Text("スコア \(session.score) / \(session.judge.maxScore)")
-                    .font(.headline.monospacedDigit())
+                Text("曲を再生できませんでした。")
                 Button(action: onExit) {
                     Text("閉じる").frame(maxWidth: .infinity)
                 }
