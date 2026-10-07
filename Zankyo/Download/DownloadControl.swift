@@ -3,7 +3,7 @@ import SwiftUI
 /// 検索結果の行に付ける取り込みボタンと進み具合
 struct DownloadControl: View {
     let state: DownloadModel.State
-    /// 別の曲を取得中で、この曲を取得し始められない
+    /// この曲を取得し始められない（別の曲を取得中・取得できる版が無い）
     let isBlocked: Bool
     let onStart: () -> Void
     let onCancel: () -> Void

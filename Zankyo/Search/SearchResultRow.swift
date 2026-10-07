@@ -34,7 +34,7 @@ struct SearchResultRow: View {
                 }
                 DownloadControl(
                     state: downloads.state(for: map),
-                    isBlocked: downloads.isDownloading,
+                    isBlocked: downloads.isDownloading || map.latestVersion == nil,
                     onStart: { downloads.start(map) },
                     onCancel: { downloads.cancel() }
                 )
