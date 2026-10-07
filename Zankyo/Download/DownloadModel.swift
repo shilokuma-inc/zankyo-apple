@@ -24,9 +24,12 @@ final class DownloadModel {
     private var task: Task<Void, Never>?
 
     private let downloader: any MapDownloading
+    /// 取得し終えた曲を足す一覧
+    private let library: LibraryStore?
 
-    init(downloader: any MapDownloading) {
+    init(downloader: any MapDownloading, library: LibraryStore? = nil) {
         self.downloader = downloader
+        self.library = library
     }
 
     var isDownloading: Bool {
@@ -59,6 +62,12 @@ final class DownloadModel {
         task?.cancel()
     }
 
+    /// ライブラリから消した曲を、取得していない状態に戻す
+    func forget(hash: String) {
+        downloadedHashes.remove(hash)
+        downloadedHashes.remove(hash.lowercased())
+    }
+
     /// テストから完了を待つ
     func waitUntilFinished() async {
         await task?.value
@@ -79,6 +88,7 @@ final class DownloadModel {
                 }
             }
             downloadedHashes.insert(version.hash)
+            library?.add(map: map, version: version)
         } catch .cancelled {
             // 中止は失敗として残さない
         } catch {
