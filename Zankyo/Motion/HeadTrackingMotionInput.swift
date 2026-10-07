@@ -16,7 +16,8 @@ final class HeadTrackingMotionInput: MotionInput {
     private(set) var status: MotionInputStatus
 
     @ObservationIgnored private let session = ARKitSession()
-    @ObservationIgnored private let provider = WorldTrackingProvider()
+    /// 止めた provider は run し直せないので、始めるたびに作り直す
+    @ObservationIgnored private var provider = WorldTrackingProvider()
     @ObservationIgnored private var isRunning = false
     @ObservationIgnored private var task: Task<Void, Never>?
     @ObservationIgnored private var continuation: AsyncStream<MotionSample>.Continuation?
@@ -28,6 +29,8 @@ final class HeadTrackingMotionInput: MotionInput {
     /// イマーシブ空間を開いたら呼ぶ。頭の向きの追跡を始める
     func activate() async {
         guard WorldTrackingProvider.isSupported, !isRunning else { return }
+        let provider = WorldTrackingProvider()
+        self.provider = provider
         do {
             try await session.run([provider])
             isRunning = true
@@ -95,14 +98,20 @@ struct HeadTrackingSpaceView: View {
     }
 }
 
-/// ウィンドウを出したら、頭の向きを取るためのイマーシブ空間を開く
+/// ウィンドウを出したら頭の向きを取るためのイマーシブ空間を開き、ウィンドウを閉じたら空間も閉じる
 struct OpensHeadTrackingSpace: ViewModifier {
     @Environment(\.openImmersiveSpace) private var openImmersiveSpace
+    @Environment(\.dismissImmersiveSpace) private var dismissImmersiveSpace
 
     func body(content: Content) -> some View {
-        content.task {
-            _ = await openImmersiveSpace(id: HeadTrackingSpace.id)
-        }
+        content
+            .task {
+                _ = await openImmersiveSpace(id: HeadTrackingSpace.id)
+            }
+            .onDisappear {
+                // 空間が残ると頭の向きの追跡も止まらない
+                Task { await dismissImmersiveSpace() }
+            }
     }
 }
 #endif
