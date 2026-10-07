@@ -17,9 +17,9 @@ struct PlaySetup: Identifiable {
     }
 }
 
-/// 曲の詳細（難易度の選択）の状態。曲情報を読み、選んだ難易度のノーツと音源を用意する
+/// 曲の詳細（難易度の選択）の状態。曲情報を読み、選んだ難易度のノーツと音源を用意する。遊ぶ前に曲を試聴できる
 ///
-/// 音源のデコードは重いので、この画面にいる間は 1 度だけ行い、難易度を変えても使い回す
+/// 音源のデコードは重いので、この画面にいる間は 1 度だけ行い、難易度を変えても試聴でも使い回す
 @Observable
 final class SongDetailModel {
     enum State {
@@ -38,17 +38,23 @@ final class SongDetailModel {
     var play: PlaySetup?
     /// 準備できなかった理由
     var playError: String?
+    /// 試聴のために音源をデコードしている
+    private(set) var isLoadingPreview = false
+    /// 試聴している
+    private(set) var isPreviewing = false
 
     @ObservationIgnored private let maps: LocalMapStore
+    @ObservationIgnored private let previewer: any SongPreviewing
     @ObservationIgnored private var song: DecodedSong?
-    /// デコード中の音源。デコードを待つ間にもう一度求められても、デコードは 1 度にする（長い曲は数百 MB になるため）
+    /// デコード中の音源。試聴と遊ぶ準備が重なっても、デコードは 1 度にする（長い曲は数百 MB になるため）
     @ObservationIgnored private var decoding: Task<Void, Never>?
     /// 直近のデコードに失敗した理由
     @ObservationIgnored private var decodeError: MapLoadError?
 
-    init(entry: LibraryEntry, maps: LocalMapStore = LocalMapStore()) {
+    init(entry: LibraryEntry, maps: LocalMapStore = LocalMapStore(), previewer: any SongPreviewing = SongPreviewPlayer()) {
         self.entry = entry
         self.maps = maps
+        self.previewer = previewer
     }
 
     var info: SongInfo? {
@@ -80,6 +86,7 @@ final class SongDetailModel {
     /// 選んだ難易度のノーツと音源を用意し、できたら `play` に入れる。取り消されたら（画面を離れたら）何も出さない
     func prepare(_ difficulty: DifficultyInfo) async {
         guard let info, preparing == nil else { return }
+        stopPreview()
         preparing = difficulty
         defer { preparing = nil }
         do {
@@ -91,6 +98,36 @@ final class SongDetailModel {
             guard !Task.isCancelled else { return }
             playError = error.message
         }
+    }
+
+    /// 試聴を始める。試聴中なら止める。音源をまだデコードしていなければ、先にデコードする
+    func togglePreview() async {
+        if isPreviewing {
+            stopPreview()
+            return
+        }
+        guard let info, !isLoadingPreview, preparing == nil else { return }
+        isLoadingPreview = true
+        defer { isLoadingPreview = false }
+        let song: DecodedSong
+        do {
+            song = try await loadedSong(info: info)
+        } catch {
+            if !Task.isCancelled {
+                playError = error.message
+            }
+            return
+        }
+        // デコードの間に画面を離れた・遊び始めたなら鳴らさない
+        guard !Task.isCancelled, preparing == nil, play == nil else { return }
+        let range = SongPreview.range(startTime: info.previewStartTime, duration: info.previewDuration, songDuration: song.duration)
+        // 鳴らせなかったとき（出力の機器が無いなど）は、試聴は遊ぶのに要らないので、ボタンを元に戻すだけにする
+        isPreviewing = (try? previewer.play(song, range: range)) != nil
+    }
+
+    func stopPreview() {
+        previewer.stop()
+        isPreviewing = false
     }
 
     private func loadedSong(info: SongInfo) async throws(MapLoadError) -> DecodedSong {
