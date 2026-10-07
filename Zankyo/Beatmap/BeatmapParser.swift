@@ -5,13 +5,15 @@ nonisolated enum BeatmapParseError: Error, Equatable, Sendable {
     case tooLarge
     /// JSON として読めない
     case malformed
-    /// v2 / v3 以外の形式。v4 の譜面は MVP では遊べない（Discussion #3 の決定）
+    /// v2 / v3 / v4 以外の形式
     case unsupportedVersion(String)
     /// 切るノーツが 1 つも無い
     case noNotes
 }
 
 /// 難易度譜面（`.dat`）を読み、ノーツを曲の先頭からの秒に置く。ZIP の中身は信用しない入力として扱う
+///
+/// BPM の変化は、v2 / v3 は譜面の中に、v4 は Info.dat が指す音声データ（`AudioDataParser`）に書かれる
 nonisolated enum BeatmapParser {
     /// 譜面ファイルの上限。ライティングのイベントが多い譜面には 1 ファイル 27MB 近いものがあるので、余裕を持たせる
     static let maxBytes = 64 * 1_024 * 1_024
@@ -21,7 +23,13 @@ nonisolated enum BeatmapParser {
     /// - Parameters:
     ///   - bpm: Info.dat の BPM（拍 0 の BPM）
     ///   - songTimeOffset: Info.dat の `_songTimeOffset`（秒。v4 の Info.dat なら 0）
-    static func parse(_ data: Data, bpm: Double, songTimeOffset: Double = 0) throws(BeatmapParseError) -> Beatmap {
+    ///   - audioTimeline: v4 の譜面で使う拍と秒の対応（音声データから読んだもの）。nil なら `bpm` で一定とする
+    static func parse(
+        _ data: Data,
+        bpm: Double,
+        songTimeOffset: Double = 0,
+        audioTimeline: BeatTimeline? = nil
+    ) throws(BeatmapParseError) -> Beatmap {
         guard data.count <= maxBytes else { throw .tooLarge }
         let probe: BeatmapVersionProbe
         do {
@@ -38,6 +46,9 @@ nonisolated enum BeatmapParser {
         case "3":
             format = .v3
             raw = try decode(BeatmapV3.self, from: data).raw
+        case "4":
+            format = .v4
+            raw = try decode(BeatmapV4.self, from: data).raw
         case nil where probe.hasV2Notes:
             // 初期の v2 には `_version` が無いものがある
             format = .v2
@@ -46,7 +57,9 @@ nonisolated enum BeatmapParser {
             throw .unsupportedVersion(String((probe.version ?? "").prefix(16)))
         }
 
-        let timeline = BeatTimeline(bpm: bpm, changes: raw.bpmChanges, offset: songTimeOffset)
+        let timeline = format == .v4
+            ? audioTimeline ?? BeatTimeline(bpm: bpm, offset: songTimeOffset)
+            : BeatTimeline(bpm: bpm, changes: raw.bpmChanges, offset: songTimeOffset)
         // 切れるノーツだけを選んでから拍の順に並べ、上限を当てる（不正なノーツで上限を使い切らないため）
         let notes = raw.notes
             .compactMap { note -> BeatmapNote? in
@@ -195,6 +208,80 @@ nonisolated private struct BeatmapV3: Decodable {
         // 爆弾（`bombNotes`）・壁・アーク・チェーンは使わないので読まない
         colorNotes = container.lenient(LossyDecodableArray<BeatmapV3ColorNote>.self, forKey: .colorNotes)?.elements ?? []
         bpmEvents = container.lenient(LossyDecodableArray<BeatmapV3BPMEvent>.self, forKey: .bpmEvents)?.elements ?? []
+    }
+}
+
+/// v4 はノーツを「拍と、見た目の番号（`b` / `i`）」と「見た目（`colorNotesData`）」に分け、同じ見た目を使い回す。
+/// 値が 0 のキーは省かれることがあるので、無いキーは 0 として読む
+nonisolated private struct BeatmapV4: Decodable {
+    let colorNotes: [BeatmapV4Object]
+    /// 番号で引くので、読めない要素も詰めずに nil として残す
+    let colorNotesData: [BeatmapV4ColorNoteData?]
+
+    var raw: RawBeatmap {
+        RawBeatmap(
+            notes: colorNotes.map { note in
+                let data = colorNotesData.indices.contains(note.index) ? colorNotesData[note.index] : nil
+                // 見た目が無いノーツは、拍を nil にして除く
+                return RawNote(
+                    beat: data == nil ? nil : note.beat,
+                    lineIndex: data?.lineIndex,
+                    lineLayer: data?.lineLayer,
+                    color: data?.color,
+                    cutDirection: data?.direction
+                )
+            },
+            bpmChanges: []
+        )
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case colorNotes, colorNotesData
+    }
+
+    init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        // 爆弾・壁・アーク・チェーンは使わないので読まない
+        colorNotes = container.lenient(LossyDecodableArray<BeatmapV4Object>.self, forKey: .colorNotes)?.elements ?? []
+        colorNotesData = container.lenient([Lenient<BeatmapV4ColorNoteData>].self, forKey: .colorNotesData)?.map(\.value) ?? []
+    }
+}
+
+nonisolated private struct BeatmapV4Object: Decodable {
+    let beat: Double
+    let index: Int
+
+    private enum CodingKeys: String, CodingKey {
+        case beat = "b"
+        case index = "i"
+    }
+
+    init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        beat = container.lenient(Double.self, forKey: .beat) ?? 0
+        index = container.lenient(Int.self, forKey: .index) ?? 0
+    }
+}
+
+nonisolated private struct BeatmapV4ColorNoteData: Decodable {
+    let lineIndex: Int
+    let lineLayer: Int
+    let color: Int
+    let direction: Int
+
+    private enum CodingKeys: String, CodingKey {
+        case lineIndex = "x"
+        case lineLayer = "y"
+        case color = "c"
+        case direction = "d"
+    }
+
+    init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        lineIndex = container.lenient(Int.self, forKey: .lineIndex) ?? 0
+        lineLayer = container.lenient(Int.self, forKey: .lineLayer) ?? 0
+        color = container.lenient(Int.self, forKey: .color) ?? 0
+        direction = container.lenient(Int.self, forKey: .direction) ?? 0
     }
 }
 

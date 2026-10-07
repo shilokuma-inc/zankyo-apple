@@ -168,10 +168,66 @@ struct BeatmapParserTests {
         }
     }
 
+    // MARK: - v4
+
     @Test
-    func rejectsV4AsUnsupported() {
-        let json = #"{ "version": "4.0.0", "colorNotes": [{ "b": 1, "r": 0, "i": 0 }], "colorNotesData": [] }"#
-        #expect(throws: BeatmapParseError.unsupportedVersion("4.0.0")) {
+    func parsesV4NotesThroughSharedData() throws {
+        // 2 つのノーツが同じ見た目（番号 1）を使い回す。番号 0 の見た目は省かれたキーを 0 として読む
+        let json = """
+        { "version": "4.1.0",
+          "colorNotes": [{ "b": 4, "r": 0, "i": 1 }, { "b": 2, "i": 0 }, { "b": 6, "i": 1 }],
+          "colorNotesData": [{ "d": 2 }, { "x": 3, "y": 2, "c": 1, "d": 3, "a": 0 }],
+          "bombNotes": [{ "b": 3, "i": 0 }], "bombNotesData": [{ "x": 1 }] }
+        """
+        let beatmap = try BeatmapParser.parse(Data(json.utf8), bpm: 120)
+
+        #expect(beatmap.format == .v4)
+        #expect(beatmap.notes == [
+            BeatmapNote(beat: 2, time: 1, lineIndex: 0, lineLayer: 0, color: .red, cutDirection: .left),
+            BeatmapNote(beat: 4, time: 2, lineIndex: 3, lineLayer: 2, color: .blue, cutDirection: .right),
+            BeatmapNote(beat: 6, time: 3, lineIndex: 3, lineLayer: 2, color: .blue, cutDirection: .right)
+        ])
+    }
+
+    @Test
+    func skipsV4NotesWithoutData() throws {
+        // 範囲外の番号・読めない見た目のノーツは除く（読めない見た目があっても、後ろの番号はずれない）
+        let json = """
+        { "version": "4.0.0",
+          "colorNotes": [{ "b": 1, "i": 5 }, { "b": 2, "i": 0 }, { "b": 3, "i": 1 }, { "b": 4, "i": -1 }],
+          "colorNotesData": ["broken", { "c": 1, "d": 1 }] }
+        """
+        let beatmap = try BeatmapParser.parse(Data(json.utf8), bpm: 60)
+
+        #expect(beatmap.notes.map(\.beat) == [3])
+    }
+
+    @Test
+    func usesAudioTimelineForV4() throws {
+        let json = #"{ "version": "4.1.0", "colorNotes": [{ "b": 2 }, { "b": 6 }], "colorNotesData": [{ "d": 1 }] }"#
+        // 拍 4 から BPM が倍になる
+        let timeline = try #require(BeatTimeline(segments: [
+            .init(beat: 0, seconds: 0.5, bpm: 120),
+            .init(beat: 4, seconds: 2.5, bpm: 240)
+        ]))
+        let beatmap = try BeatmapParser.parse(Data(json.utf8), bpm: 999, audioTimeline: timeline)
+
+        #expect(beatmap.notes.map(\.time) == [1.5, 3])
+    }
+
+    @Test
+    func ignoresAudioTimelineForV3() throws {
+        let json = #"{ "version": "3.3.0", "colorNotes": [{ "b": 2, "x": 0, "y": 0, "c": 0, "d": 1 }] }"#
+        let timeline = try #require(BeatTimeline(segments: [.init(beat: 0, seconds: 10, bpm: 60)]))
+        let beatmap = try BeatmapParser.parse(Data(json.utf8), bpm: 120, audioTimeline: timeline)
+
+        #expect(beatmap.notes.map(\.time) == [1])
+    }
+
+    @Test
+    func rejectsUnknownVersion() {
+        let json = #"{ "version": "5.0.0", "colorNotes": [{ "b": 1 }], "colorNotesData": [{}] }"#
+        #expect(throws: BeatmapParseError.unsupportedVersion("5.0.0")) {
             try BeatmapParser.parse(Data(json.utf8), bpm: 120)
         }
     }
