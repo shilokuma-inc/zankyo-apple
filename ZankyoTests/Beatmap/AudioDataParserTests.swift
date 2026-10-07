@@ -56,6 +56,19 @@ struct AudioDataParserTests {
         #expect(abs(timeline.seconds(atBeat: 3.5) - 1.6) < 1e-9)
     }
 
+    @Test
+    func skipsRegionsWithNegativeBeat() throws {
+        let json = """
+        { "songFrequency": 1000, "bpmData": [
+          { "si": 0, "ei": 1000, "sb": -1, "eb": 0 },
+          { "si": 1000, "ei": 3000, "sb": 0, "eb": 2 } ] }
+        """
+        let timeline = try #require(AudioDataParser.timeline(from: Data(json.utf8)))
+
+        #expect(timeline.seconds(atBeat: 0) == 1)
+        #expect(timeline.seconds(atBeat: 1) == 2)
+    }
+
     @Test(arguments: [
         "not json",
         #"{ "songFrequency": 44100, "bpmData": [] }"#,

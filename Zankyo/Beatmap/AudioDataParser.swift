@@ -20,7 +20,7 @@ nonisolated enum AudioDataParser {
             .compactMap { region -> BeatTimeline.Segment? in
                 guard let startSample = region.startSample, let endSample = region.endSample,
                       let startBeat = region.startBeat, let endBeat = region.endBeat,
-                      startSample >= 0, endSample > startSample, endBeat > startBeat else { return nil }
+                      startSample >= 0, startBeat >= 0, endSample > startSample, endBeat > startBeat else { return nil }
                 let bpm = (endBeat - startBeat) * 60 * frequency / (endSample - startSample)
                 guard bpm.isFinite, bpmRange.contains(bpm) else { return nil }
                 return BeatTimeline.Segment(beat: startBeat, seconds: startSample / frequency, bpm: bpm)
