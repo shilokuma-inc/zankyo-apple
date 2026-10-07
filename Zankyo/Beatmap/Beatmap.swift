@@ -7,6 +7,8 @@ nonisolated struct Beatmap: Sendable, Hashable {
         case v2
         /// `version: 3.x`（`colorNotes`・`bpmEvents`）
         case v3
+        /// `version: 4.x`（`colorNotes` と `colorNotesData`。BPM の変化は音声データの側）
+        case v4
     }
 
     let format: Format

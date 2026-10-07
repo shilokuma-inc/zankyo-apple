@@ -79,7 +79,12 @@ nonisolated struct LocalMapStore: Sendable {
         let data = try read(difficulty.beatmapFilename, in: folder, limit: BeatmapParser.maxBytes)
         let beatmap: Beatmap
         do {
-            beatmap = try BeatmapParser.parse(data, bpm: info.bpm, songTimeOffset: info.songTimeOffset)
+            beatmap = try BeatmapParser.parse(
+                data,
+                bpm: info.bpm,
+                songTimeOffset: info.songTimeOffset,
+                audioTimeline: audioTimeline(info: info, folder: folder)
+            )
         } catch .unsupportedVersion(let version) {
             throw .unsupportedBeatmap(version)
         } catch {
@@ -100,6 +105,13 @@ nonisolated struct LocalMapStore: Sendable {
         } catch {
             throw .audio(error)
         }
+    }
+
+    /// v4 の音声データにある拍と秒の対応。無い・読めないときは nil（Info.dat の BPM で一定とする）
+    private func audioTimeline(info: SongInfo, folder: URL) -> BeatTimeline? {
+        guard let name = info.audioDataFilename,
+              let data = try? read(name, in: folder, limit: AudioDataParser.maxBytes) else { return nil }
+        return AudioDataParser.timeline(from: data)
     }
 
     /// 展開済みのフォルダ。まだなら取り込んだ ZIP を展開する

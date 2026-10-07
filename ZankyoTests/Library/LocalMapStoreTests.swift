@@ -18,7 +18,7 @@ nonisolated struct LocalMapStoreTests {
           { "_time": 4, "_lineIndex": 3, "_lineLayer": 0, "_type": 1, "_cutDirection": 1 }
         ] }
         """
-    private static let expertV4 = #"{ "version": "4.1.0", "colorNotes": [], "colorNotesData": [] }"#
+    private static let expertV5 = #"{ "version": "5.0.0", "colorNotes": [], "colorNotesData": [] }"#
 
     @Test
     func extractsOnFirstLoadAndReadsInfo() async throws {
@@ -54,9 +54,34 @@ nonisolated struct LocalMapStoreTests {
         let info = try await store.loadInfo(hash: Self.hash)
         let expert = try #require(info.difficulties.first { $0.difficulty == .expert })
 
-        await #expect(throws: MapLoadError.unsupportedBeatmap("4.1.0")) {
+        await #expect(throws: MapLoadError.unsupportedBeatmap("5.0.0")) {
             try await store.loadNotes(hash: Self.hash, info: info, difficulty: expert)
         }
+    }
+
+    @Test
+    func usesAudioDataTimelineForV4Map() async throws {
+        let info = InfoFixtures.v4
+            .replacingOccurrences(of: "song.ogg", with: "song.egg")
+            .replacingOccurrences(of: "\"bpm\": 140", with: "\"bpm\": 60")
+        // 0.5 秒の位置から 120 BPM（44.1kHz で 22,050 サンプル目が拍 0）
+        let audioData = #"{ "version": "4.0.0", "songFrequency": 44100, "bpmData": [{ "si": 22050, "ei": 66150, "sb": 0, "eb": 2 }] }"#
+        let beatmap = #"{ "version": "4.1.0", "colorNotes": [{ "b": 2 }], "colorNotesData": [{ "d": 3 }] }"#
+        let store = try Self.makeStore(files: [
+            (name: "Info.dat", data: Data(info.utf8)),
+            (name: "BPMInfo.dat", data: Data(audioData.utf8)),
+            (name: "NormalStandard.dat", data: Data(beatmap.utf8)),
+            (name: "song.egg", data: try Data(contentsOf: try TestFixtures.sineSong))
+        ])
+        defer { try? FileManager.default.removeItem(at: store.downloadsDirectory.deletingLastPathComponent()) }
+        let loaded = try await store.loadInfo(hash: Self.hash)
+        let normal = try #require(loaded.difficulties.first { $0.difficulty == .normal })
+
+        let notes = try await store.loadNotes(hash: Self.hash, info: loaded, difficulty: normal)
+
+        // Info.dat の 60 BPM なら 2 秒だが、音声データの区間に従って 1.5 秒になる
+        #expect(notes.map(\.time) == [1.5])
+        #expect(notes.map(\.direction) == [.right])
     }
 
     @Test
@@ -95,6 +120,12 @@ nonisolated struct LocalMapStoreTests {
         }
     }
 
+    private static func makeStore(files: [(name: String, data: Data)]) throws -> LocalMapStore {
+        let store = try makeStore(writeZip: false)
+        try TestZip.make(files).write(to: store.downloadsDirectory.appending(path: "\(hash).zip"))
+        return store
+    }
+
     private static func makeStore(writeZip: Bool = true, info: String = info) throws -> LocalMapStore {
         let root = try TestFixtures.temporaryDirectory()
         let store = LocalMapStore(
@@ -106,7 +137,7 @@ nonisolated struct LocalMapStoreTests {
             let zip = TestZip.make([
                 (name: "Info.dat", data: Data(info.utf8)),
                 (name: "EasyStandard.dat", data: Data(easy.utf8)),
-                (name: "ExpertStandard.dat", data: Data(expertV4.utf8)),
+                (name: "ExpertStandard.dat", data: Data(expertV5.utf8)),
                 (name: "song.egg", data: try Data(contentsOf: try TestFixtures.sineSong))
             ])
             try zip.write(to: store.downloadsDirectory.appending(path: "\(hash).zip"))
