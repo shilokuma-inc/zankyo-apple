@@ -107,6 +107,10 @@ struct LibraryStoreTests {
         try store.add(map: Self.map(id: "1f33"), version: Self.version())
         #expect(store.isReadOnly)
         #expect(try Data(contentsOf: Self.index(root: root)) == newer)
+
+        // 一覧を書けないときは、ファイルだけを消して一覧と食い違わせない
+        store.delete(try #require(store.entries.first))
+        #expect(FileManager.default.fileExists(atPath: Self.zip(root: root).path(percentEncoded: false)))
     }
 
     // MARK: - 補助

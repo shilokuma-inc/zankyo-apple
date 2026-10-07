@@ -113,8 +113,10 @@ final class LibraryStore {
         save()
     }
 
-    /// 曲を消す。取得した ZIP・展開したフォルダ・一覧の行をまとめて消す
+    /// 曲を消す。取得した ZIP・展開したフォルダ・一覧の行をまとめて消す。
+    /// 新しいアプリが書いた一覧を読んでいるとき（読み取り専用）は、一覧と食い違わないようファイルも消さない
     func delete(_ entry: LibraryEntry) {
+        guard !isReadOnly else { return }
         // hash は読み込み時と追加時に 16 進数 40 桁に検証済みなので、パスの区切りや `..` は入らない
         for url in files(ofHash: entry.hash) {
             try? FileManager.default.removeItem(at: url)
