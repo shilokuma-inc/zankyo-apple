@@ -48,7 +48,7 @@ struct SongDetailView: View {
         case .ready(let info):
             List {
                 Section {
-                    SongHeader(entry: model.entry, info: info)
+                    SongHeader(entry: model.entry, info: info, cover: model.cover)
                 }
                 ForEach(model.difficultyGroups, id: \.characteristic) { group in
                     Section(group.characteristic.displayName) {
@@ -87,26 +87,32 @@ struct SongDetailView: View {
     }
 }
 
-/// アーティスト・マッパー（beatsaver の譜面ページへのリンク。Discussion #3 Q9）。曲名は画面の見出しに出す
+/// ジャケット画像・アーティスト・マッパー（beatsaver の譜面ページへのリンク。Discussion #3 Q9）。曲名は画面の見出しに出す
 private struct SongHeader: View {
     let entry: LibraryEntry
     let info: SongInfo
+    let cover: CGImage?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            if !entry.songAuthorName.isEmpty {
-                Text(entry.songAuthorName)
-                    .font(.headline)
+        HStack(alignment: .top, spacing: 16) {
+            CoverArtwork(image: cover, url: entry.coverURL)
+                .frame(width: 112, height: 112)
+                .clipShape(.rect(cornerRadius: 12))
+            VStack(alignment: .leading, spacing: 6) {
+                if !entry.songAuthorName.isEmpty {
+                    Text(entry.songAuthorName)
+                        .font(.headline)
+                }
+                Link(destination: entry.pageURL) {
+                    Label("マッパー: \(entry.mapperName)", systemImage: "arrow.up.right.square")
+                        .font(.footnote)
+                }
+                .buttonStyle(.borderless)
+                .accessibilityHint("beatsaver の譜面ページを開きます")
+                Text("BPM \(info.bpm, format: .number.precision(.fractionLength(0...1)))")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
             }
-            Link(destination: entry.pageURL) {
-                Label("マッパー: \(entry.mapperName)", systemImage: "arrow.up.right.square")
-                    .font(.footnote)
-            }
-            .buttonStyle(.borderless)
-            .accessibilityHint("beatsaver の譜面ページを開きます")
-            Text("BPM \(info.bpm, format: .number.precision(.fractionLength(0...1)))")
-                .font(.caption.monospacedDigit())
-                .foregroundStyle(.secondary)
         }
         .padding(.vertical, 4)
     }

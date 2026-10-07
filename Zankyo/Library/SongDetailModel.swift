@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 import Observation
 
@@ -27,6 +28,8 @@ final class SongDetailModel {
 
     let entry: LibraryEntry
     private(set) var state: State = .loading
+    /// 譜面 ZIP のジャケット画像。無い・読めないときは nil
+    private(set) var cover: CGImage?
     /// 準備中の難易度
     private(set) var preparing: DifficultyInfo?
     /// 準備できたら遊ぶ画面を出す
@@ -59,7 +62,9 @@ final class SongDetailModel {
     func load() async {
         guard case .loading = state else { return }
         do {
-            state = .ready(try await maps.loadInfo(hash: entry.hash))
+            let info = try await maps.loadInfo(hash: entry.hash)
+            state = .ready(info)
+            cover = await maps.loadCover(hash: entry.hash, info: info)
         } catch {
             state = .failed(error.message)
         }
