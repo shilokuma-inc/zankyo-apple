@@ -4,8 +4,7 @@ import Foundation
 enum MotionInputFactory {
     static func makeDefault() -> any MotionInput {
         #if os(visionOS)
-        // visionOS の頭の向きの入力は、visionOS のタスクで差し替える
-        UnavailableMotionInput()
+        HeadTrackingMotionInput()
         #else
         HeadphoneMotionInput()
         #endif
