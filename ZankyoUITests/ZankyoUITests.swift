@@ -14,10 +14,10 @@ final class ZankyoUITests: XCTestCase {
     }
 
     @MainActor
-    func testLaunchShowsContentView() throws {
+    func testLaunchShowsRootTabs() throws {
         let app = XCUIApplication()
         app.launch()
 
-        XCTAssertTrue(app.staticTexts["Hello, world!"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["ライブラリ"].waitForExistence(timeout: 5))
     }
 }
