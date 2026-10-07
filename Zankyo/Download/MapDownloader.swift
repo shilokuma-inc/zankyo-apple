@@ -84,7 +84,7 @@ nonisolated struct MapDownloader: MapDownloading {
         let size = (try? temporary.resourceValues(forKeys: [.fileSizeKey]).fileSize).map(Int64.init) ?? .max
         guard size <= maxBytes else { throw .tooLarge }
         guard try Self.hasZipSignature(temporary) else { throw .notZip }
-        guard try Self.mapHash(of: temporary) == version.hash.lowercased() else { throw .hashMismatch }
+        guard try await Self.mapHash(of: temporary) == version.hash.lowercased() else { throw .hashMismatch }
 
         // ハッシュの計算中に中止されたら保存しない（取り込み済みにしない）
         guard !Task.isCancelled else { throw .cancelled }
@@ -149,8 +149,9 @@ nonisolated struct MapDownloader: MapDownloading {
         return head.map { [Data([0x50, 0x4B, 0x03, 0x04]), Data([0x50, 0x4B, 0x05, 0x06])].contains($0) } ?? false
     }
 
-    /// 譜面ハッシュ（beatsaver の `hash` と同じ形式の小文字 16 進数）
-    private static func mapHash(of file: URL) throws(MapDownloadError) -> String {
+    /// 譜面ハッシュ（beatsaver の `hash` と同じ形式の小文字 16 進数）。ZIP を展開しながら計算するので、メインスレッドの外で行う
+    @concurrent
+    private static func mapHash(of file: URL) async throws(MapDownloadError) -> String {
         do {
             return try MapHash.compute(zipAt: file)
         } catch .tooLarge {
