@@ -65,8 +65,9 @@ final class SongDetailModel {
         guard case .loading = state else { return }
         do {
             let info = try await maps.loadInfo(hash: entry.hash)
-            state = .ready(info)
+            // 難易度を選べるようにする前に読む（読み終える前に遊び始めると、そのプレイに画像が渡らないため）。縮小した画像なのですぐ終わる
             cover = await maps.loadCover(hash: entry.hash, info: info)
+            state = .ready(info)
         } catch {
             state = .failed(error.message)
         }
