@@ -149,6 +149,24 @@ struct CalibrationModelTests {
     }
 
     @Test
+    func stopsMetronomeWhenItFailsToStart() async {
+        let metronome = FakeMetronome(clicks: [], error: CocoaError(.featureUnsupported))
+        let model = CalibrationModel(
+            input: RecordedMotionInput(samples: []),
+            metronome: metronome,
+            store: CalibrationStore(suiteName: "ZankyoTests.Calibration.\(UUID().uuidString)")
+        )
+
+        await model.measure()
+
+        guard case .failed = model.phase else {
+            Issue.record("音を鳴らせなければ失敗するはず: \(model.phase)")
+            return
+        }
+        #expect(metronome.isStopped)
+    }
+
+    @Test
     func cannotMeasureWithoutMotionInput() {
         let model = CalibrationModel(input: UnavailableMotionInput(), metronome: FakeMetronome(clicks: []))
 
@@ -159,14 +177,19 @@ struct CalibrationModelTests {
 /// 音を鳴らさず、決まったクリックの時刻を返す
 private final class FakeMetronome: Metronome {
     let clicks: [TimeInterval]
+    let error: (any Error)?
     private(set) var isStopped = false
 
-    init(clicks: [TimeInterval]) {
+    init(clicks: [TimeInterval], error: (any Error)? = nil) {
         self.clicks = clicks
+        self.error = error
     }
 
     func start(bpm: Double, beats: Int) throws -> [TimeInterval] {
         isStopped = false
+        if let error {
+            throw error
+        }
         return clicks
     }
 

@@ -25,6 +25,8 @@ final class CalibrationModel {
     @ObservationIgnored private let store: CalibrationStore
     @ObservationIgnored private let now: () -> TimeInterval
     @ObservationIgnored private var task: Task<Void, Never>?
+    /// 測る回ごとの番号。前の回の締め切りが、新しい回の入力を止めないようにする
+    @ObservationIgnored private var generation = 0
 
     init(
         input: any MotionInput,
@@ -77,17 +79,21 @@ final class CalibrationModel {
 
     /// 測る。終わる（最後のクリックを過ぎる・入力が終わる・中止する）まで返らない
     func measure() async {
+        generation += 1
+        let currentGeneration = generation
         let stream = input.start()
         let clicks: [TimeInterval]
         do {
             clicks = try metronome.start(bpm: Self.bpm, beats: Self.beats)
         } catch {
             input.stop()
+            metronome.stop()
             phase = .failed("音を鳴らせませんでした。ほかのアプリで音を再生していないか確かめてください。")
             return
         }
         guard let lastClick = clicks.last else {
             input.stop()
+            metronome.stop()
             phase = .failed("音を鳴らせませんでした。")
             return
         }
@@ -98,8 +104,8 @@ final class CalibrationModel {
         let waitSeconds = max(deadline - now(), 0)
         let stopper = Task { [weak self] in
             try? await Task.sleep(for: .seconds(waitSeconds))
-            guard !Task.isCancelled else { return }
-            self?.input.stop()
+            guard !Task.isCancelled, let self, self.generation == currentGeneration else { return }
+            self.input.stop()
         }
         defer { stopper.cancel() }
 
