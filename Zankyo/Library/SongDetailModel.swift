@@ -65,7 +65,7 @@ final class SongDetailModel {
         }
     }
 
-    /// 選んだ難易度のノーツと音源を用意し、できたら `play` に入れる
+    /// 選んだ難易度のノーツと音源を用意し、できたら `play` に入れる。取り消されたら（画面を離れたら）何も出さない
     func prepare(_ difficulty: DifficultyInfo) async {
         guard let info, preparing == nil else { return }
         preparing = difficulty
@@ -73,8 +73,10 @@ final class SongDetailModel {
         do {
             let notes = try await maps.loadNotes(hash: entry.hash, info: info, difficulty: difficulty)
             let song = try await loadedSong(info: info)
+            guard !Task.isCancelled else { return }
             play = PlaySetup(entry: entry, difficulty: difficulty, notes: notes, song: song)
         } catch {
+            guard !Task.isCancelled else { return }
             playError = error.message
         }
     }

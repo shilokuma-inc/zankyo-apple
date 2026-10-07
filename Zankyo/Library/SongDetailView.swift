@@ -6,6 +6,8 @@ struct SongDetailView: View {
     let highScores: HighScoreStore
 
     @State private var model: SongDetailModel
+    /// 難易度を選んでからの準備。画面を離れたら取り消す
+    @State private var preparation: Task<Void, Never>?
 
     init(entry: LibraryEntry, input: any MotionInput, highScores: HighScoreStore) {
         self.input = input
@@ -17,6 +19,10 @@ struct SongDetailView: View {
         content
             .navigationTitle(model.entry.title)
             .task { await model.load() }
+            .onDisappear {
+                preparation?.cancel()
+                preparation = nil
+            }
             .alert(
                 "遊べません",
                 isPresented: Binding(get: { model.playError != nil }, set: { if !$0 { model.playError = nil } })
@@ -58,7 +64,8 @@ struct SongDetailView: View {
     private func difficultyRow(_ difficulty: DifficultyInfo) -> some View {
         let key = ScoreKey(mapHash: model.entry.hash, characteristic: difficulty.characteristic, difficulty: difficulty.difficulty)
         return Button {
-            Task { await model.prepare(difficulty) }
+            preparation?.cancel()
+            preparation = Task { await model.prepare(difficulty) }
         } label: {
             HStack {
                 Text(difficulty.difficulty.displayName)
