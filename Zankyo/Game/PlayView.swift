@@ -58,9 +58,9 @@ struct PlayView: View {
                     .fill(.tint.opacity(0.4))
                     .frame(height: 3)
                     .position(x: centerX, y: hitY)
-                ForEach(visibleNotes, id: \.time) { note in
-                    let remaining = note.time - session.currentTime
-                    NoteMark(direction: note.direction)
+                ForEach(visibleNotes, id: \.index) { item in
+                    let remaining = item.note.time - session.currentTime
+                    NoteMark(direction: item.note.direction)
                         .position(x: centerX, y: hitY - remaining / Self.approachTime * hitY)
                         .opacity(remaining < -0.2 ? 0 : 1)
                 }
@@ -75,9 +75,13 @@ struct PlayView: View {
         .accessibilityHidden(true)
     }
 
-    /// 画面に出すノーツ（判定の線に届く前の数個）
-    private var visibleNotes: [FaceNote] {
-        Array(session.judge.remainingNotes.prefix { $0.time - session.currentTime <= Self.approachTime }.prefix(8))
+    /// 画面に出すノーツ（判定の線に届く前の数個）。同じ時刻のノーツがあっても ID が重ならないよう、譜面の中の位置を ID にする
+    private var visibleNotes: [(index: Int, note: FaceNote)] {
+        let remaining = session.judge.remainingNotes
+        return zip(remaining.indices, remaining)
+            .prefix { $0.1.time - session.currentTime <= Self.approachTime }
+            .prefix(8)
+            .map { (index: $0.0, note: $0.1) }
     }
 
     @ViewBuilder private var controls: some View {
