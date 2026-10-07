@@ -1,0 +1,206 @@
+import Foundation
+import Testing
+@testable import Zankyo
+
+struct GameSessionTests {
+    private static let notes = [
+        FaceNote(beat: 2, time: 1, direction: .right),
+        FaceNote(beat: 4, time: 2, direction: .up),
+        FaceNote(beat: 6, time: 3, direction: nil)
+    ]
+
+    @Test
+    func judgesRecordedSwingsAndFinishesAtSongEnd() async {
+        // モーションの時刻 = 曲の時刻（時計の起点 0）。各ノーツの時刻に向きを合わせて振る
+        let input = RecordedMotionInput(samples: MotionRecording.make(swings: [
+            .init(direction: .right, peakTime: 1, peakRate: 4),
+            .init(direction: .up, peakTime: 2, peakRate: 4),
+            .init(direction: .left, peakTime: 3, peakRate: 4)
+        ]))
+        let clock = ManualSongClock(duration: 4)
+        let session = GameSession(notes: Self.notes, clock: clock, input: input)
+
+        await session.play()
+        #expect(session.phase == .playing)
+        #expect(session.judge.keeper.hitCount == 3)
+        #expect(session.score == session.judge.maxScore)
+
+        clock.time = 3.5
+        session.tick()
+        #expect(session.phase == .playing)
+
+        clock.time = 4
+        session.tick()
+        #expect(session.phase == .finished)
+        #expect(!clock.isPlaying)
+    }
+
+    @Test
+    func unplayedNotesBecomeMissesAtSongEnd() async {
+        let clock = ManualSongClock(duration: 4)
+        let session = GameSession(notes: Self.notes, clock: clock, input: RecordedMotionInput(samples: []))
+
+        await session.play()
+        clock.time = 2.5
+        session.tick()
+        #expect(session.judge.keeper.missCount == 2)
+        #expect(session.lastJudgement == .miss(Self.notes[1]))
+
+        clock.time = 4
+        session.tick()
+        #expect(session.phase == .finished)
+        #expect(session.judge.keeper.missCount == 3)
+    }
+
+    @Test
+    func ignoresSwingsWhilePaused() async {
+        let clock = ManualSongClock(duration: 4)
+        let session = GameSession(notes: Self.notes, clock: clock, input: RecordedMotionInput(samples: []))
+        await session.play()
+
+        session.pause()
+        #expect(session.phase == .paused)
+        #expect(!clock.isPlaying)
+        session.handle(CutEvent(timestamp: 1, direction: .right, peakRate: 4))
+        #expect(session.judge.keeper.hitCount == 0)
+
+        session.resume()
+        #expect(session.phase == .playing)
+        session.handle(CutEvent(timestamp: 1, direction: .right, peakRate: 4))
+        #expect(session.judge.keeper.hitCount == 1)
+    }
+
+    @Test
+    func pausesWhenEarphonesDisconnect() async {
+        let input = ControllableMotionInput(status: .ready)
+        let clock = ManualSongClock(duration: 4)
+        let session = GameSession(notes: Self.notes, clock: clock, input: input)
+        session.start()
+        await waitUntil { session.phase == .playing }
+
+        session.tick()
+        input.status = .disconnected
+        session.tick()
+
+        #expect(session.phase == .paused)
+        #expect(session.pausedByDisconnection)
+        session.resume()
+        #expect(session.phase == .paused)
+
+        input.status = .ready
+        session.resume()
+        #expect(session.phase == .playing)
+        #expect(!session.pausedByDisconnection)
+        session.finish()
+    }
+
+    @Test
+    func doesNotPauseBeforeInputBecomesReady() async {
+        // 許可を尋ねた直後など、接続の通知が届く前の状態では止めない
+        let input = ControllableMotionInput(status: .notDetermined)
+        let session = GameSession(notes: Self.notes, clock: ManualSongClock(duration: 4), input: input)
+        session.start()
+        await waitUntil { session.phase == .playing }
+
+        input.status = .disconnected
+        session.tick()
+
+        #expect(session.phase == .playing)
+        session.finish()
+    }
+
+    @Test
+    func cannotStartWithoutMotionInput() {
+        let session = GameSession(notes: Self.notes, clock: ManualSongClock(duration: 4), input: UnavailableMotionInputStub())
+
+        #expect(!session.canStart)
+    }
+
+    @Test
+    func silentClockAdvancesAndPauses() {
+        var now = 100.0
+        let clock = SilentSongClock(duration: 10) { now }
+
+        clock.play()
+        now = 102
+        #expect(clock.currentTime == 2)
+        #expect(clock.songTime(atUptime: 101.5) == 1.5)
+
+        clock.pause()
+        now = 110
+        #expect(clock.currentTime == 2)
+        #expect(clock.songTime(atUptime: 110) == nil)
+
+        clock.play()
+        now = 111
+        #expect(clock.currentTime == 3)
+        now = 200
+        #expect(clock.currentTime == 10)
+    }
+
+    private func waitUntil(_ condition: () -> Bool) async {
+        for _ in 0..<100 where !condition() {
+            await Task.yield()
+        }
+    }
+}
+
+/// 時刻を手で進める時計。モーションの時刻と曲の時刻を同じにする
+private final class ManualSongClock: SongClock {
+    let duration: TimeInterval
+    var time: TimeInterval = 0
+    private(set) var isPlaying = false
+
+    init(duration: TimeInterval) {
+        self.duration = duration
+    }
+
+    var currentTime: TimeInterval { time }
+
+    func play() throws {
+        isPlaying = true
+    }
+
+    func pause() {
+        isPlaying = false
+    }
+
+    func stop() {
+        isPlaying = false
+    }
+
+    func songTime(atUptime uptime: TimeInterval) -> TimeInterval? {
+        isPlaying ? uptime : nil
+    }
+}
+
+/// 状態を外から変えられる入力。`stop()` を呼ぶまで列を終えない
+private final class ControllableMotionInput: MotionInput {
+    var status: MotionInputStatus
+    private var continuation: AsyncStream<MotionSample>.Continuation?
+
+    init(status: MotionInputStatus) {
+        self.status = status
+    }
+
+    func start() -> AsyncStream<MotionSample> {
+        let (stream, continuation) = AsyncStream.makeStream(of: MotionSample.self)
+        self.continuation = continuation
+        return stream
+    }
+
+    func stop() {
+        continuation?.finish()
+        continuation = nil
+    }
+}
+
+private final class UnavailableMotionInputStub: MotionInput {
+    let status: MotionInputStatus = .unsupported
+
+    func start() -> AsyncStream<MotionSample> {
+        AsyncStream { $0.finish() }
+    }
+
+    func stop() {}
+}
