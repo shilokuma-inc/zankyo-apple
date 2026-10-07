@@ -4,7 +4,7 @@ import SwiftUI
 struct LibraryView: View {
     let library: LibraryStore
     let downloads: DownloadModel
-    let input: any MotionInput
+    let motion: MotionMonitor
     let highScores: HighScoreStore
     let onSearch: () -> Void
 
@@ -29,7 +29,7 @@ struct LibraryView: View {
             }
             .navigationTitle("ライブラリ")
             .navigationDestination(for: LibraryEntry.self) { entry in
-                SongDetailView(entry: entry, input: input, highScores: highScores)
+                SongDetailView(entry: entry, motion: motion, highScores: highScores)
             }
             .onAppear { library.refreshSizes() }
             .confirmationDialog(
@@ -136,7 +136,7 @@ private struct LibraryRow: View {
     LibraryView(
         library: LibraryStore(),
         downloads: DownloadModel(downloader: MapDownloader()),
-        input: RecordedMotionInput(samples: []),
+        motion: MotionMonitor(base: RecordedMotionInput(samples: [])),
         highScores: HighScoreStore(),
         onSearch: {}
     )
