@@ -117,6 +117,26 @@ nonisolated struct LocalMapStore: Sendable {
         return CoverImage.decode(data)
     }
 
+    /// 一覧に出すジャケット画像を縮小して読む。まだ展開していない曲は、ZIP を展開せずに `Info.dat` と画像だけを ZIP から読む
+    /// （一覧に並ぶ全曲を展開すると、端末の容量を倍近く使うため）。無い・読めないときは nil
+    @concurrent
+    func loadListCover(hash: String) async -> CGImage? {
+        guard let (folder, zip) = paths(hash: hash) else { return nil }
+        if FileManager.default.fileExists(atPath: folder.path(percentEncoded: false)) {
+            guard let infoData = try? read("Info.dat", in: folder, limit: SongInfoParser.maxBytes),
+                  let name = (try? SongInfoParser.parse(infoData))?.coverImageFilename,
+                  let data = try? read(name, in: folder, limit: CoverImage.maxBytes) else { return nil }
+            return CoverImage.decode(data)
+        }
+        guard let archive = try? MapArchive(url: zip),
+              let infoEntry = archive.entry(named: "Info.dat"),
+              let infoData = try? archive.read(infoEntry, limit: UInt64(SongInfoParser.maxBytes)),
+              let name = (try? SongInfoParser.parse(infoData))?.coverImageFilename,
+              let entry = archive.entry(named: name),
+              let data = try? archive.read(entry, limit: UInt64(CoverImage.maxBytes)) else { return nil }
+        return CoverImage.decode(data)
+    }
+
     /// v4 の音声データにある拍と秒の対応。無い・読めないときは nil（Info.dat の BPM で一定とする）
     private func audioTimeline(info: SongInfo, folder: URL) -> BeatTimeline? {
         guard let name = info.audioDataFilename,
