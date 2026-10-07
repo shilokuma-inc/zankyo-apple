@@ -19,6 +19,7 @@
 - `SWIFT_APPROACHABLE_CONCURRENCY = YES` なので、`nonisolated` な async 関数も呼び出し元のアクター（MainActor）で動く。ZIP の展開・ハッシュ・パース・デコードのような重い処理は `@concurrent` を付けてメインスレッドから外す。戻り値が Sendable でない型（`AVAudioPCMBuffer` を持つクラスなど）は `sending` で返す（2026-10-08）
 - テスト用の Ogg Vorbis は、libvorbis の `examples/encoder_example.c`（44.1kHz・ステレオの WAV を標準入力で受ける）を clang でビルドして作れる。afconvert は Vorbis でエンコードできない。テストバンドルの素材は `ZankyoTests/Fixtures/` に置けばフォルダ同期で入る（2026-10-08）
 - `List` の行全体を `NavigationLink` にすると、行の中の `Link` は `.borderless` を付けていても行のタップと重なり、行の中央をタップしただけで Safari が開くことがある。行の中にはリンクを置かない（2026-10-08）
+- Simulator ではモーション入力が使えずプレイを始められないので、PR 用のプレイ画面のスクリーンショットは、コミットしない一時的なユニットテストで撮る。テストからホストアプリのウィンドウの `rootViewController` に `PlayView` を載せ、`SilentSongClock` の `now` を差し替えて時刻を止め、`GameSession.handle` に `CutEvent` を渡せば判定の表示まで出せる。静止画は待っている間に `simctl io screenshot`、GIF は `drawHierarchy` で取ったフレームを ImageIO で書き出す（ffmpeg が無くてよい）（2026-10-08）
 
 ## beatsaver / 譜面
 
