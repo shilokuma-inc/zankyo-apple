@@ -67,15 +67,14 @@ final class HighScoreStore {
 
     private func load() {
         guard let data = try? Data(contentsOf: fileURL) else { return }
+        // 版を先に読む。新しいアプリが書いた形式は中身の形が違うことがあるので、全体を読めなくても退避・上書きしない
+        if let probe = try? Self.decoder.decode(HighScoreFileVersion.self, from: data), probe.version > Self.fileVersion {
+            isReadOnly = true
+            records = (try? Self.decoder.decode(HighScoreFile.self, from: data))?.records ?? [:]
+            return
+        }
         do {
-            let file = try Self.decoder.decode(HighScoreFile.self, from: data)
-            guard file.version <= Self.fileVersion else {
-                // 新しいアプリが書いた形式。読めた分だけ使い、上書きしない
-                isReadOnly = true
-                records = file.records ?? [:]
-                return
-            }
-            records = file.records ?? [:]
+            records = try Self.decoder.decode(HighScoreFile.self, from: data).records ?? [:]
         } catch {
             logger.error("ハイスコアのファイルを読めないので退避する: \(error.localizedDescription, privacy: .public)")
             let broken = fileURL.appendingPathExtension("broken-\(Int(Date().timeIntervalSince1970))")
@@ -106,6 +105,11 @@ final class HighScoreStore {
         decoder.dateDecodingStrategy = .iso8601
         return decoder
     }
+}
+
+/// 保存ファイルの版だけを読む
+nonisolated private struct HighScoreFileVersion: Decodable {
+    let version: Int
 }
 
 /// 保存ファイルの形

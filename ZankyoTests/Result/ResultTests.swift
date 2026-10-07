@@ -130,6 +130,24 @@ struct HighScoreStoreTests {
         #expect(try Data(contentsOf: file) == newer)
     }
 
+    @Test
+    func doesNotMoveNewerFormatWithUnknownRecords() throws {
+        let file = try Self.temporaryFile()
+        let directory = file.deletingLastPathComponent()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        // 新しいアプリでは記録の形が変わっているかもしれない（必須の項目が増えた・型が変わった）
+        let newer = Data(#"{ "version": 2, "records": { "s2/abc/Standard/Expert": { "points": "many" } } }"#.utf8)
+        try newer.write(to: file)
+
+        let store = HighScoreStore(fileURL: file)
+        store.record(PlayResultTests.result(score: 500), for: Self.key)
+
+        #expect(store.isReadOnly)
+        #expect(try Data(contentsOf: file) == newer)
+        let names = try FileManager.default.contentsOfDirectory(atPath: directory.path(percentEncoded: false))
+        #expect(names == ["HighScores.json"])
+    }
+
     private static func temporaryFile() throws -> URL {
         let directory = FileManager.default.temporaryDirectory
             .appending(path: "ZankyoTests-\(UUID().uuidString)", directoryHint: .isDirectory)
