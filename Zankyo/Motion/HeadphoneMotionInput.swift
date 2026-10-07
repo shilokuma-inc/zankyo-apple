@@ -2,6 +2,7 @@
 import CoreMotion
 import Foundation
 import Observation
+import os
 
 /// AirPods など、頭の動きに対応したイヤホンのモーションセンサー（`CMHeadphoneMotionManager`）からの入力。
 /// iOS / macOS で使う。visionOS は ARKit の頭の向きを使う（Discussion #3 Q7）
@@ -13,6 +14,8 @@ final class HeadphoneMotionInput: MotionInput {
     @ObservationIgnored private let queue: OperationQueue
     @ObservationIgnored private var delegate: ConnectionDelegate?
     @ObservationIgnored private var continuation: AsyncStream<MotionSample>.Continuation?
+    /// 取得の回ごとの番号。前の回の列の終わりが、今の回を止めないようにする
+    @ObservationIgnored private var session = 0
     @ObservationIgnored private var isConnected = false
 
     init(manager: CMHeadphoneMotionManager = CMHeadphoneMotionManager()) {
@@ -26,10 +29,18 @@ final class HeadphoneMotionInput: MotionInput {
             authorization: CMHeadphoneMotionManager.authorizationStatus(),
             isConnected: false
         )
+        // 接続・接続解除の通知は、接続状態の監視を始めないと届かない。プレイ前の案内にも使うので、作った時点から監視する
+        let delegate = ConnectionDelegate(onChange: Self.connectionHandler(for: self))
+        self.delegate = delegate
+        manager.delegate = delegate
+        if manager.isDeviceMotionAvailable {
+            manager.startConnectionStatusUpdates()
+        }
     }
 
     func start() -> AsyncStream<MotionSample> {
         stop()
+        session += 1
         // 判定に使うのは新しいサンプルなので、処理が詰まったら古いものから捨てる
         let (stream, continuation) = AsyncStream.makeStream(of: MotionSample.self, bufferingPolicy: .bufferingNewest(256))
         guard manager.isDeviceMotionAvailable else {
@@ -37,28 +48,45 @@ final class HeadphoneMotionInput: MotionInput {
             continuation.finish()
             return stream
         }
+        // 受け取る側が列を捨てた・タスクを中止したときも、取得を止める
+        continuation.onTermination = Self.terminationHandler(for: self, session: session)
         self.continuation = continuation
-        // 接続・接続解除の通知は取得を始めてから届く。権限を尋ねるのも取得を始めたとき
-        let delegate = ConnectionDelegate(onChange: Self.connectionHandler(for: self))
-        self.delegate = delegate
-        manager.delegate = delegate
-        manager.startDeviceMotionUpdates(to: queue, withHandler: Self.motionHandler(for: self, continuation: continuation))
+        // 権限を尋ねるのは取得を始めたとき
+        manager.startDeviceMotionUpdates(
+            to: queue,
+            withHandler: Self.motionHandler(for: self, session: session, continuation: continuation)
+        )
         return stream
     }
 
+    /// 動きの取得を止める。接続状態の監視は続けるので、接続の状態は保つ
     func stop() {
         manager.stopDeviceMotionUpdates()
-        manager.delegate = nil
-        delegate = nil
+        let continuation = continuation
+        self.continuation = nil
         continuation?.finish()
-        continuation = nil
-        isConnected = false
         refreshStatus()
     }
 
     private func connectionChanged(_ isConnected: Bool) {
         self.isConnected = isConnected
         refreshStatus()
+    }
+
+    /// 動きが届いたなら、許可されていてイヤホンもつながっている（接続の通知が届かない場合に備える）
+    private func firstSampleReceived(session: Int) {
+        guard session == self.session, continuation != nil else { return }
+        isConnected = true
+        refreshStatus()
+    }
+
+    /// 列が終わった（受け取る側が捨てた・エラーで終えた）。今の回の列なら取得を止める
+    private func streamTerminated(session: Int) {
+        guard session == self.session, continuation != nil else {
+            refreshStatus()
+            return
+        }
+        stop()
     }
 
     private func refreshStatus() {
@@ -92,15 +120,34 @@ final class HeadphoneMotionInput: MotionInput {
 
     nonisolated private static func motionHandler(
         for input: HeadphoneMotionInput,
+        session: Int,
         continuation: AsyncStream<MotionSample>.Continuation
     ) -> CMHeadphoneMotionManager.DeviceMotionHandler {
-        { [weak input] motion, error in
-            if let motion {
-                continuation.yield(MotionSample(headphoneTimestamp: motion.timestamp, rotationRate: motion.rotationRate))
-            } else if error != nil {
-                // 権限が無い・取り消されたときなどはエラーで届く
-                Task { @MainActor [input] in input?.refreshStatus() }
+        let hasReceived = OSAllocatedUnfairLock(initialState: false)
+        return { [weak input] motion, error in
+            // 権限が無い・取り消されたときなどはエラーで届く。列を終えると、終わりの処理で取得も止まる
+            if error != nil {
+                continuation.finish()
+                return
             }
+            guard let motion else { return }
+            continuation.yield(MotionSample(headphoneTimestamp: motion.timestamp, rotationRate: motion.rotationRate))
+            let isFirst = hasReceived.withLock { received in
+                defer { received = true }
+                return !received
+            }
+            if isFirst {
+                Task { @MainActor [input] in input?.firstSampleReceived(session: session) }
+            }
+        }
+    }
+
+    nonisolated private static func terminationHandler(
+        for input: HeadphoneMotionInput,
+        session: Int
+    ) -> @Sendable (AsyncStream<MotionSample>.Continuation.Termination) -> Void {
+        { [weak input] _ in
+            Task { @MainActor [input] in input?.streamTerminated(session: session) }
         }
     }
 
