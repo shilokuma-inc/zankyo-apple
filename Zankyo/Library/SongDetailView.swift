@@ -187,7 +187,8 @@ private struct PreviewButton: View {
                     ProgressView()
                         .controlSize(.small)
                 } else {
-                    Image(systemName: isPlaying ? "stop.fill" : "play.fill")
+                    // 下の「スタート」（再生のアイコン）と見分けられるよう、ヘッドホンにする
+                    Image(systemName: isPlaying ? "stop.fill" : "headphones")
                 }
                 Text(isPlaying ? "試聴を止める" : "試聴する")
             }
