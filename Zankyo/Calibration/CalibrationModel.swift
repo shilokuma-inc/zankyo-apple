@@ -19,6 +19,9 @@ final class CalibrationModel {
 
     private(set) var phase: Phase = .idle
     private(set) var savedOffset: TimeInterval?
+    /// 測っている回のクリックが聞こえる時刻と、検出した振りの時刻。画面の手がかり（`CalibrationCue`）に使う
+    private(set) var clickTimes: [TimeInterval] = []
+    private(set) var cutTimes: [TimeInterval] = []
 
     let input: any MotionInput
     @ObservationIgnored private let metronome: any Metronome
@@ -49,6 +52,15 @@ final class CalibrationModel {
     /// 入力が使えるか、使い始めれば許可を尋ねられる状態なら測れる
     var canMeasure: Bool {
         input.status == .ready || input.status == .notDetermined
+    }
+
+    var cue: CalibrationCue {
+        CalibrationCue(clickTimes: clickTimes)
+    }
+
+    /// クリックと同じ物差し（起動からの秒）の今の時刻
+    var currentTime: TimeInterval {
+        now()
     }
 
     func start() {
@@ -99,6 +111,8 @@ final class CalibrationModel {
             phase = .failed("音を鳴らせませんでした。")
             return
         }
+        clickTimes = clicks
+        cutTimes = []
         phase = .measuring(beat: 0, total: clicks.count)
 
         let deadline = lastClick + Self.tail
@@ -116,6 +130,10 @@ final class CalibrationModel {
         for await sample in stream {
             if let cut = detector.process(sample) {
                 cuts.append(cut.timestamp)
+                // 中止の後に残ったサンプルで、新しい回の表示を書き換えない
+                if generation == currentGeneration {
+                    cutTimes = cuts
+                }
             }
             updateProgress(clicks: clicks, at: sample.timestamp)
             if sample.timestamp > deadline { break }
