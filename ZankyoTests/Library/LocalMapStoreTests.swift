@@ -120,6 +120,31 @@ nonisolated struct LocalMapStoreTests {
         }
     }
 
+    @Test
+    func loadsCoverDownscaled() async throws {
+        let store = try Self.makeStore(files: [
+            (name: "Info.dat", data: Data(InfoFixtures.v2(coverFilename: "cover.png").utf8)),
+            (name: "cover.png", data: try TestImage.make(width: 1024, height: 1024))
+        ])
+        defer { try? FileManager.default.removeItem(at: store.downloadsDirectory.deletingLastPathComponent()) }
+        let info = try await store.loadInfo(hash: Self.hash)
+
+        let cover = try #require(await store.loadCover(hash: Self.hash, info: info))
+
+        #expect(cover.width == CoverImage.maxPixelSize)
+        #expect(cover.height == CoverImage.maxPixelSize)
+    }
+
+    @Test
+    func coverIsNilWhenMapHasNoImage() async throws {
+        // Info.dat は cover.jpg を指すが、ZIP に入っていない
+        let store = try Self.makeStore()
+        defer { try? FileManager.default.removeItem(at: store.downloadsDirectory.deletingLastPathComponent()) }
+        let info = try await store.loadInfo(hash: Self.hash)
+
+        #expect(await store.loadCover(hash: Self.hash, info: info) == nil)
+    }
+
     private static func makeStore(files: [(name: String, data: Data)]) throws -> LocalMapStore {
         let store = try makeStore(writeZip: false)
         try TestZip.make(files).write(to: store.downloadsDirectory.appending(path: "\(hash).zip"))
