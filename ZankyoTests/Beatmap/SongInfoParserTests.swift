@@ -19,6 +19,8 @@ struct SongInfoParserTests {
         #expect(info.songFilename == "song.egg")
         #expect(info.coverImageFilename == "cover.jpg")
         #expect(info.audioDataFilename == nil)
+        #expect(info.previewStartTime == 12.5)
+        #expect(info.previewDuration == 10)
         #expect(info.difficulties.map(\.difficulty) == [.easy, .expertPlus, .hard])
         #expect(info.difficulties.map(\.characteristic) == [.standard, .standard, .oneSaber])
         let expertPlus = info.difficulties[1]
@@ -113,6 +115,17 @@ struct SongInfoParserTests {
         #expect(info.difficulties.first?.noteJumpStartBeatOffset == -10)
     }
 
+    @Test(arguments: [("-1", "10"), ("12", "0"), ("12", "-3"), ("\"abc\"", "null"), ("1e9", "10")])
+    func ignoresInvalidPreview(startTime: String, duration: String) throws {
+        let info = try SongInfoParser.parse(Data(InfoFixtures.v2(previewStartTime: startTime, previewDuration: duration).utf8))
+
+        // 範囲外・型違いの値は無いものとみなす（正しい方の値は残す）
+        let start = Double(startTime).flatMap { (0...900).contains($0) ? $0 : nil }
+        let length = Double(duration).flatMap { $0 > 0 && $0 <= 900 ? $0 : nil }
+        #expect(info.previewStartTime == start)
+        #expect(info.previewDuration == length)
+    }
+
     // MARK: - v4
 
     @Test
@@ -129,6 +142,8 @@ struct SongInfoParserTests {
         #expect(info.songFilename == "song.ogg")
         #expect(info.coverImageFilename == "cover.png")
         #expect(info.audioDataFilename == "BPMInfo.dat")
+        #expect(info.previewStartTime == 10)
+        #expect(info.previewDuration == 10)
         #expect(info.difficulties.map(\.difficulty) == [.normal, .expert])
         #expect(info.difficulties.map(\.beatmapFilename) == ["NormalStandard.dat", "ExpertStandard.dat"])
     }
@@ -180,6 +195,8 @@ nonisolated enum InfoFixtures {
         bpm: String = "128",
         songFilename: String = "song.egg",
         coverFilename: String = "cover.jpg",
+        previewStartTime: String = "12.5",
+        previewDuration: String = "10",
         sets: String = v2Sets
     ) -> String {
         """
@@ -193,6 +210,8 @@ nonisolated enum InfoFixtures {
           "_songTimeOffset": 0.25,
           "_songFilename": "\(songFilename)",
           "_coverImageFilename": "\(coverFilename)",
+          "_previewStartTime": \(previewStartTime),
+          "_previewDuration": \(previewDuration),
           "_environmentName": "DefaultEnvironment",
           "_difficultyBeatmapSets": \(sets)
         }
