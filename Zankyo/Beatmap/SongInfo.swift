@@ -25,6 +25,10 @@ nonisolated struct SongInfo: Sendable, Hashable {
     let coverImageFilename: String?
     /// v4 の BPM 変化などを記したファイル名（`audioDataFilename`）。v2 は nil
     let audioDataFilename: String?
+    /// 試聴する区間の始まり（秒）。無い・不正なら nil
+    let previewStartTime: Double?
+    /// 試聴する区間の長さ（秒）。無い・不正なら nil
+    let previewDuration: Double?
     /// 遊べる難易度。characteristic ごとに易しい順
     let difficulties: [DifficultyInfo]
 }

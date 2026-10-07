@@ -22,6 +22,9 @@ nonisolated enum SongInfoParser {
     /// 読み込む難易度の上限（characteristic × 5 段階を大きく超えるものは打ち切る）
     static let maxDifficulties = 64
     static let bpmRange: ClosedRange<Double> = 1...1_000
+    /// 試聴区間として受け付ける始まりと長さ（秒）。曲の長さの上限（15 分）に合わせる
+    static let previewStartRange: ClosedRange<Double> = 0...(15 * 60)
+    static let previewDurationRange: ClosedRange<Double> = 0.1...(15 * 60)
 
     static func parse(_ data: Data) throws(SongInfoParseError) -> SongInfo {
         guard data.count <= maxBytes else { throw .tooLarge }
@@ -75,6 +78,8 @@ nonisolated enum SongInfoParser {
             songFilename: songFilename,
             coverImageFilename: validFilename(info.coverImageFilename),
             audioDataFilename: nil,
+            previewStartTime: valid(info.previewStartTime, in: previewStartRange),
+            previewDuration: valid(info.previewDuration, in: previewDurationRange),
             difficulties: try playable(difficulties)
         )
     }
@@ -117,6 +122,8 @@ nonisolated enum SongInfoParser {
             songFilename: songFilename,
             coverImageFilename: validFilename(info.coverImageFilename),
             audioDataFilename: validFilename(info.audio?.audioDataFilename),
+            previewStartTime: valid(info.audio?.previewStartTime, in: previewStartRange),
+            previewDuration: valid(info.audio?.previewDuration, in: previewDurationRange),
             difficulties: try playable(difficulties)
         )
     }
@@ -173,6 +180,12 @@ nonisolated enum SongInfoParser {
         BeatsaverValidation.clamp(value, maxLength: 200)
     }
 
+    /// 範囲の中の有限の値。無い・範囲外なら nil
+    private static func valid(_ value: Double?, in range: ClosedRange<Double>) -> Double? {
+        guard let value, value.isFinite, range.contains(value) else { return nil }
+        return value
+    }
+
     private static func clamp(_ value: Double?, to range: ClosedRange<Double>) -> Double {
         guard let value, value.isFinite else { return 0 }
         return min(max(value, range.lowerBound), range.upperBound)
@@ -210,6 +223,8 @@ nonisolated private struct InfoV2: Decodable {
     let songTimeOffset: Double?
     let songFilename: String?
     let coverImageFilename: String?
+    let previewStartTime: Double?
+    let previewDuration: Double?
     let difficultyBeatmapSets: [InfoV2BeatmapSet]?
 
     private enum CodingKeys: String, CodingKey {
@@ -221,6 +236,8 @@ nonisolated private struct InfoV2: Decodable {
         case songTimeOffset = "_songTimeOffset"
         case songFilename = "_songFilename"
         case coverImageFilename = "_coverImageFilename"
+        case previewStartTime = "_previewStartTime"
+        case previewDuration = "_previewDuration"
         case difficultyBeatmapSets = "_difficultyBeatmapSets"
     }
 
@@ -234,6 +251,8 @@ nonisolated private struct InfoV2: Decodable {
         songTimeOffset = container.lenient(Double.self, forKey: .songTimeOffset)
         songFilename = container.lenient(String.self, forKey: .songFilename)
         coverImageFilename = container.lenient(String.self, forKey: .coverImageFilename)
+        previewStartTime = container.lenient(Double.self, forKey: .previewStartTime)
+        previewDuration = container.lenient(Double.self, forKey: .previewDuration)
         difficultyBeatmapSets = container.lenient(LossyDecodableArray<InfoV2BeatmapSet>.self, forKey: .difficultyBeatmapSets)?.elements
     }
 }
@@ -316,9 +335,11 @@ nonisolated private struct InfoV4Audio: Decodable {
     let songFilename: String?
     let audioDataFilename: String?
     let bpm: Double?
+    let previewStartTime: Double?
+    let previewDuration: Double?
 
     private enum CodingKeys: String, CodingKey {
-        case songFilename, audioDataFilename, bpm
+        case songFilename, audioDataFilename, bpm, previewStartTime, previewDuration
     }
 
     init(from decoder: any Decoder) throws {
@@ -326,6 +347,8 @@ nonisolated private struct InfoV4Audio: Decodable {
         songFilename = container.lenient(String.self, forKey: .songFilename)
         audioDataFilename = container.lenient(String.self, forKey: .audioDataFilename)
         bpm = container.lenient(Double.self, forKey: .bpm)
+        previewStartTime = container.lenient(Double.self, forKey: .previewStartTime)
+        previewDuration = container.lenient(Double.self, forKey: .previewDuration)
     }
 }
 
