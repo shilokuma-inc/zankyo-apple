@@ -111,6 +111,8 @@ extension MapDownloadError {
             "ダウンロードしたファイルが壊れています。もう一度試してください"
         case .notZip:
             "譜面の ZIP ではないため取り込めません"
+        case .invalidMap:
+            "譜面のファイルが足りない・読めないため取り込めません"
         case .cancelled:
             "中止しました"
         case .transport(.notConnectedToInternet), .transport(.networkConnectionLost), .transport(.dataNotAllowed):
