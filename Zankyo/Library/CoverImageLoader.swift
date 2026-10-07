@@ -66,8 +66,9 @@ nonisolated private final class CoverTaskDelegate: NSObject, URLSessionDataDeleg
             state.continuation = continuation
             return state.isCancelled
         }
-        // 開始前に中止されていたら、通信せずに終える
+        // 開始前に中止されていたら、通信せずに終える（作ったタスクも取り消して残さない）
         if isCancelled {
+            task.cancel()
             finish()
         } else {
             task.resume()
@@ -133,10 +134,14 @@ nonisolated private final class CoverTaskDelegate: NSObject, URLSessionDataDeleg
         finish()
     }
 
-    /// 1 度だけ結果を返す
+    /// 1 度だけ結果を返す。タスクは delegate を保持しているので、手放して循環を断つ
     private func finish() {
         let (continuation, data) = state.withLock { state in
-            defer { state.continuation = nil }
+            defer {
+                state.continuation = nil
+                state.task = nil
+                state.data = Data()
+            }
             let succeeded = !state.failed && !state.isCancelled
             return (state.continuation, succeeded ? state.data : nil)
         }
