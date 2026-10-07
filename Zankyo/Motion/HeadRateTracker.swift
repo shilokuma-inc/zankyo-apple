@@ -29,7 +29,8 @@ nonisolated struct HeadRateTracker: Sendable {
         return MotionSample(
             timestamp: timestamp,
             yawRate: Self.wrap(yaw - previous.yaw) / elapsed,
-            pitchRate: (pitch - previous.pitch) / elapsed
+            pitchRate: (pitch - previous.pitch) / elapsed,
+            orientation: HeadOrientation(yaw: yaw, pitch: pitch)
         )
     }
 
