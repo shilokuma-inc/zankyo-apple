@@ -30,7 +30,7 @@ final class GameSession {
 
     let input: any MotionInput
     @ObservationIgnored let clock: any SongClock
-    @ObservationIgnored private var detector = CutDetector()
+    @ObservationIgnored private var detector: CutDetector
     @ObservationIgnored private var task: Task<Void, Never>?
     /// 一度でも入力が使える状態になった（始めた直後の、接続の通知が届く前の状態で止めないため）
     @ObservationIgnored private var wasInputReady = false
@@ -41,12 +41,14 @@ final class GameSession {
         notes: [FaceNote],
         clock: any SongClock,
         input: any MotionInput,
+        detection: CutDetector.Configuration = CutDetector.Configuration(),
         offset: TimeInterval = 0,
         rules: ScoringRules = ScoringRules(),
         scoreKey: ScoreKey? = nil,
         highScores: HighScoreStore? = nil
     ) {
         judge = Judge(notes: notes, rules: rules, offset: offset)
+        detector = CutDetector(configuration: detection)
         self.clock = clock
         self.input = input
         self.scoreKey = scoreKey
@@ -127,7 +129,7 @@ final class GameSession {
             return
         }
         // 止めている間の動きの途中から振りを数えない
-        detector = CutDetector()
+        detector = CutDetector(configuration: detector.configuration)
         pausedByDisconnection = false
         phase = .playing
     }

@@ -26,7 +26,7 @@ struct RootView: View {
         _searchModel = State(initialValue: SearchModel(client: client))
         _library = State(initialValue: library)
         _downloads = State(initialValue: DownloadModel(downloader: downloader, library: library))
-        _calibration = State(initialValue: CalibrationModel(input: motion, metronome: metronome))
+        _calibration = State(initialValue: CalibrationModel(input: motion, metronome: metronome, detection: { motion.detection }))
         self.motion = motion
     }
 
