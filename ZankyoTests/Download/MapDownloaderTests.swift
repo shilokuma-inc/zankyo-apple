@@ -141,6 +141,31 @@ nonisolated struct MapDownloaderTests {
     }
 
     @Test
+    func cancelledBeforeStartDoesNotRequest() async throws {
+        let directory = try Self.temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let requested = OSAllocatedUnfairLock(initialState: false)
+        let session = StubURLProtocol.makeSession { request in
+            requested.withLock { $0 = true }
+            return try Self.response(request, body: Self.body)
+        }
+        let downloader = MapDownloader(session: session, directory: directory)
+        let version = try Self.version(hash: Self.mapHash)
+
+        // 取得を始める前に中止されたタスク
+        let task = Task {
+            withUnsafeCurrentTask { $0?.cancel() }
+            return try await downloader.download(version) { _ in }
+        }
+
+        await #expect(throws: MapDownloadError.cancelled) {
+            try await task.value
+        }
+        #expect(!requested.withLock { $0 })
+        #expect(downloader.downloadedFile(hash: Self.mapHash) == nil)
+    }
+
+    @Test
     func downloadedFileRejectsInvalidHash() throws {
         let directory = try Self.temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

@@ -200,8 +200,9 @@ nonisolated private final class DownloadTaskDelegate: NSObject, URLSessionDataDe
             state.continuation = continuation
             return state.isCancelled
         }
-        // 開始前に中止されていたら、通信せずに終える
+        // 開始前に中止されていたら、通信せずに終える（作ったタスクも取り消して残さない）
         if isCancelled {
+            task.cancel()
             finish(.failure(.cancelled))
         } else {
             task.resume()
@@ -298,13 +299,18 @@ nonisolated private final class DownloadTaskDelegate: NSObject, URLSessionDataDe
         }
     }
 
-    /// 1 度だけ結果を返す
+    /// 1 度だけ結果を返す。タスクは delegate を保持しているので、手放して循環を断つ
     private func finish(_ result: Result<Void, MapDownloadError>) {
-        try? handle.close()
         let continuation = state.withLock { state in
-            defer { state.continuation = nil }
+            defer {
+                state.continuation = nil
+                state.task = nil
+            }
             return state.continuation
         }
-        continuation?.resume(returning: result)
+        // 2 度目（開始前に取り消したタスクの完了の通知など）は何もしない
+        guard let continuation else { return }
+        try? handle.close()
+        continuation.resume(returning: result)
     }
 }
