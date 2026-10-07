@@ -13,11 +13,15 @@
 - テストの `URLProtocol` スタブは、セッションごとの ID をリクエストヘッダに載せ、`OSAllocatedUnfairLock` の辞書でハンドラを引き分けると、Swift Testing の並行実行でも混線しない（`ZankyoTests/Support/StubURLProtocol.swift`）（2026-10-07）
 - CI は Xcode 26.3（Swift 6.2）でローカルより古いことがある。Swift 6.2 では **extension で付けたプロトコル準拠（`extension X: Decodable`）が MainActor に隔離され**、nonisolated な文脈で使うとエラーになる（新しい Xcode では通ってしまう）。準拠を書く extension は `nonisolated extension` にする（2026-10-07）
 - `scrollDismissesKeyboard` は visionOS で使えない（コンパイルエラー）。iOS / macOS だけ通っても visionOS で落ちる SwiftUI の修飾子があるので、共通の View では visionOS のビルドまで確かめる（2026-10-07）
+- テストターゲットも MainActor が既定。`StubURLProtocol` のハンドラ（`@Sendable`）からテスト型の static を呼ぶなら、テストの型を `nonisolated struct` にする（2026-10-07）
+- 同じ Simulator で 2 つの `xcodebuild test` を同時に走らせると、互いのテストホストを落とす（「Test crashed with signal term before establishing connection」と `simctl` が見つからないというログが出る）。テストは直列に流す（2026-10-07）
 
 ## beatsaver / 譜面
 
 - 検索 API の `automapper` クエリは「true = 両方 / false = AI のみ / 省略 = AI を除く」。NSFW は `nsfw` フィールドで、false のときは省略されることがある。除外はクライアント側でも `nsfw`・`automapper`・`declaredAi` を見て行う（2026-10-07）
 - 日時は小数秒の有無が混在しうるので、`.iso8601` 固定ではなく両方を受けるデコードにする（2026-10-07）
 - OS 標準の Ogg Vorbis デコードは iOS 18.4 / macOS 15.4 から。Deployment Target（iOS 17 / macOS 14 / visionOS 2）では OS 標準に頼れない（2026-10-07）
+- `URLSession.bytes(for:)` を 1 バイトずつ読むのは遅い（Debug の Simulator で 2MB に 40 秒近くかかる）。譜面 ZIP のような数 MB 以上はデータタスクの delegate で塊ごとに受ける（2026-10-07）
+- `FileHandle.read(upToCount:)` は末尾に達すると空の `Data` ではなく `nil` を返す。`nil` をエラー扱いすると、ファイルを読み終えたところで失敗する（2026-10-07）
 
 ## モーション入力（AirPods）

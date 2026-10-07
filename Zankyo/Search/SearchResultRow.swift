@@ -1,8 +1,9 @@
 import SwiftUI
 
-/// 検索結果の 1 曲。マッパー名と beatsaver の譜面ページへのリンクを必ず出す（Discussion #3 Q9）
+/// 検索結果の 1 曲。マッパー名と beatsaver の譜面ページへのリンクを必ず出す（Discussion #3 Q9）。行の下に取り込みボタンを置く
 struct SearchResultRow: View {
     let map: BeatsaverMap
+    let downloads: DownloadModel
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -22,6 +23,8 @@ struct SearchResultRow: View {
                         .font(.footnote)
                         .lineLimit(1)
                 }
+                // List の行の中では、スタイルを付けないと行全体がリンクやボタンとして反応する
+                .buttonStyle(.borderless)
                 .accessibilityHint("beatsaver の譜面ページを開きます")
                 if !difficulties.isEmpty {
                     Text(difficulties)
@@ -29,6 +32,13 @@ struct SearchResultRow: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
                 }
+                DownloadControl(
+                    state: downloads.state(for: map),
+                    isBlocked: downloads.isDownloading || map.latestVersion == nil,
+                    onStart: { downloads.start(map) },
+                    onCancel: { downloads.cancel() }
+                )
+                .padding(.top, 4)
             }
         }
         .padding(.vertical, 4)
