@@ -204,20 +204,38 @@ nonisolated private final class DownloadTaskDelegate: NSObject, URLSessionDataDe
     func urlSession(
         _ session: URLSession,
         dataTask: URLSessionDataTask,
-        didReceive response: URLResponse
-    ) async -> URLSession.ResponseDisposition {
+        didReceive response: URLResponse,
+        completionHandler: @escaping @Sendable (URLSession.ResponseDisposition) -> Void
+    ) {
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         guard (200..<300).contains(status) else {
             fail(.httpStatus(status))
-            return .cancel
+            completionHandler(.cancel)
+            return
         }
         // 宣言されたサイズが上限を超えるなら、本文を受け取らずに打ち切る
         guard response.expectedContentLength <= maxBytes else {
             fail(.tooLarge)
-            return .cancel
+            completionHandler(.cancel)
+            return
         }
         state.withLock { $0.expected = max(response.expectedContentLength, 0) }
-        return .allow
+        completionHandler(.allow)
+    }
+
+    func urlSession(
+        _ session: URLSession,
+        task: URLSessionTask,
+        willPerformHTTPRedirection response: HTTPURLResponse,
+        newRequest request: URLRequest,
+        completionHandler: @escaping @Sendable (URLRequest?) -> Void
+    ) {
+        // CDN の転送先も beatsaver のホストに限る。それ以外へは転送せず、転送の応答（3xx）のまま失敗させる
+        guard let url = request.url, BeatsaverHost.isTrusted(url) else {
+            completionHandler(nil)
+            return
+        }
+        completionHandler(request)
     }
 
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
