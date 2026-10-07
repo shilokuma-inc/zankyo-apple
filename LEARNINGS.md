@@ -20,6 +20,8 @@
 - テスト用の Ogg Vorbis は、libvorbis の `examples/encoder_example.c`（44.1kHz・ステレオの WAV を標準入力で受ける）を clang でビルドして作れる。afconvert は Vorbis でエンコードできない。テストバンドルの素材は `ZankyoTests/Fixtures/` に置けばフォルダ同期で入る（2026-10-08）
 - `List` の行全体を `NavigationLink` にすると、行の中の `Link` は `.borderless` を付けていても行のタップと重なり、行の中央をタップしただけで Safari が開くことがある。行の中にはリンクを置かない（2026-10-08）
 - Simulator ではモーション入力が使えずプレイを始められないので、PR 用のプレイ画面のスクリーンショットは、コミットしない一時的なユニットテストで撮る。テストからホストアプリのウィンドウの `rootViewController` に `PlayView` を載せ、`SilentSongClock` の `now` を差し替えて時刻を止め、`GameSession.handle` に `CutEvent` を渡せば判定の表示まで出せる。静止画は待っている間に `simctl io screenshot`、GIF は `drawHierarchy` で取ったフレームを ImageIO で書き出す（ffmpeg が無くてよい）（2026-10-08）
+- 検索画面の PR 用スクリーンショットは、Simulator に日本語キーボードが入っていると、外から送った文字がかな変換されて検索語を打てない。コミットしない一時パッチで `RootView` に起動引数（`-ScreenshotQuery camellia` など）を読む `.task` を足し、検索タブを開いて `SearchModel.submit()` まで呼ぶと、Before / After を同じ条件で撮れる。取り込んだ曲はアプリを入れ直しても残るので、ライブラリ画面は一度取り込めば Before / After のビルドを入れ替えて撮れる（2026-10-08）
+- `contentShape(.contextMenuPreview, …)` は macOS では使えない（コンパイルエラー。macOS のメニューにはプレビューが無い）。iOS / visionOS で通っても macOS で落ちるので、`#if !os(macOS)` で外す（2026-10-08）
 
 ## beatsaver / 譜面
 
