@@ -1,9 +1,11 @@
 import SwiftUI
 
-/// 取り込み済みの曲の一覧。曲ごとの容量と合計を出し、スワイプか長押しで消せる
+/// 取り込み済みの曲の一覧。曲ごとの容量と合計を出し、スワイプか長押しで消せる。曲を選ぶと難易度を選んで遊べる
 struct LibraryView: View {
     let library: LibraryStore
     let downloads: DownloadModel
+    let input: any MotionInput
+    let highScores: HighScoreStore
     let onSearch: () -> Void
 
     @State private var pendingDeletion: LibraryEntry?
@@ -26,6 +28,9 @@ struct LibraryView: View {
                 }
             }
             .navigationTitle("ライブラリ")
+            .navigationDestination(for: LibraryEntry.self) { entry in
+                SongDetailView(entry: entry, input: input, highScores: highScores)
+            }
             .onAppear { library.refreshSizes() }
             .confirmationDialog(
                 "この曲を消しますか？",
@@ -53,13 +58,15 @@ struct LibraryView: View {
         List {
             Section {
                 ForEach(library.entries) { entry in
-                    LibraryRow(entry: entry, size: library.sizes[entry.hash] ?? 0)
-                        .swipeActions {
-                            Button("消す", role: .destructive) { pendingDeletion = entry }
-                        }
-                        .contextMenu {
-                            Button("消す", systemImage: "trash", role: .destructive) { pendingDeletion = entry }
-                        }
+                    NavigationLink(value: entry) {
+                        LibraryRow(entry: entry, size: library.sizes[entry.hash] ?? 0)
+                    }
+                    .swipeActions {
+                        Button("消す", role: .destructive) { pendingDeletion = entry }
+                    }
+                    .contextMenu {
+                        Button("消す", systemImage: "trash", role: .destructive) { pendingDeletion = entry }
+                    }
                 }
             } footer: {
                 // 合計は一覧の下（親指の近く）に出す
@@ -83,7 +90,7 @@ struct LibraryView: View {
     }
 }
 
-/// 一覧の 1 曲。マッパー名と beatsaver の譜面ページへのリンクを必ず出す（Discussion #3 Q9）
+/// 一覧の 1 曲。マッパー名を必ず出す（Discussion #3 Q9。譜面ページへのリンクは曲の詳細画面に出す）
 private struct LibraryRow: View {
     let entry: LibraryEntry
     let size: Int64
@@ -111,14 +118,11 @@ private struct LibraryRow: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
-                Link(destination: entry.pageURL) {
-                    Label("マッパー: \(entry.mapperName)", systemImage: "arrow.up.right.square")
-                        .font(.footnote)
-                        .lineLimit(1)
-                }
-                // List の行の中では、スタイルを付けないと行全体がリンクとして反応する
-                .buttonStyle(.borderless)
-                .accessibilityHint("beatsaver の譜面ページを開きます")
+                // 行全体が曲の詳細へのリンクなので、譜面ページへのリンクは詳細画面に置く（行の中に置くと、行をタップしたつもりで開いてしまう）
+                Text("マッパー: \(entry.mapperName)")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
                 Text(LibraryView.format(size))
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
@@ -129,5 +133,11 @@ private struct LibraryRow: View {
 }
 
 #Preview {
-    LibraryView(library: LibraryStore(), downloads: DownloadModel(downloader: MapDownloader()), onSearch: {})
+    LibraryView(
+        library: LibraryStore(),
+        downloads: DownloadModel(downloader: MapDownloader()),
+        input: RecordedMotionInput(samples: []),
+        highScores: HighScoreStore(),
+        onSearch: {}
+    )
 }

@@ -105,15 +105,21 @@ struct PlayView: View {
     @ViewBuilder private var controls: some View {
         switch session.phase {
         case .ready:
-            if session.canStart {
-                Button(action: session.start) {
-                    Text("始める").frame(maxWidth: .infinity)
+            VStack(spacing: 8) {
+                if session.canStart {
+                    Button(action: session.start) {
+                        Text("始める").frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                } else {
+                    MotionRequirementView(status: session.input.status)
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-            } else {
-                MotionRequirementView(status: session.input.status)
+                Button(action: onExit) {
+                    Text("戻る").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
             }
+            .controlSize(.large)
         case .playing:
             Button(action: session.pause) {
                 Label("一時停止", systemImage: "pause.fill")
