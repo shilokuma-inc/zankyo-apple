@@ -39,6 +39,8 @@ struct MultiplierRing: View {
         }
         .frame(width: 60, height: 60)
         .animation(.easeOut(duration: 0.2), value: progress)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("倍率 \(multiplier)")
     }
 }
 
