@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 
 nonisolated enum MapLoadError: Error, Equatable, Sendable {
@@ -105,6 +106,15 @@ nonisolated struct LocalMapStore: Sendable {
         } catch {
             throw .audio(error)
         }
+    }
+
+    /// ジャケット画像を縮小して読む。無い・読めないときは nil（画像が無くても遊べるので、エラーにしない）
+    @concurrent
+    func loadCover(hash: String, info: SongInfo) async -> CGImage? {
+        guard let name = info.coverImageFilename,
+              let folder = try? extractedFolder(hash: hash),
+              let data = try? read(name, in: folder, limit: CoverImage.maxBytes) else { return nil }
+        return CoverImage.decode(data)
     }
 
     /// v4 の音声データにある拍と秒の対応。無い・読めないときは nil（Info.dat の BPM で一定とする）

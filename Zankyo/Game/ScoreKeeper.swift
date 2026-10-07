@@ -48,6 +48,12 @@ nonisolated struct ScoreKeeper: Sendable, Hashable {
     private(set) var hitCount = 0
     private(set) var missCount = 0
 
+    /// 次の倍率までの進み具合（0〜1）。最大の倍率では 1
+    var progressToNextMultiplier: Double {
+        guard let step = Self.multiplierSteps[multiplier], step > 0 else { return 1 }
+        return Double(multiplierProgress) / Double(step)
+    }
+
     mutating func recordHit(_ cut: CutScore) {
         score += cut.total * multiplier
         hitCount += 1

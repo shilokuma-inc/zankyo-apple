@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 import Observation
 
@@ -8,6 +9,8 @@ struct PlaySetup: Identifiable {
     let difficulty: DifficultyInfo
     let notes: [FaceNote]
     let song: DecodedSong
+    /// 譜面 ZIP のジャケット画像。無ければ nil
+    let cover: CGImage?
 
     var scoreKey: ScoreKey {
         ScoreKey(mapHash: entry.hash, characteristic: difficulty.characteristic, difficulty: difficulty.difficulty)
@@ -27,6 +30,8 @@ final class SongDetailModel {
 
     let entry: LibraryEntry
     private(set) var state: State = .loading
+    /// 譜面 ZIP のジャケット画像。無い・読めないときは nil
+    private(set) var cover: CGImage?
     /// 準備中の難易度
     private(set) var preparing: DifficultyInfo?
     /// 準備できたら遊ぶ画面を出す
@@ -59,7 +64,10 @@ final class SongDetailModel {
     func load() async {
         guard case .loading = state else { return }
         do {
-            state = .ready(try await maps.loadInfo(hash: entry.hash))
+            let info = try await maps.loadInfo(hash: entry.hash)
+            // 難易度を選べるようにする前に読む（読み終える前に遊び始めると、そのプレイに画像が渡らないため）。縮小した画像なのですぐ終わる
+            cover = await maps.loadCover(hash: entry.hash, info: info)
+            state = .ready(info)
         } catch {
             state = .failed(error.message)
         }
@@ -74,7 +82,7 @@ final class SongDetailModel {
             let notes = try await maps.loadNotes(hash: entry.hash, info: info, difficulty: difficulty)
             let song = try await loadedSong(info: info)
             guard !Task.isCancelled else { return }
-            play = PlaySetup(entry: entry, difficulty: difficulty, notes: notes, song: song)
+            play = PlaySetup(entry: entry, difficulty: difficulty, notes: notes, song: song, cover: cover)
         } catch {
             guard !Task.isCancelled else { return }
             playError = error.message
