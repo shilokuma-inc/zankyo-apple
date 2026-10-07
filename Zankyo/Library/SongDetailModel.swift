@@ -41,6 +41,10 @@ final class SongDetailModel {
 
     @ObservationIgnored private let maps: LocalMapStore
     @ObservationIgnored private var song: DecodedSong?
+    /// デコード中の音源。デコードを待つ間にもう一度求められても、デコードは 1 度にする（長い曲は数百 MB になるため）
+    @ObservationIgnored private var decoding: Task<Void, Never>?
+    /// 直近のデコードに失敗した理由
+    @ObservationIgnored private var decodeError: MapLoadError?
 
     init(entry: LibraryEntry, maps: LocalMapStore = LocalMapStore()) {
         self.entry = entry
@@ -90,9 +94,19 @@ final class SongDetailModel {
     }
 
     private func loadedSong(info: SongInfo) async throws(MapLoadError) -> DecodedSong {
+        if song == nil, decoding == nil {
+            decoding = Task {
+                do throws(MapLoadError) {
+                    song = try await maps.loadSong(hash: entry.hash, info: info)
+                    decodeError = nil
+                } catch {
+                    decodeError = error
+                }
+                decoding = nil
+            }
+        }
+        await decoding?.value
         if let song { return song }
-        let loaded = try await maps.loadSong(hash: entry.hash, info: info)
-        song = loaded
-        return loaded
+        throw decodeError ?? .audio(.unreadable)
     }
 }
