@@ -11,6 +11,8 @@ struct PlayView: View {
 
     /// ノーツが画面の上端から判定の線に届くまでの秒
     static let approachTime: TimeInterval = 1.5
+    /// 判定の線の上でのノーツの大きさ
+    static let noteSize: CGFloat = 64
 
     var body: some View {
         Group {
@@ -33,9 +35,11 @@ struct PlayView: View {
         }
     }
 
+    /// Beat Saber にならい、暗い空間の奥から光るノーツが飛んでくる見た目にする。レーンは画面の端まで広げる
     private var playContent: some View {
         VStack(spacing: 0) {
             header
+                .padding([.horizontal, .top])
             TimelineView(.animation(paused: session.phase != .playing)) { context in
                 lane
                     .onChange(of: context.date) {
@@ -46,45 +50,37 @@ struct PlayView: View {
             controls
                 .frame(maxWidth: .infinity)
                 .frame(minHeight: 160)
+                .padding([.horizontal, .bottom])
         }
-        .padding()
+        .background { PlayfieldBackdrop() }
+        .preferredColorScheme(.dark)
     }
 
     private var header: some View {
-        HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading) {
-                Text(session.score, format: .number)
-                    .font(.largeTitle.monospacedDigit().bold())
-                Text("コンボ \(session.combo)")
-                    .font(.subheadline.monospacedDigit())
-                    .foregroundStyle(.secondary)
-            }
+        HStack(alignment: .center, spacing: 12) {
+            ScoreReadout(score: session.score, combo: session.combo)
             Spacer()
-            Text("×\(session.multiplier)")
-                .font(.title.monospacedDigit().bold())
-                .foregroundStyle(.tint)
+            MultiplierRing(multiplier: session.multiplier, progress: session.judge.keeper.progressToNextMultiplier)
         }
         .accessibilityElement(children: .combine)
     }
 
     private var lane: some View {
         GeometryReader { proxy in
-            let hitY = proxy.size.height * 0.85
-            let centerX = proxy.size.width / 2
+            let geometry = PlayfieldGeometry(size: proxy.size, approachTime: Self.approachTime)
             ZStack {
-                Rectangle()
-                    .fill(.tint.opacity(0.4))
-                    .frame(height: 3)
-                    .position(x: centerX, y: hitY)
+                PlayfieldLane(geometry: geometry)
+                PlayfieldGrid(geometry: geometry, currentTime: session.currentTime)
                 ForEach(visibleNotes, id: \.index) { item in
                     let remaining = item.note.time - session.currentTime
-                    NoteMark(direction: item.note.direction)
-                        .position(x: centerX, y: hitY - remaining / Self.approachTime * hitY)
-                        .opacity(remaining < -0.2 ? 0 : 1)
+                    let y = geometry.y(remaining: remaining)
+                    NoteBlock(direction: item.note.direction, size: Self.noteSize * geometry.scale(atY: y))
+                        .position(x: geometry.centerX, y: y)
+                        .opacity(geometry.noteOpacity(remaining: remaining))
                 }
                 if let judgement = session.lastJudgement {
-                    JudgementLabel(judgement: judgement)
-                        .position(x: centerX, y: hitY + 28)
+                    JudgementEffect(judgement: judgement, noteSize: Self.noteSize)
+                        .position(x: geometry.centerX, y: geometry.hitY)
                         .id(judgement)
                 }
             }
@@ -163,54 +159,6 @@ struct PlayView: View {
         #if os(iOS)
         UIApplication.shared.isIdleTimerDisabled = isDisabled
         #endif
-    }
-}
-
-/// 1 つのノーツ。向きは矢印、方向不問は丸
-private struct NoteMark: View {
-    let direction: SwingDirection?
-
-    var body: some View {
-        Image(systemName: symbol)
-            .font(.system(size: 48, weight: .bold))
-            .foregroundStyle(.tint)
-            .background(Circle().fill(.background).padding(4))
-    }
-
-    private var symbol: String {
-        switch direction {
-        case .up: "arrow.up.circle.fill"
-        case .down: "arrow.down.circle.fill"
-        case .left: "arrow.left.circle.fill"
-        case .right: "arrow.right.circle.fill"
-        case nil: "circle.circle.fill"
-        }
-    }
-}
-
-/// 直近の判定の表示
-private struct JudgementLabel: View {
-    let judgement: Judgement
-
-    var body: some View {
-        Text(text)
-            .font(.title3.bold().monospacedDigit())
-            .foregroundStyle(color)
-    }
-
-    private var text: String {
-        switch judgement {
-        case .hit(_, let score, _): "\(score.total)"
-        case .badCut: "向き違い"
-        case .miss: "ミス"
-        }
-    }
-
-    private var color: Color {
-        switch judgement {
-        case .hit: .primary
-        case .badCut, .miss: .red
-        }
     }
 }
 
