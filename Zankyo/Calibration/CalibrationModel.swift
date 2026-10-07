@@ -6,8 +6,8 @@ import Observation
 final class CalibrationModel {
     enum Phase: Equatable {
         case idle
-        /// `beat` 回目のクリックまで鳴った
-        case measuring(beat: Int, total: Int)
+        /// 何拍目かは、サンプルの届き方に左右されないよう時刻から求める（`CalibrationCue`）
+        case measuring
         case finished(CalibrationResult)
         case failed(String)
     }
@@ -45,8 +45,7 @@ final class CalibrationModel {
     }
 
     var isMeasuring: Bool {
-        if case .measuring = phase { return true }
-        return false
+        phase == .measuring
     }
 
     /// 入力が使えるか、使い始めれば許可を尋ねられる状態なら測れる
@@ -113,7 +112,7 @@ final class CalibrationModel {
         }
         clickTimes = clicks
         cutTimes = []
-        phase = .measuring(beat: 0, total: clicks.count)
+        phase = .measuring
 
         let deadline = lastClick + Self.tail
         // 振りが届かなくても、最後のクリックを過ぎたら入力を止めて終える
@@ -135,7 +134,6 @@ final class CalibrationModel {
                     cutTimes = cuts
                 }
             }
-            updateProgress(clicks: clicks, at: sample.timestamp)
             if sample.timestamp > deadline { break }
         }
         // 中止の後に新しい回が始まっていたら、その回の入力と音を止めない
@@ -148,14 +146,6 @@ final class CalibrationModel {
             phase = .finished(result)
         } else {
             phase = .failed("振りを十分に検出できませんでした。低い音に合わせて、首を左右か上下にはっきり振ってください。")
-        }
-    }
-
-    private func updateProgress(clicks: [TimeInterval], at time: TimeInterval) {
-        guard case .measuring(let current, let total) = phase else { return }
-        let beat = clicks.prefix { $0 <= time }.count
-        if beat != current {
-            phase = .measuring(beat: beat, total: total)
         }
     }
 }
