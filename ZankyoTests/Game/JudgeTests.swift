@@ -82,6 +82,24 @@ struct ScoreKeeperTests {
         #expect(keeper.score == 460)
     }
 
+    @Test
+    func progressToNextMultiplierFillsRing() {
+        var keeper = ScoreKeeper()
+        var progress = [keeper.progressToNextMultiplier]
+        for _ in 0..<15 {
+            keeper.recordHit(Self.perfect)
+            progress.append(keeper.progressToNextMultiplier)
+        }
+
+        // 1 倍は 2 回、2 倍は 4 回、4 倍は 8 回で埋まり、8 倍では埋まったまま
+        #expect(progress[0...2] == [0, 0.5, 0])
+        #expect(progress[2...6] == [0, 0.25, 0.5, 0.75, 0])
+        #expect(progress[14...15] == [1, 1])
+
+        keeper.recordMiss()
+        #expect(keeper.progressToNextMultiplier == 0)
+    }
+
     @Test(arguments: [(0, 0), (1, 115), (2, 230), (3, 460)])
     func maxScore(noteCount: Int, expected: Int) {
         #expect(ScoreKeeper.maxScore(noteCount: noteCount) == expected)

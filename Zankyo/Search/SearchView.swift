@@ -46,10 +46,16 @@ struct SearchView: View {
     private var results: some View {
         List {
             ForEach(model.maps) { map in
+                // 行ごとにジャケット画像の色のカードにするので、List の行の背景と区切り線は消す
                 SearchResultRow(map: map, downloads: downloads)
+                    .listRowInsets(EdgeInsets(top: 6, leading: 0, bottom: 6, trailing: 0))
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
             }
             if model.hasNextPage || model.nextPageError != nil {
                 nextPageRow
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
             }
         }
     }
