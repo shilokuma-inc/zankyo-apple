@@ -25,6 +25,8 @@
 - `URLSession.bytes(for:)` を 1 バイトずつ読むのは遅い（Debug の Simulator で 2MB に 40 秒近くかかる）。譜面 ZIP のような数 MB 以上はデータタスクの delegate で塊ごとに受ける（2026-10-07）
 - `FileHandle.read(upToCount:)` は末尾に達すると空の `Data` ではなく `nil` を返す。`nil` をエラー扱いすると、ファイルを読み終えたところで失敗する（2026-10-07）
 - 難易度譜面 v2 の BPM 変化は `_events` の type 100（`_floatValue` が BPM）と、エディタ拡張の `_BPMChanges`（`_BPM`。`_bpm` の表記もある）の 2 通りで書かれる。v3 は `bpmEvents`（`b` / `m`）で、拍 0 の変化は Info.dat の BPM を置き換える。初期の v2 には `_version` が無いものがある（2026-10-07）
+- beatsaver の `hash` は譜面 ZIP 全体の SHA-1 ではない。`Info.dat` と譜面ファイルの中身をつなげた SHA-1 で、v2 / v3 は `Info.dat` → 各 `_beatmapFilename`、v4 は `Info.dat` → `audioDataFilename` → 難易度ごとに `beatmapDataFilename`・`lightshowDataFilename`（同じファイルを指していても毎回足す）の順。実在の譜面で一致を確かめた（`MapHash`）（2026-10-08）
+- 実在の譜面にはライトショーや難易度譜面が 1 ファイル 27MB 近いものがある（`BeatmapParser.maxBytes` の 20MB を超える）（2026-10-08）
 
 ## モーション入力（AirPods）
 
