@@ -13,8 +13,8 @@ nonisolated enum BeatmapParseError: Error, Equatable, Sendable {
 
 /// 難易度譜面（`.dat`）を読み、ノーツを曲の先頭からの秒に置く。ZIP の中身は信用しない入力として扱う
 nonisolated enum BeatmapParser {
-    /// 譜面ファイルの上限。ライティングのイベントが多い譜面でも数 MB に収まる
-    static let maxBytes = 20 * 1_024 * 1_024
+    /// 譜面ファイルの上限。ライティングのイベントが多い譜面には 1 ファイル 27MB 近いものがあるので、余裕を持たせる
+    static let maxBytes = 64 * 1_024 * 1_024
     /// 読み込むノーツの上限（ExpertPlus の長い曲でも数千個）
     static let maxNotes = 20_000
 
