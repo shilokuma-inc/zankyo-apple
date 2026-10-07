@@ -99,11 +99,19 @@ private struct LibraryRow: View {
     let entry: LibraryEntry
     let size: Int64
 
+    /// ジャケット画像。サムネイルと背景の両方に使う
+    @State private var cover: CGImage?
+
     var body: some View {
-        // ジャケット画像は 1 回だけ取りに行き、サムネイルと背景の両方に使う
-        AsyncImage(url: entry.coverURL) { phase in
-            content(cover: phase.image)
-        }
+        content(cover: cover.map { Image(decorative: $0, scale: 1) })
+            .task(id: entry.hash) {
+                // 取り込んだ譜面 ZIP の画像を先に使う（オフラインの電車の中でも出せる）。無ければ取り込んだときの beatsaver の画像を取りに行く
+                if let local = await LocalMapStore().loadListCover(hash: entry.hash) {
+                    cover = local
+                } else if let url = entry.coverURL {
+                    cover = await CoverImageLoader().load(url)
+                }
+            }
     }
 
     /// 1 曲分のカード。`cover` は読み込んだジャケット画像（読み込み中・失敗時は nil）で、サムネイルと背景の両方に使う
