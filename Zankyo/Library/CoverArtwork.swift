@@ -8,22 +8,26 @@ struct CoverArtwork: View {
     /// beatsaver の画像
     let url: URL?
 
+    /// beatsaver から取った画像
+    @State private var remoteImage: CGImage?
+
     var body: some View {
         Group {
-            if let image {
-                Image(decorative: image, scale: 1)
+            if let shown = image ?? remoteImage {
+                Image(decorative: shown, scale: 1)
                     .resizable()
                     .scaledToFill()
             } else {
-                AsyncImage(url: url) { image in
-                    image.resizable().scaledToFill()
-                } placeholder: {
-                    Image(systemName: "music.note")
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(.quaternary)
-                }
+                Image(systemName: "music.note")
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(.quaternary)
             }
+        }
+        .task(id: url) {
+            // 譜面 ZIP の画像があれば取りに行かない。外から来た画像なので、大きさを確かめて縮小してから使う
+            guard image == nil, let url else { return }
+            remoteImage = await CoverImageLoader().load(url)
         }
         .accessibilityHidden(true)
     }
