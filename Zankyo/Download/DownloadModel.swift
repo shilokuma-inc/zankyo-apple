@@ -99,6 +99,8 @@ extension MapDownloadError {
             "beatsaver が応答しませんでした（\(status)）。時間をおいて試してください"
         case .hashMismatch:
             "ダウンロードしたファイルが壊れています。もう一度試してください"
+        case .notZip:
+            "譜面の ZIP ではないため取り込めません"
         case .cancelled:
             "中止しました"
         case .transport(.notConnectedToInternet), .transport(.networkConnectionLost), .transport(.dataNotAllowed):

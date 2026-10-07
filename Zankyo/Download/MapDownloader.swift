@@ -22,6 +22,8 @@ nonisolated enum MapDownloadError: Error, Equatable, Sendable {
     case httpStatus(Int)
     /// 取得した ZIP のハッシュが API の値と一致しない（壊れた・すり替えられた）
     case hashMismatch
+    /// ZIP の形式ではない（エラーページなどが返ってきた）
+    case notZip
     /// 中止した
     case cancelled
     /// 通信エラー（オフラインなど）
@@ -78,6 +80,7 @@ nonisolated struct MapDownloader: MapDownloading {
 
         let size = (try? temporary.resourceValues(forKeys: [.fileSizeKey]).fileSize).map(Int64.init) ?? .max
         guard size <= maxBytes else { throw .tooLarge }
+        guard try Self.hasZipSignature(temporary) else { throw .notZip }
         guard try Self.sha1(of: temporary) == version.hash.lowercased() else { throw .hashMismatch }
 
         let destination = fileURL(hash: version.hash)
@@ -125,6 +128,20 @@ nonisolated struct MapDownloader: MapDownloading {
     private func fileURL(hash: String) -> URL {
         // hash は 16 進数 40 桁に検証済みなので、パスの区切りや `..` は入らない
         directory.appending(path: "\(hash.lowercased()).zip", directoryHint: .notDirectory)
+    }
+
+    /// ZIP の先頭の署名（ローカルファイルヘッダ `PK\u{3}\u{4}`、空の ZIP なら終端レコード `PK\u{5}\u{6}`）を持つか。
+    /// 中身の展開と検証は ZIP の展開で行うので、ここでは ZIP 以外のものを保存しないことだけを確かめる
+    private static func hasZipSignature(_ file: URL) throws(MapDownloadError) -> Bool {
+        guard let handle = try? FileHandle(forReadingFrom: file) else { throw .storage }
+        defer { try? handle.close() }
+        let head: Data?
+        do {
+            head = try handle.read(upToCount: 4)
+        } catch {
+            throw .storage
+        }
+        return head.map { [Data([0x50, 0x4B, 0x03, 0x04]), Data([0x50, 0x4B, 0x05, 0x06])].contains($0) } ?? false
     }
 
     /// ファイルの SHA-1（beatsaver の `hash` と同じ形式の小文字 16 進数）

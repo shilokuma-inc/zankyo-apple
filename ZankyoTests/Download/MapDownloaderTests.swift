@@ -49,6 +49,22 @@ nonisolated struct MapDownloaderTests {
     }
 
     @Test
+    func rejectsNonZipBody() async throws {
+        let directory = try Self.temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        // ハッシュが一致しても、ZIP の署名が無いものは保存しない
+        let body = Data("<html>not found</html>".utf8)
+        let hash = Self.sha1(body)
+        let session = StubURLProtocol.makeSession { try Self.response($0, body: body) }
+        let downloader = MapDownloader(session: session, directory: directory)
+
+        await #expect(throws: MapDownloadError.notZip) {
+            try await downloader.download(try Self.version(hash: hash)) { _ in }
+        }
+        #expect(downloader.downloadedFile(hash: hash) == nil)
+    }
+
+    @Test
     func rejectsOversizedZip() async throws {
         let directory = try Self.temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
