@@ -1,13 +1,5 @@
 import CryptoKit
 import Foundation
-import ZIPFoundation
-
-nonisolated enum MapHashError: Error, Equatable, Sendable {
-    /// ZIP として読めない・`Info.dat` や譜面ファイルが無い・名前が不正
-    case invalidMap
-    /// 展開した量の合計が上限を超えた
-    case tooLarge
-}
 
 /// beatsaver の `hash`（譜面ハッシュ）を、取得した ZIP の中身から計算する。
 ///
@@ -15,26 +7,18 @@ nonisolated enum MapHashError: Error, Equatable, Sendable {
 /// - v2 / v3: `Info.dat` → `_difficultyBeatmapSets` の各 `_beatmapFilename`
 /// - v4: `Info.dat` → `audio.audioDataFilename` → 各 `difficultyBeatmaps` の `beatmapDataFilename`・`lightshowDataFilename`
 ///
-/// どちらも出てきた順で、同じファイルを何度指していても毎回足す。ZIP の中身は信用しない入力として扱い、大きさと名前を検証する
+/// どちらも出てきた順で、同じファイルを何度指していても毎回足す。ZIP の中身の扱いは `MapArchive` に任せる
 nonisolated enum MapHash {
     /// ハッシュの対象として展開する量の合計の上限（ZIP 爆弾よけ）。展開しながらハッシュに足すのでメモリには載せない。
     /// ライトショーだけで 1 ファイル 20MB を超え、複数の難易度で同じものを指す譜面もあるので、ZIP の上限より大きく取る
     static let maxTotalBytes: UInt64 = 256 * 1_024 * 1_024
     /// ハッシュの対象にするファイル数の上限
     static let maxFiles = 256
-    /// ZIP の中のファイル数の上限（中央ディレクトリが巨大なものは読まない）
-    static let maxEntries = 4_096
 
-    static func compute(zipAt url: URL, maxTotalBytes: UInt64 = maxTotalBytes) throws(MapHashError) -> String {
-        let archive: Archive
-        do {
-            archive = try Archive(url: url, accessMode: .read)
-        } catch {
-            throw .invalidMap
-        }
-        let entries = try entriesByName(archive)
-        guard let infoEntry = entries["info.dat"] else { throw .invalidMap }
-        let info = try read(infoEntry, in: archive, limit: UInt64(SongInfoParser.maxBytes))
+    static func compute(zipAt url: URL, maxTotalBytes: UInt64 = maxTotalBytes) throws(MapArchiveError) -> String {
+        let archive = try MapArchive(url: url)
+        guard let infoEntry = archive.entry(named: "Info.dat") else { throw .invalidMap }
+        let info = try archive.read(infoEntry, limit: UInt64(SongInfoParser.maxBytes))
         let filenames = try hashedFilenames(info: info)
         guard filenames.count <= maxFiles else { throw .tooLarge }
 
@@ -42,26 +26,15 @@ nonisolated enum MapHash {
         hasher.update(data: info)
         var remaining = maxTotalBytes
         for filename in filenames {
-            guard let entry = entries[filename.lowercased()] else { throw .invalidMap }
-            let size = try stream(entry, in: archive, limit: remaining) { hasher.update(data: $0) }
+            guard let entry = archive.entry(named: filename) else { throw .invalidMap }
+            let size = try archive.stream(entry, limit: remaining) { hasher.update(data: $0) }
             remaining -= size
         }
         return hasher.finalize().map { String(format: "%02x", $0) }.joined()
     }
 
-    /// ZIP 直下のファイルを、小文字にした名前で引けるようにする（Beat Saber はファイル名の大文字・小文字を区別しない）
-    private static func entriesByName(_ archive: Archive) throws(MapHashError) -> [String: Entry] {
-        var entries: [String: Entry] = [:]
-        for (index, entry) in archive.enumerated() {
-            guard index < maxEntries else { throw .tooLarge }
-            guard entry.type == .file, let name = SongInfoParser.validFilename(entry.path) else { continue }
-            entries[name.lowercased()] = entries[name.lowercased()] ?? entry
-        }
-        return entries
-    }
-
     /// ハッシュに足すファイルの名前を、足す順に返す
-    private static func hashedFilenames(info: Data) throws(MapHashError) -> [String] {
+    private static func hashedFilenames(info: Data) throws(MapArchiveError) -> [String] {
         let decoder = JSONDecoder()
         var names: [String?] = []
         do {
@@ -87,42 +60,10 @@ nonisolated enum MapHash {
             throw .invalidMap
         }
         guard !names.isEmpty else { throw .invalidMap }
-        return try names.map { name throws(MapHashError) in
+        return try names.map { name throws(MapArchiveError) in
             guard let valid = SongInfoParser.validFilename(name) else { throw .invalidMap }
             return valid
         }
-    }
-
-    private static func read(_ entry: Entry, in archive: Archive, limit: UInt64) throws(MapHashError) -> Data {
-        var data = Data()
-        _ = try stream(entry, in: archive, limit: limit) { data.append($0) }
-        return data
-    }
-
-    /// 展開しながら塊ごとに渡し、展開した量を返す。宣言された大きさと、実際に展開した量の両方で上限を確かめる
-    private static func stream(
-        _ entry: Entry,
-        in archive: Archive,
-        limit: UInt64,
-        consume: (Data) -> Void
-    ) throws(MapHashError) -> UInt64 {
-        guard entry.uncompressedSize <= limit else { throw .tooLarge }
-        var received: UInt64 = 0
-        var exceeded = false
-        do {
-            // CRC32 も確かめる（壊れた ZIP はここで失敗する）
-            _ = try archive.extract(entry, skipCRC32: false) { chunk in
-                received += UInt64(chunk.count)
-                guard received <= limit else {
-                    exceeded = true
-                    throw CocoaError(.fileReadTooLarge)
-                }
-                consume(chunk)
-            }
-        } catch {
-            throw exceeded ? .tooLarge : .invalidMap
-        }
-        return received
     }
 }
 

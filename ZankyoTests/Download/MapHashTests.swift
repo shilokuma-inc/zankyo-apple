@@ -74,7 +74,7 @@ nonisolated struct MapHashTests {
         let zip = try Self.write([("Info.dat", Self.infoV2), ("Easy.dat", Data("easy".utf8))])
         defer { try? FileManager.default.removeItem(at: zip) }
 
-        #expect(throws: MapHashError.invalidMap) {
+        #expect(throws: MapArchiveError.invalidMap) {
             try MapHash.compute(zipAt: zip)
         }
     }
@@ -84,7 +84,7 @@ nonisolated struct MapHashTests {
         let zip = try Self.write([("Easy.dat", Data("easy".utf8))])
         defer { try? FileManager.default.removeItem(at: zip) }
 
-        #expect(throws: MapHashError.invalidMap) {
+        #expect(throws: MapArchiveError.invalidMap) {
             try MapHash.compute(zipAt: zip)
         }
     }
@@ -95,7 +95,7 @@ nonisolated struct MapHashTests {
         let zip = try Self.write([("Info.dat", info), ("Easy.dat", Data("easy".utf8))])
         defer { try? FileManager.default.removeItem(at: zip) }
 
-        #expect(throws: MapHashError.invalidMap) {
+        #expect(throws: MapArchiveError.invalidMap) {
             try MapHash.compute(zipAt: zip)
         }
     }
@@ -107,7 +107,7 @@ nonisolated struct MapHashTests {
         let zip = try Self.write([("Info.dat", info), ("Easy.dat", beatmap)])
         defer { try? FileManager.default.removeItem(at: zip) }
 
-        #expect(throws: MapHashError.tooLarge) {
+        #expect(throws: MapArchiveError.tooLarge) {
             try MapHash.compute(zipAt: zip, maxTotalBytes: 1_023)
         }
         #expect(try MapHash.compute(zipAt: zip, maxTotalBytes: 1_024) == MapDownloaderTests.sha1(info + beatmap))
@@ -118,7 +118,7 @@ nonisolated struct MapHashTests {
         let zip = try Self.write(raw: Data("PK\u{3}\u{4} broken".utf8))
         defer { try? FileManager.default.removeItem(at: zip) }
 
-        #expect(throws: MapHashError.invalidMap) {
+        #expect(throws: MapArchiveError.invalidMap) {
             try MapHash.compute(zipAt: zip)
         }
     }
