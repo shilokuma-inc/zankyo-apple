@@ -55,8 +55,10 @@ nonisolated enum VorbisDecoder {
             // 途中の欠け（ページの抜け）は飛ばして続ける
             if read == Int(OV_HOLE) { continue }
             guard read >= 0 else { throw .unreadable }
-            // 連結された別のストリームで形式が変わったら、そこまでにする
-            guard read > 0, ov_info(&file, -1)?.pointee.channels == Int32(format.channelCount), let pcm else { break }
+            // 連結された別のストリームで形式（チャンネル数・サンプルレート）が変わったら、そこまでにする
+            guard read > 0, let current = ov_info(&file, -1)?.pointee,
+                  current.channels == Int32(format.channelCount), Double(current.rate) == format.sampleRate,
+                  let pcm else { break }
             try writer.append(pcm, frames: read)
         }
         return try writer.finish()
