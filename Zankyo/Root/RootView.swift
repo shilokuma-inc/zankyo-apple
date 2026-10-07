@@ -13,6 +13,8 @@ struct RootView: View {
     @State private var downloads: DownloadModel
     @State private var calibration: CalibrationModel
     @State private var library: LibraryStore
+    @State private var highScores = HighScoreStore()
+    private let motionInput: any MotionInput
 
     init(
         client: any BeatsaverClient,
@@ -25,11 +27,18 @@ struct RootView: View {
         _library = State(initialValue: library)
         _downloads = State(initialValue: DownloadModel(downloader: downloader, library: library))
         _calibration = State(initialValue: CalibrationModel(input: motionInput, metronome: metronome))
+        self.motionInput = motionInput
     }
 
     var body: some View {
         TabView(selection: $selection) {
-            LibraryView(library: library, downloads: downloads, onSearch: { selection = .search })
+            LibraryView(
+                library: library,
+                downloads: downloads,
+                input: motionInput,
+                highScores: highScores,
+                onSearch: { selection = .search }
+            )
                 .tabItem { Label("ライブラリ", systemImage: "music.note.list") }
                 .tag(Tab.library)
             SearchView(model: searchModel, downloads: downloads)

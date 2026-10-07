@@ -16,6 +16,9 @@
 - テストターゲットも MainActor が既定。`StubURLProtocol` のハンドラ（`@Sendable`）からテスト型の static を呼ぶなら、テストの型を `nonisolated struct` にする（2026-10-07）
 - 同じ Simulator で 2 つの `xcodebuild test` を同時に走らせると、互いのテストホストを落とす（「Test crashed with signal term before establishing connection」と `simctl` が見つからないというログが出る）。テストは直列に流す（2026-10-07）
 - Swift Testing の `#expect` / `#require` の中で `mutating` なメソッドを呼ぶと、マクロの展開先で「immutable value」のコンパイルエラーになる。結果をいったん `let` に受けてから検証する（2026-10-07）
+- `SWIFT_APPROACHABLE_CONCURRENCY = YES` なので、`nonisolated` な async 関数も呼び出し元のアクター（MainActor）で動く。ZIP の展開・ハッシュ・パース・デコードのような重い処理は `@concurrent` を付けてメインスレッドから外す。戻り値が Sendable でない型（`AVAudioPCMBuffer` を持つクラスなど）は `sending` で返す（2026-10-08）
+- テスト用の Ogg Vorbis は、libvorbis の `examples/encoder_example.c`（44.1kHz・ステレオの WAV を標準入力で受ける）を clang でビルドして作れる。afconvert は Vorbis でエンコードできない。テストバンドルの素材は `ZankyoTests/Fixtures/` に置けばフォルダ同期で入る（2026-10-08）
+- `List` の行全体を `NavigationLink` にすると、行の中の `Link` は `.borderless` を付けていても行のタップと重なり、行の中央をタップしただけで Safari が開くことがある。行の中にはリンクを置かない（2026-10-08）
 
 ## beatsaver / 譜面
 
@@ -27,6 +30,8 @@
 - 難易度譜面 v2 の BPM 変化は `_events` の type 100（`_floatValue` が BPM）と、エディタ拡張の `_BPMChanges`（`_BPM`。`_bpm` の表記もある）の 2 通りで書かれる。v3 は `bpmEvents`（`b` / `m`）で、拍 0 の変化は Info.dat の BPM を置き換える。初期の v2 には `_version` が無いものがある（2026-10-07）
 - beatsaver の `hash` は譜面 ZIP 全体の SHA-1 ではない。`Info.dat` と譜面ファイルの中身をつなげた SHA-1 で、v2 / v3 は `Info.dat` → 各 `_beatmapFilename`、v4 は `Info.dat` → `audioDataFilename` → 難易度ごとに `beatmapDataFilename`・`lightshowDataFilename`（同じファイルを指していても毎回足す）の順。実在の譜面で一致を確かめた（`MapHash`）（2026-10-08）
 - 実在の譜面にはライトショーや難易度譜面が 1 ファイル 27MB 近いものがある（`BeatmapParser.maxBytes` の 20MB を超える）（2026-10-08）
+- 最近の譜面は難易度譜面が v4（`"version": "4.x"`、`colorNotes` と `colorNotesData` に分かれた形式）のものが多い。Info.dat が v4 でも難易度譜面が v3 のこともあるので、遊べるかは難易度譜面ごとに決まる（2026-10-08）
+- 実在の譜面の音源は 44.1kHz と 48kHz が混在し、モノラルもある。3 分前後の曲は Simulator（Debug）で 1 秒前後でデコードできる（2026-10-08）
 
 ## モーション入力（AirPods）
 
