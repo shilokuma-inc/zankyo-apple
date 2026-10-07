@@ -28,19 +28,30 @@ nonisolated struct CutEvent: Sendable, Hashable {
 
 /// 角速度のピークから「切る」動きを検出する。加速度は使わない（電車の揺れは直線加速度に乗るため）
 ///
-/// 角速度の大きい方の軸（yaw / pitch）が `threshold` を超えてから `releaseRatio` を下回るまでを 1 回の振りとみなし、
+/// 閾値に対する割合の大きい方の軸（yaw / pitch）が、その軸の閾値を超えてから `releaseRatio` を下回るまでを 1 回の振りとみなし、
 /// その間のピークの時刻・向きで 1 つの `CutEvent` を出す。振った後に首を戻す動きは逆向きのピークになるので、
 /// `returnWindow` の間は直前と逆向きの振りを出さない
 nonisolated struct CutDetector: Sendable {
     nonisolated struct Configuration: Sendable, Hashable {
-        /// 振りとみなす角速度（ラジアン毎秒）
-        var threshold: Double = 2.0
+        /// 左右（yaw）の振りとみなす角速度（ラジアン毎秒）
+        var yawThreshold: Double = 2.0
+        /// 上下（pitch・うなずき）の振りとみなす角速度（ラジアン毎秒）。うなずきは首を左右に振るより速く動かしにくいので低くし、
+        /// 利用者が変えられるようにしている（`SwingSensitivityStore`）
+        var pitchThreshold: Double = 1.5
         /// ピークに対してこの割合まで下がったら、振りが終わったとみなす
         var releaseRatio: Double = 0.5
         /// 振りを出した後、向きを問わず次の振りを出さない時間（秒）
         var refractory: TimeInterval = 0.12
         /// 振りを出した後、逆向きの振り（首を戻す動き）を出さない時間（秒）
         var returnWindow: TimeInterval = 0.35
+
+        /// 向きの軸の閾値
+        func threshold(for direction: SwingDirection) -> Double {
+            switch direction {
+            case .left, .right: yawThreshold
+            case .up, .down: pitchThreshold
+            }
+        }
     }
 
     private struct Peak {
@@ -62,7 +73,8 @@ nonisolated struct CutDetector: Sendable {
     /// サンプルを 1 つ受け取り、振りが終わったときだけ `CutEvent` を返す
     mutating func process(_ sample: MotionSample) -> CutEvent? {
         guard sample.yawRate.isFinite, sample.pitchRate.isFinite, sample.timestamp.isFinite else { return nil }
-        let (direction, rate) = Self.dominant(sample)
+        let (direction, rate) = dominant(sample)
+        let threshold = configuration.threshold(for: direction)
 
         var cut: CutEvent?
         if var current = peak {
@@ -79,10 +91,10 @@ nonisolated struct CutDetector: Sendable {
             cut = emit(current)
         }
         // 強い振りの減っていく途中で、同じ向きの振りをもう一度数えない。いったん閾値を下回るまで待つ
-        if rate < configuration.threshold || direction != settling {
+        if rate < threshold || direction != settling {
             settling = nil
         }
-        if peak == nil, settling == nil, rate >= configuration.threshold {
+        if peak == nil, settling == nil, rate >= threshold {
             peak = Peak(timestamp: sample.timestamp, direction: direction, rate: rate)
         }
         return cut
@@ -109,11 +121,16 @@ nonisolated struct CutDetector: Sendable {
         return cut
     }
 
-    /// 角速度の大きい方の軸と、その向き・大きさ。斜めの振りは近い方の軸に丸める
-    private static func dominant(_ sample: MotionSample) -> (SwingDirection, Double) {
-        if abs(sample.yawRate) >= abs(sample.pitchRate) {
-            return (sample.yawRate >= 0 ? .right : .left, abs(sample.yawRate))
+    /// 閾値に対する割合の大きい方の軸と、その向き・角速度。斜めの振りは近い方の軸に丸める
+    ///
+    /// 角速度そのもので比べると、閾値の低い上下の振りが、左右の小さな揺れに負けて振りにならないことがある
+    private func dominant(_ sample: MotionSample) -> (SwingDirection, Double) {
+        let yaw = abs(sample.yawRate)
+        let pitch = abs(sample.pitchRate)
+        // yaw / yawThreshold >= pitch / pitchThreshold を、割り算を使わずに比べる（閾値が 0 でも NaN にしない）
+        if yaw * configuration.pitchThreshold >= pitch * configuration.yawThreshold {
+            return (sample.yawRate >= 0 ? .right : .left, yaw)
         }
-        return (sample.pitchRate >= 0 ? .up : .down, abs(sample.pitchRate))
+        return (sample.pitchRate >= 0 ? .up : .down, pitch)
     }
 }
