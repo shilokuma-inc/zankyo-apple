@@ -50,6 +50,8 @@ final class SongDetailModel {
     @ObservationIgnored private var decoding: Task<Void, Never>?
     /// 直近のデコードに失敗した理由
     @ObservationIgnored private var decodeError: MapLoadError?
+    /// 試聴を求めた回数。止めたときにも増やし、デコードを待っている間に止められた（遊ぶ準備を始めたなど）試聴を鳴らさない
+    @ObservationIgnored private var previewRequest = 0
 
     init(entry: LibraryEntry, maps: LocalMapStore = LocalMapStore(), previewer: any SongPreviewing = SongPreviewPlayer()) {
         self.entry = entry
@@ -107,6 +109,8 @@ final class SongDetailModel {
             return
         }
         guard let info, !isLoadingPreview, preparing == nil else { return }
+        previewRequest += 1
+        let request = previewRequest
         isLoadingPreview = true
         defer { isLoadingPreview = false }
         let song: DecodedSong
@@ -118,14 +122,15 @@ final class SongDetailModel {
             }
             return
         }
-        // デコードの間に画面を離れた・遊び始めたなら鳴らさない
-        guard !Task.isCancelled, preparing == nil, play == nil else { return }
+        // デコードの間に画面を離れた・遊ぶ準備を始めた（失敗して戻った場合も含む）なら鳴らさない
+        guard !Task.isCancelled, request == previewRequest, preparing == nil, play == nil else { return }
         let range = SongPreview.range(startTime: info.previewStartTime, duration: info.previewDuration, songDuration: song.duration)
         // 鳴らせなかったとき（出力の機器が無いなど）は、試聴は遊ぶのに要らないので、ボタンを元に戻すだけにする
         isPreviewing = (try? previewer.play(song, range: range)) != nil
     }
 
     func stopPreview() {
+        previewRequest += 1
         previewer.stop()
         isPreviewing = false
     }
