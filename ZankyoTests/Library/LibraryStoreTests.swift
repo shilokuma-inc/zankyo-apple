@@ -242,6 +242,56 @@ struct LibraryStoreTests {
         #expect(try Data(contentsOf: Self.index(root: root)) == newer)
     }
 
+    @Test
+    func deletesSeveralEntriesAtOnce() throws {
+        let root = try Self.makeRoot()
+        defer { try? FileManager.default.removeItem(at: root) }
+        try Self.writeFiles(root: root, zipBytes: 10, mapFileBytes: 10)
+        let other = String(repeating: "c", count: 40)
+        try Data(repeating: 0x50, count: 10).write(to: Self.zip(root: root, hash: other))
+        let store = Self.store(root: root)
+        try store.add(map: Self.map(id: "1f33"), version: Self.version())
+        let otherEntry = try Self.entry(hash: other)
+        #expect(store.add(otherEntry))
+        store.setFavorite(true, for: otherEntry)
+
+        let failed = store.delete(store.entries)
+
+        #expect(failed.isEmpty)
+        #expect(store.entries.isEmpty)
+        #expect(store.favorites.isEmpty)
+        #expect(store.totalSize == 0)
+        #expect(!FileManager.default.fileExists(atPath: Self.zip(root: root).path(percentEncoded: false)))
+        #expect(!FileManager.default.fileExists(atPath: Self.zip(root: root, hash: other).path(percentEncoded: false)))
+        let reloaded = Self.store(root: root)
+        #expect(reloaded.entries.isEmpty)
+        #expect(reloaded.favorites.isEmpty)
+    }
+
+    @Test
+    func keepsOnlyEntriesThatCannotBeRemoved() throws {
+        let root = try Self.makeRoot()
+        let maps = root.appending(path: "Maps")
+        defer {
+            try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: maps.path(percentEncoded: false))
+            try? FileManager.default.removeItem(at: root)
+        }
+        // 展開したフォルダがある曲（消せない）と、取得した ZIP だけの曲（消せる）
+        try Self.writeFiles(root: root, zipBytes: 10, mapFileBytes: 10)
+        let other = String(repeating: "c", count: 40)
+        try Data(repeating: 0x50, count: 10).write(to: Self.zip(root: root, hash: other))
+        let store = Self.store(root: root)
+        try store.add(map: Self.map(id: "1f33"), version: Self.version())
+        #expect(store.add(try Self.entry(hash: other)))
+        try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: maps.path(percentEncoded: false))
+
+        let failed = store.delete(store.entries)
+
+        #expect(failed.map(\.hash) == [Self.hash])
+        #expect(store.entries.map(\.hash) == [Self.hash])
+        #expect(Self.store(root: root).entries.map(\.hash) == [Self.hash])
+    }
+
     // MARK: - 補助
 
     private static func store(root: URL) -> LibraryStore {
@@ -258,8 +308,15 @@ struct LibraryStoreTests {
         return root
     }
 
-    private static func zip(root: URL) -> URL {
+    private static func zip(root: URL, hash: String = hash) -> URL {
         root.appending(path: "Downloads/\(hash).zip")
+    }
+
+    /// 一覧の行（`entryJSON` の中身）。追加の検証を通る値にする
+    private static func entry(hash: String) throws -> LibraryEntry {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return try decoder.decode(LibraryEntry.self, from: Data(entryJSON(hash: hash, mapID: "2a44", cover: nil).utf8))
     }
 
     private static func mapFolder(root: URL) -> URL {
