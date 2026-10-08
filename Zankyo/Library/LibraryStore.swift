@@ -191,9 +191,36 @@ final class LibraryStore {
     /// - 新しいアプリが書いた一覧を読んでいるとき（読み取り専用）は、一覧と食い違わないようファイルも消さない
     @discardableResult
     func delete(_ entry: LibraryEntry) -> Bool {
-        guard !isReadOnly else { return false }
+        delete([entry]).isEmpty
+    }
+
+    /// 複数の曲をまとめて消し、消せなかった曲を返す。1 曲ずつの `delete(_:)` と同じ規則で消し、一覧のファイルの保存は 1 度にまとめる
+    @discardableResult
+    func delete(_ targets: [LibraryEntry]) -> [LibraryEntry] {
+        guard !isReadOnly else { return targets }
+        var failed: [LibraryEntry] = []
+        var removed: Set<String> = []
+        for entry in targets {
+            if removeFiles(ofHash: entry.hash) {
+                removed.insert(entry.hash)
+            } else {
+                failed.append(entry)
+            }
+        }
+        guard !removed.isEmpty else { return failed }
+        entries.removeAll { removed.contains($0.hash) }
+        for hash in removed {
+            sizes[hash] = nil
+        }
+        favorites.subtract(removed)
+        save()
+        return failed
+    }
+
+    /// 曲のファイル（取得した ZIP・展開したフォルダ）を消す。消せたら（もう無かったものも含めて）true
+    private func removeFiles(ofHash hash: String) -> Bool {
         // hash は読み込み時と追加時に 16 進数 40 桁に検証済みなので、パスの区切りや `..` は入らない
-        for url in files(ofHash: entry.hash) {
+        for url in files(ofHash: hash) {
             // 先に有無を確かめると、親フォルダを読めないときに「無い」と見誤るので、消してみてから判断する
             do {
                 try FileManager.default.removeItem(at: url)
@@ -203,14 +230,10 @@ final class LibraryStore {
                 continue
             } catch {
                 logger.error("曲のファイルを消せなかった: \(error.localizedDescription, privacy: .public)")
-                sizes[entry.hash] = size(ofHash: entry.hash)
+                sizes[hash] = size(ofHash: hash)
                 return false
             }
         }
-        entries.removeAll { $0.hash == entry.hash }
-        sizes[entry.hash] = nil
-        favorites.remove(entry.hash)
-        save()
         return true
     }
 
