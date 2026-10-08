@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "songs": [
+    {
+      "id": "ode-to-joy",
+      "resource": "sample-ode-to-joy",
+      "hash": "ad522b6a9cd523efb02a07d2c1c7c968610ef228",
+      "songName": "歓喜の歌",
+      "songAuthorName": "ベートーヴェン",
+      "mapperName": "斬響"
+    },
+    {
+      "id": "fur-elise",
+      "resource": "sample-fur-elise",
+      "hash": "f388098020708b439171f600ef8f6c51a1518c35",
+      "songName": "エリーゼのために",
+      "songAuthorName": "ベートーヴェン",
+      "mapperName": "斬響"
+    },
+    {
+      "id": "mountain-king",
+      "resource": "sample-mountain-king",
+      "hash": "c6ac66324a67d1ad65d83d6f9d17acbe0279dd16",
+      "songName": "山の魔王の宮殿にて",
+      "songAuthorName": "グリーグ",
+      "mapperName": "斬響"
+    },
+    {
+      "id": "canon",
+      "resource": "sample-canon",
+      "hash": "022679d6715ca7a7a0ab0063a7e933e9e7667fa7",
+      "songName": "カノン",
+      "songAuthorName": "パッヘルベル",
+      "mapperName": "斬響"
+    },
+    {
+      "id": "minuet",
+      "resource": "sample-minuet",
+      "hash": "c4ed7d979faa592330ebf84ea3d5c3e35d00f26d",
+      "songName": "メヌエット ト長調",
+      "songAuthorName": "ペツォールト",
+      "mapperName": "斬響"
+    },
+    {
+      "id": "twinkle",
+      "resource": "sample-twinkle",
+      "hash": "da09edb5f04b2f74d839a4d36c3841c60f62299f",
+      "songName": "きらきら星",
+      "songAuthorName": "フランス民謡",
+      "mapperName": "斬響"
+    },
+    {
+      "id": "neon-drive",
+      "resource": "sample-neon-drive",
+      "hash": "78386b0adc6cc5dda35038e36cddf8513cdd03ad",
+      "songName": "ネオン・ドライブ",
+      "songAuthorName": "斬響",
+      "mapperName": "斬響"
+    },
+    {
+      "id": "zankyo-rush",
+      "resource": "sample-zankyo-rush",
+      "hash": "17723bc3907de5e84eeaf04626ccc750c240961e",
+      "songName": "斬響ラッシュ",
+      "songAuthorName": "斬響",
+      "mapperName": "斬響"
+    }
+  ]
+}

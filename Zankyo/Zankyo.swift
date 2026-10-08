@@ -13,11 +13,16 @@ struct Zankyo: App {
     @State private var motionInput: any MotionInput
     /// 画面に頭の動きを出すため、入力を包んだもの。ゲームとキャリブレーションはこちらを使う
     @State private var motion: MotionMonitor
+    @State private var library: LibraryStore
 
     init() {
         let input = MotionInputFactory.makeDefault()
         _motionInput = State(initialValue: input)
         _motion = State(initialValue: MotionMonitor(base: input, detection: SwingSensitivityStore().configuration))
+        // 取り込みをしなくても遊べるよう、初回はサンプル楽曲をライブラリに入れておく
+        let library = LibraryStore()
+        SampleSongInstaller().installIfNeeded(into: library)
+        _library = State(initialValue: library)
     }
 
     var body: some Scene {
@@ -26,7 +31,8 @@ struct Zankyo: App {
                 client: BeatsaverAPIClient(),
                 downloader: MapDownloader(),
                 motion: motion,
-                metronome: ClickMetronome()
+                metronome: ClickMetronome(),
+                library: library
             )
             #if os(visionOS)
             .modifier(OpensHeadTrackingSpace())

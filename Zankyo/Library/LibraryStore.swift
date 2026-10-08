@@ -15,6 +15,8 @@ nonisolated struct LibraryEntry: Sendable, Hashable, Codable, Identifiable {
     let mapperName: String
     let coverURL: URL?
     let importedAt: Date
+    /// アプリに付属のサンプル楽曲（beatsaver の譜面ではないので、キーと譜面ページが無い）
+    let isSample: Bool
 
     var id: String { hash }
 
@@ -24,9 +26,10 @@ nonisolated struct LibraryEntry: Sendable, Hashable, Codable, Identifiable {
         return song.isEmpty ? name : song
     }
 
-    /// beatsaver の譜面ページ。マッパーへの帰属表示として画面に出す（Discussion #3 Q9）
-    var pageURL: URL {
-        URL(string: "https://beatsaver.com/maps/\(mapID)") ?? BeatsaverHost.site
+    /// beatsaver の譜面ページ。マッパーへの帰属表示として画面に出す（Discussion #3 Q9）。サンプル楽曲には無い
+    var pageURL: URL? {
+        guard !isSample else { return nil }
+        return URL(string: "https://beatsaver.com/maps/\(mapID)") ?? BeatsaverHost.site
     }
 
     init(map: BeatsaverMap, version: BeatsaverMapVersion, importedAt: Date = Date()) {
@@ -39,11 +42,44 @@ nonisolated struct LibraryEntry: Sendable, Hashable, Codable, Identifiable {
         mapperName = map.mapperName
         coverURL = version.coverURL
         self.importedAt = importedAt
+        isSample = false
+    }
+
+    init(sample: SampleSong, importedAt: Date) {
+        hash = sample.hash.lowercased()
+        mapID = ""
+        name = sample.songName
+        songName = sample.songName
+        songSubName = ""
+        songAuthorName = sample.songAuthorName
+        mapperName = sample.mapperName
+        coverURL = nil
+        self.importedAt = importedAt
+        isSample = true
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case hash, mapID, name, songName, songSubName, songAuthorName, mapperName, coverURL, importedAt, isSample
+    }
+
+    init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        hash = try container.decode(String.self, forKey: .hash)
+        mapID = try container.decode(String.self, forKey: .mapID)
+        name = try container.decode(String.self, forKey: .name)
+        songName = try container.decode(String.self, forKey: .songName)
+        songSubName = try container.decode(String.self, forKey: .songSubName)
+        songAuthorName = try container.decode(String.self, forKey: .songAuthorName)
+        mapperName = try container.decode(String.self, forKey: .mapperName)
+        coverURL = try container.decodeIfPresent(URL.self, forKey: .coverURL)
+        importedAt = try container.decode(Date.self, forKey: .importedAt)
+        // サンプル楽曲より前に書いた一覧には無い
+        isSample = try container.decodeIfPresent(Bool.self, forKey: .isSample) ?? false
     }
 
     /// 保存ファイルから読んだ値が使えるか（壊れた・書き換えられた値で、パスや URL を作らない）
     var isValid: Bool {
-        BeatsaverValidation.isValidHash(hash) && BeatsaverValidation.isValidKey(mapID)
+        BeatsaverValidation.isValidHash(hash) && (isSample || BeatsaverValidation.isValidKey(mapID))
             && coverURL.map(BeatsaverHost.isTrusted) ?? true
     }
 }
@@ -133,12 +169,20 @@ final class LibraryStore {
 
     /// 取得し終えた曲を一覧に足す。同じ譜面がすでにあれば、新しい情報で置き換えて先頭に出す
     func add(map: BeatsaverMap, version: BeatsaverMapVersion, importedAt: Date = Date()) {
-        let entry = LibraryEntry(map: map, version: version, importedAt: importedAt)
-        guard entry.isValid else { return }
+        add(LibraryEntry(map: map, version: version, importedAt: importedAt))
+    }
+
+    /// 譜面 ZIP（`Downloads/<hash>.zip`）を置き終えた曲を一覧に足す。同じ譜面がすでにあれば置き換え、取り込んだ日時の順に並べる
+    ///
+    /// - Returns: 一覧のファイルに保存できたら true
+    @discardableResult
+    func add(_ entry: LibraryEntry) -> Bool {
+        guard entry.isValid else { return false }
         entries.removeAll { $0.hash == entry.hash }
-        entries.insert(entry, at: 0)
+        let position = entries.firstIndex { $0.importedAt < entry.importedAt } ?? entries.endIndex
+        entries.insert(entry, at: position)
         sizes[entry.hash] = size(ofHash: entry.hash)
-        save()
+        return save()
     }
 
     /// 曲を消す。取得した ZIP・展開したフォルダ・一覧の行をまとめて消し、消せたら true を返す
@@ -237,15 +281,19 @@ final class LibraryStore {
         refreshSizes()
     }
 
-    private func save() {
-        guard !isReadOnly else { return }
+    /// 保存できたら true
+    @discardableResult
+    private func save() -> Bool {
+        guard !isReadOnly else { return false }
         do {
             try FileManager.default.createDirectory(at: indexURL.deletingLastPathComponent(), withIntermediateDirectories: true)
             let file = LibraryFile(version: Self.fileVersion, entries: entries, favorites: favorites.sorted())
             let data = try Self.encoder.encode(file)
             try data.write(to: indexURL, options: .atomic)
+            return true
         } catch {
             logger.error("ライブラリを保存できなかった: \(error.localizedDescription, privacy: .public)")
+            return false
         }
     }
 

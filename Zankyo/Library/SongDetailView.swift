@@ -169,12 +169,19 @@ private struct SongHeader<Accessory: View>: View {
                     Text(entry.songAuthorName)
                         .font(.headline)
                 }
-                Link(destination: entry.pageURL) {
-                    Label("マッパー: \(entry.mapperName)", systemImage: "arrow.up.right.square")
+                if let pageURL = entry.pageURL {
+                    Link(destination: pageURL) {
+                        Label("マッパー: \(entry.mapperName)", systemImage: "arrow.up.right.square")
+                            .font(.footnote)
+                    }
+                    .buttonStyle(.borderless)
+                    .accessibilityHint("beatsaver の譜面ページを開きます")
+                } else {
+                    // サンプル楽曲には beatsaver の譜面ページが無い
+                    Label("アプリに付属のサンプル楽曲", systemImage: "music.note")
                         .font(.footnote)
+                        .foregroundStyle(.secondary)
                 }
-                .buttonStyle(.borderless)
-                .accessibilityHint("beatsaver の譜面ページを開きます")
                 Text("BPM \(info.bpm, format: .number.precision(.fractionLength(0...1)))")
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
