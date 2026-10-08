@@ -21,6 +21,8 @@ struct HitTarget: View {
     /// 判定の線の上でのノーツの大きさ
     let noteSize: CGFloat
 
+    @Environment(\.palette) private var palette
+
     var body: some View {
         let size = noteSize * PlayfieldGeometry.targetScale
         let remainings = notes.map(\.remaining) + [judgedRemaining].compactMap { $0 }
@@ -28,21 +30,21 @@ struct HitTarget: View {
         ZStack {
             ForEach(notes, id: \.index) { note in
                 if let scale = PlayfieldGeometry.cueScale(remaining: note.remaining) {
-                    let color = NeonTheme.noteColor(for: note.direction).color
+                    let color = palette.noteColor(for: note.direction).color
                     Self.frame(size: size * scale)
                         .stroke(color, lineWidth: 3)
                         .frame(width: size * scale, height: size * scale)
-                        .shadow(color: color, radius: 6)
+                        .shadow(color: palette.glow(color), radius: 6)
                         .opacity(PlayfieldGeometry.cueOpacity(remaining: note.remaining))
                 }
             }
             Self.frame(size: size)
-                .fill(NeonTheme.laser.opacity(0.08 + 0.3 * flash))
+                .fill(palette.laser.opacity(0.08 + 0.3 * flash))
                 .frame(width: size, height: size)
             Self.frame(size: size)
-                .stroke(.white.opacity(0.45 + 0.55 * flash), lineWidth: 2 + 2 * flash)
+                .stroke(palette.ink.opacity(0.45 + 0.55 * flash), lineWidth: 2 + 2 * flash)
                 .frame(width: size, height: size)
-                .shadow(color: NeonTheme.laser.opacity(0.6 + 0.4 * flash), radius: 4 + 10 * flash)
+                .shadow(color: palette.glow(palette.laser, 0.6 + 0.4 * flash), radius: 4 + 10 * flash)
         }
     }
 
@@ -61,5 +63,5 @@ struct HitTarget: View {
         noteSize: 64
     )
     .padding(80)
-    .background(NeonTheme.spaceBottom)
+    .background(ThemePalette.cyberpunk.spaceBottom)
 }

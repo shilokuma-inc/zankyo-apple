@@ -61,8 +61,8 @@ struct JudgementEffect: View {
             if let timing {
                 Text(timing.label)
                     .font(.system(.headline, design: .rounded, weight: .heavy))
-                    .foregroundStyle(timing == .perfect ? NeonTheme.laser : .white.opacity(0.8))
-                    .shadow(color: timing == .perfect ? NeonTheme.laser : .clear, radius: 6)
+                    .foregroundStyle(timing == .perfect ? palette.laser : palette.ink.opacity(0.8))
+                    .shadow(color: timing == .perfect ? palette.glow(palette.laser) : .clear, radius: 6)
             }
         }
     }
