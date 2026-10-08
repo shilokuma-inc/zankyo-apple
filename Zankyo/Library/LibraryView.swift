@@ -22,6 +22,8 @@ struct LibraryView: View {
 
     let library: LibraryStore
     let downloads: DownloadModel
+    /// 曲の試聴。各行のジャケットを押すと試聴し、試聴している行の縁を光らせる
+    let preview: SongPreviewCenter
     let motion: MotionMonitor
     let highScores: HighScoreStore
     let onSearch: () -> Void
@@ -50,11 +52,19 @@ struct LibraryView: View {
                     }
                 } else {
                     list
+                        .alert(
+                            "試聴できません",
+                            isPresented: Binding(get: { preview.error != nil }, set: { if !$0 { preview.error = nil } })
+                        ) {
+                            Button("OK", role: .cancel) {}
+                        } message: {
+                            Text(preview.error ?? "")
+                        }
                 }
             }
             .navigationTitle("ライブラリ")
             .navigationDestination(for: LibraryEntry.self) { entry in
-                SongDetailView(entry: entry, library: library, motion: motion, highScores: highScores)
+                SongDetailView(entry: entry, library: library, preview: preview, motion: motion, highScores: highScores)
             }
             .onAppear { library.refreshSizes() }
             .confirmationDialog(
@@ -136,7 +146,15 @@ struct LibraryView: View {
     private func row(_ entry: LibraryEntry) -> some View {
         let isFavorite = library.isFavorite(entry)
         return NavigationLink(value: entry) {
-            LibraryRow(entry: entry, size: library.sizes[entry.hash] ?? 0, isFavorite: isFavorite)
+            LibraryRow(
+                entry: entry,
+                size: library.sizes[entry.hash] ?? 0,
+                isFavorite: isFavorite,
+                isPreviewing: preview.isPlaying(entry.hash),
+                isLoadingPreview: preview.isLoading(entry.hash)
+            ) {
+                preview.toggle(entry)
+            }
         }
         // List の標準の矢印はカードの外に出てしまうので消し、カードの中に出す
         .navigationLinkIndicatorVisibility(.hidden)
@@ -163,6 +181,10 @@ struct LibraryView: View {
 
     private func delete(_ entry: LibraryEntry) {
         pendingDeletion = nil
+        // 消す曲の試聴は、ファイルを消す前に止める
+        if preview.isPlaying(entry.hash) || preview.isLoading(entry.hash) {
+            preview.stop()
+        }
         if library.delete(entry) {
             downloads.forget(hash: entry.hash)
         } else {
@@ -181,6 +203,14 @@ private struct LibraryRow: View {
     let entry: LibraryEntry
     let size: Int64
     let isFavorite: Bool
+    /// この曲を試聴している（カードの縁を光らせる）
+    let isPreviewing: Bool
+    /// 試聴のために音源を読んでいる
+    let isLoadingPreview: Bool
+    /// ジャケットを押したとき（試聴を始める・止める）
+    let onTogglePreview: () -> Void
+
+    @Environment(\.palette) private var palette
 
     /// ジャケット画像。サムネイルと背景の両方に使う
     @State private var cover: CGImage?
@@ -237,23 +267,81 @@ private struct LibraryRow: View {
                 .accessibilityHidden(true)
         }
         .coverCard(cover)
-    }
-
-    /// 左に出すジャケット画像のサムネイル。画像が無いあいだは音符を出す
-    private func thumbnail(_ cover: Image?) -> some View {
-        Group {
-            if let cover {
-                cover.resizable().scaledToFill()
-            } else {
-                Image(systemName: "music.note")
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(.quaternary)
+        .overlay {
+            if isPreviewing {
+                PreviewGlow(color: palette.accent)
             }
         }
-        .frame(width: 56, height: 56)
-        .clipShape(.rect(cornerRadius: 8))
+    }
+
+    /// 左に出すジャケット画像のサムネイル。押すと試聴を始め・止める（行のほかの部分は曲の詳細へのリンク）。画像が無いあいだは音符を出す
+    private func thumbnail(_ cover: Image?) -> some View {
+        Button(action: onTogglePreview) {
+            Group {
+                if let cover {
+                    cover.resizable().scaledToFill()
+                } else {
+                    Image(systemName: "music.note")
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(.quaternary)
+                }
+            }
+            .frame(width: 56, height: 56)
+            .clipShape(.rect(cornerRadius: 8))
+            .overlay { previewBadge }
+        }
+        // 行のタップ（曲の詳細を開く）と分ける
+        .buttonStyle(.borderless)
+        .accessibilityLabel(isPreviewing || isLoadingPreview ? "試聴を止める" : "試聴する")
+    }
+
+    /// サムネイルの上の試聴の印。読んでいる間は回る
+    private var previewBadge: some View {
+        ZStack {
+            Circle()
+                .fill(.black.opacity(0.5))
+            if isLoadingPreview {
+                ProgressView()
+                    .controlSize(.small)
+                    .tint(.white)
+            } else {
+                Image(systemName: isPreviewing ? "stop.fill" : "play.fill")
+                    .font(.footnote.weight(.bold))
+                    .foregroundStyle(.white)
+            }
+        }
+        .frame(width: 28, height: 28)
         .accessibilityHidden(true)
+    }
+}
+
+/// 試聴している曲のカードの縁の光。ゆっくり明滅させる（視差効果を減らす設定では明滅させない）
+private struct PreviewGlow: View {
+    let color: Color
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        if reduceMotion {
+            border(intensity: 1)
+        } else {
+            PhaseAnimator([0.45, 1.0]) { intensity in
+                border(intensity: intensity)
+            } animation: { _ in
+                .easeInOut(duration: 0.9)
+            }
+        }
+    }
+
+    private func border(intensity: Double) -> some View {
+        RoundedRectangle(cornerRadius: 20, style: .continuous)
+            .strokeBorder(color, lineWidth: 2.5)
+            // 行の上下の余白（6pt）より広げると、隣の行との境で光が切れて角ばって見えるので、その中に収める
+            .shadow(color: color.opacity(0.9 * intensity), radius: 2 + 2 * intensity)
+            .shadow(color: color.opacity(0.7 * intensity), radius: 5 * intensity)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
     }
 }
 
@@ -261,6 +349,7 @@ private struct LibraryRow: View {
     LibraryView(
         library: LibraryStore(),
         downloads: DownloadModel(downloader: MapDownloader()),
+        preview: SongPreviewCenter(),
         motion: MotionMonitor(base: RecordedMotionInput(samples: [])),
         highScores: HighScoreStore(),
         onSearch: {}

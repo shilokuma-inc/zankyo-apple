@@ -17,6 +17,8 @@ struct RootView: View {
     @State private var calibration: CalibrationModel
     @State private var library: LibraryStore
     @State private var highScores = HighScoreStore()
+    /// 曲の試聴。アプリ全体で 1 つにし、一覧と曲の詳細を行き来しても鳴らし続ける
+    @State private var preview = SongPreviewCenter()
     private let motion: MotionMonitor
 
     init(
@@ -38,6 +40,7 @@ struct RootView: View {
             LibraryView(
                 library: library,
                 downloads: downloads,
+                preview: preview,
                 motion: motion,
                 highScores: highScores,
                 onSearch: { selection = .search }
@@ -55,6 +58,12 @@ struct RootView: View {
                 .tag(Tab.settings)
         }
         .appTheme(theme)
+        // クリック音に合わせて測るので、試聴は止める
+        .onChange(of: calibration.isMeasuring) { _, isMeasuring in
+            if isMeasuring {
+                preview.stop()
+            }
+        }
     }
 }
 
