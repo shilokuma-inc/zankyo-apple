@@ -54,6 +54,22 @@ struct SongPreviewCenterTests {
     }
 
     @Test
+    func stoppingThenPressingAnotherSongPlaysOnlyThatSong() async throws {
+        let fixture = try PreviewFixture()
+        defer { fixture.remove() }
+        let center = fixture.center
+
+        // 1 曲目を読んでいる間に、もう一度押して止めてから 2 曲目を押す（1 曲目のデコードの終わりを待ってから読む）
+        center.toggle(fixture.first)
+        center.toggle(fixture.first)
+        #expect(center.loadingHash == nil)
+        center.toggle(fixture.second)
+        try await fixture.waitUntil { center.isPlaying(fixture.second.hash) }
+
+        #expect(fixture.previewer.played.count == 1)
+    }
+
+    @Test
     func stoppingWhileLoadingDoesNotPlay() async throws {
         let fixture = try PreviewFixture()
         defer { fixture.remove() }
