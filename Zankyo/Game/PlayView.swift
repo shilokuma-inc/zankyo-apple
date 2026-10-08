@@ -15,6 +15,8 @@ struct PlayView: View {
     var coverURL: URL?
     /// 結果画面に出す曲の情報（nil なら出さない）
     var song: PlayedSong?
+    /// 背景の光の演出。nil なら光らせない
+    var lights: LightShow?
     /// 最初からやり直す・もう一度遊ぶ（nil ならボタンを出さない）
     var onRetry: (() -> Void)?
     let onExit: () -> Void
@@ -43,6 +45,8 @@ struct PlayView: View {
     @ScaledMetric(relativeTo: .title2) private var judgementLabelHeight: CGFloat = 36
 
     @Environment(\.palette) private var palette
+    /// 「視差効果を減らす」がオンなら、背景の光を点滅させない
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         Group {
@@ -145,7 +149,7 @@ struct PlayView: View {
             }
         }
         .animation(.easeOut(duration: 0.2), value: isMenuShown)
-        .background { PlayfieldBackdrop() }
+        .background { LitPlayfieldBackdrop(lights: lights, session: session) }
         .preferredColorScheme(palette.colorScheme)
     }
 
@@ -173,6 +177,9 @@ struct PlayView: View {
         GeometryReader { proxy in
             let geometry = PlayfieldGeometry(size: proxy.size, approachTime: Self.approachTime)
             ZStack {
+                if let lights {
+                    PlayfieldLights(geometry: geometry, state: reduceMotion ? .calm : lights.state(at: session.currentTime))
+                }
                 PlayfieldLane(geometry: geometry)
                 PlayfieldGrid(geometry: geometry, currentTime: session.currentTime)
                 HitTarget(

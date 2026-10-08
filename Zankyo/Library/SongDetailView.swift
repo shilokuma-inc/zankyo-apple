@@ -253,6 +253,7 @@ struct PlayScreen: View {
                         artist: setup.entry.songAuthorName,
                         difficulty: setup.difficulty.difficulty.displayName
                     ),
+                    lights: setup.lights,
                     onRetry: restart,
                     onExit: onExit
                 )

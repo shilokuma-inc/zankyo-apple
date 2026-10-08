@@ -103,7 +103,8 @@ nonisolated enum SongInfoParser {
                 name: beatmap.difficulty,
                 filename: beatmap.beatmapDataFilename,
                 noteJumpSpeed: beatmap.noteJumpMovementSpeed,
-                noteJumpStartBeatOffset: beatmap.noteJumpStartBeatOffset
+                noteJumpStartBeatOffset: beatmap.noteJumpStartBeatOffset,
+                lightshowFilename: beatmap.lightshowDataFilename
             )
         }
         // v4 はマッパーが難易度ごとにあるので、重複を除いて出てきた順につなぐ
@@ -148,7 +149,8 @@ nonisolated enum SongInfoParser {
         name: String?,
         filename: String?,
         noteJumpSpeed: Double?,
-        noteJumpStartBeatOffset: Double?
+        noteJumpStartBeatOffset: Double?,
+        lightshowFilename: String? = nil
     ) -> DifficultyInfo? {
         guard let difficulty = name.flatMap(BeatmapDifficulty.init(rawValue:)),
               let filename = validFilename(filename) else { return nil }
@@ -157,7 +159,8 @@ nonisolated enum SongInfoParser {
             difficulty: difficulty,
             beatmapFilename: filename,
             noteJumpSpeed: clamp(noteJumpSpeed, to: 0...100),
-            noteJumpStartBeatOffset: clamp(noteJumpStartBeatOffset, to: -10...10)
+            noteJumpStartBeatOffset: clamp(noteJumpStartBeatOffset, to: -10...10),
+            lightshowFilename: validFilename(lightshowFilename)
         )
     }
 
@@ -359,9 +362,11 @@ nonisolated private struct InfoV4Beatmap: Decodable {
     let beatmapDataFilename: String?
     let noteJumpMovementSpeed: Double?
     let noteJumpStartBeatOffset: Double?
+    let lightshowDataFilename: String?
 
     private enum CodingKeys: String, CodingKey {
         case characteristic, difficulty, beatmapAuthors, beatmapDataFilename, noteJumpMovementSpeed, noteJumpStartBeatOffset
+        case lightshowDataFilename
     }
 
     init(from decoder: any Decoder) throws {
@@ -372,6 +377,7 @@ nonisolated private struct InfoV4Beatmap: Decodable {
         beatmapDataFilename = container.lenient(String.self, forKey: .beatmapDataFilename)
         noteJumpMovementSpeed = container.lenient(Double.self, forKey: .noteJumpMovementSpeed)
         noteJumpStartBeatOffset = container.lenient(Double.self, forKey: .noteJumpStartBeatOffset)
+        lightshowDataFilename = container.lenient(String.self, forKey: .lightshowDataFilename)
     }
 }
 

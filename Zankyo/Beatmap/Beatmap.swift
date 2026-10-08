@@ -16,6 +16,8 @@ nonisolated struct Beatmap: Sendable, Hashable {
     let notes: [BeatmapNote]
     /// 拍と秒の対応（BPM 変化・オフセットを反映したもの）
     let timeline: BeatTimeline
+    /// 背景の照明。v2 / v3 は譜面の中の basic event から読む。v4 は別のファイル（ライトショー）にあるので、ここは空
+    var lighting: Lighting = .empty
 }
 
 /// 1 つのノーツ

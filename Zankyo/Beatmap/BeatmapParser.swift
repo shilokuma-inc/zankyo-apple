@@ -81,7 +81,8 @@ nonisolated enum BeatmapParser {
             .sorted { $0.beat < $1.beat }
             .prefix(maxNotes)
         guard !notes.isEmpty else { throw .noNotes }
-        return Beatmap(format: format, notes: Array(notes), timeline: timeline)
+        let lighting = Lighting.from(raw.lightEvents, timeline: timeline)
+        return Beatmap(format: format, notes: Array(notes), timeline: timeline, lighting: lighting)
     }
 
     private static func decode<Value: Decodable>(_ type: Value.Type, from data: Data) throws(BeatmapParseError) -> Value {
@@ -107,6 +108,8 @@ nonisolated private struct RawNote {
 nonisolated private struct RawBeatmap {
     let notes: [RawNote]
     let bpmChanges: [(beat: Double, bpm: Double)]
+    /// 照明の basic event（BPM 変化などの照明でないものも混ざる。照明に直すときに選ぶ）
+    var lightEvents: [BasicLightEvent] = []
 }
 
 // MARK: - JSON の形
@@ -159,7 +162,8 @@ nonisolated private struct BeatmapV2: Decodable {
                     cutDirection: note.cutDirection
                 )
             },
-            bpmChanges: fromEvents + fromChanges
+            bpmChanges: fromEvents + fromChanges,
+            lightEvents: events.map { BasicLightEvent(beat: $0.time, type: $0.type, value: $0.value, floatValue: $0.floatValue) }
         )
     }
 
@@ -180,6 +184,7 @@ nonisolated private struct BeatmapV2: Decodable {
 nonisolated private struct BeatmapV3: Decodable {
     let colorNotes: [BeatmapV3ColorNote]
     let bpmEvents: [BeatmapV3BPMEvent]
+    let basicEvents: [BeatmapV3BasicEvent]
 
     var raw: RawBeatmap {
         RawBeatmap(
@@ -195,12 +200,14 @@ nonisolated private struct BeatmapV3: Decodable {
             bpmChanges: bpmEvents.compactMap { event in
                 guard let beat = event.beat, let bpm = event.bpm else { return nil }
                 return (beat, bpm)
-            }
+            },
+            lightEvents: basicEvents.map { BasicLightEvent(beat: $0.beat, type: $0.type, value: $0.value, floatValue: $0.floatValue) }
         )
     }
 
     private enum CodingKeys: String, CodingKey {
         case colorNotes, bpmEvents
+        case basicEvents = "basicBeatmapEvents"
     }
 
     init(from decoder: any Decoder) throws {
@@ -208,6 +215,7 @@ nonisolated private struct BeatmapV3: Decodable {
         // 爆弾（`bombNotes`）・壁・アーク・チェーンは使わないので読まない
         colorNotes = container.lenient(LossyDecodableArray<BeatmapV3ColorNote>.self, forKey: .colorNotes)?.elements ?? []
         bpmEvents = container.lenient(LossyDecodableArray<BeatmapV3BPMEvent>.self, forKey: .bpmEvents)?.elements ?? []
+        basicEvents = container.lenient(LossyDecodableArray<BeatmapV3BasicEvent>.self, forKey: .basicEvents)?.elements ?? []
     }
 }
 
@@ -320,11 +328,13 @@ nonisolated private struct BeatmapV2Note: Decodable {
 nonisolated private struct BeatmapV2Event: Decodable {
     let time: Double?
     let type: Int?
+    let value: Int?
     let floatValue: Double?
 
     private enum CodingKeys: String, CodingKey {
         case time = "_time"
         case type = "_type"
+        case value = "_value"
         case floatValue = "_floatValue"
     }
 
@@ -332,6 +342,30 @@ nonisolated private struct BeatmapV2Event: Decodable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         time = container.lenient(Double.self, forKey: .time)
         type = container.lenient(Int.self, forKey: .type)
+        value = container.lenient(Int.self, forKey: .value)
+        floatValue = container.lenient(Double.self, forKey: .floatValue)
+    }
+}
+
+/// v3 の basic event（`basicBeatmapEvents`）。`b` 拍・`et` 種類・`i` 値・`f` 明るさ
+nonisolated private struct BeatmapV3BasicEvent: Decodable {
+    let beat: Double?
+    let type: Int?
+    let value: Int?
+    let floatValue: Double?
+
+    private enum CodingKeys: String, CodingKey {
+        case beat = "b"
+        case type = "et"
+        case value = "i"
+        case floatValue = "f"
+    }
+
+    init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        beat = container.lenient(Double.self, forKey: .beat)
+        type = container.lenient(Int.self, forKey: .type)
+        value = container.lenient(Int.self, forKey: .value)
         floatValue = container.lenient(Double.self, forKey: .floatValue)
     }
 }

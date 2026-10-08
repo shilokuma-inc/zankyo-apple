@@ -32,6 +32,7 @@
 - 一覧をスクロールした先の PR 用スクリーンショットは、コミットしない一時的な UI テストで `swipeUp` してから `XCUIScreen.main.screenshot().pngRepresentation` を書き出せば、Simulator を操作する許可が無くても撮れる。書き出し先は `TEST_RUNNER_SHOT_DIR=…` のように `TEST_RUNNER_` を付けた環境変数で `xcodebuild test` から渡す（2026-10-09）
 - 結果画面の PR 用の画面は、コミットしない一時的な UI テストで `-ZankyoDemoMotion` を付けて起動し、ライブラリの先頭の曲（歓喜の歌・約 62 秒）を「Easy でスタート」で始めて最後まで待てば、FINISH から結果画面まで録画できる。デモの首振りはノーツに合わないので、ランク E・0 点になる。良い成績の見た目は、一時的なユニットテストでホストアプリのウィンドウに `ResultView` を載せ、登場アニメーションが終わるまで（約 3 秒）待ってから `drawHierarchy` で書き出す（2026-10-09）
 - SwiftLint はビルドのプラグインでも走るので、コミットしない一時的なテストでも違反（長い行・`large_tuple` など）があるとビルドが止まる。一時的なテストは先頭で `// swiftlint:disable` するか、規則に合わせて書く（2026-10-09）
+- SwiftUI の `Canvas` で、楕円の `Path` を円の `radialGradient` で塗ると、楕円の縁で色が途切れて段差に見える。円のグラデーションを `drawLayer` の中で `scaleBy(x:y:)` して楕円にすると、縁まで滑らかに消える（2026-10-09）
 
 ## beatsaver / 譜面
 
@@ -46,6 +47,7 @@
 - 最近の譜面は難易度譜面が v4（`"version": "4.x"`、`colorNotes` と `colorNotesData` に分かれた形式）のものが多い。Info.dat が v4 でも難易度譜面が v3 のこともあるので、遊べるかは難易度譜面ごとに決まる（2026-10-08）
 - 実在の譜面の音源は 44.1kHz と 48kHz が混在し、モノラルもある。3 分前後の曲は Simulator（Debug）で 1 秒前後でデコードできる（2026-10-08）
 - v4 の難易度譜面は `colorNotes`（`b` 拍・`i` 見た目の番号）と `colorNotesData`（`x` `y` `c` `d`）に分かれ、値が 0 のキーは省かれる（`{"b": 912}` は `i` が 0）。BPM の変化は難易度譜面ではなく、Info.dat の `audioDataFilename` の `bpmData`（サンプル位置 `si`〜`ei` が拍 `sb`〜`eb` に対応する区間）に書かれる。速度を変える演出で 1,000 BPM を超える区間もある（2026-10-08）
+- 背景の照明は Beat Saber の basic event（type 0〜4 が光、8 がリングの回転、12 / 13 が左右のレーザーの速さ。value は 0 消灯・1〜4 青・5〜8 赤・9〜12 白で、それぞれ点灯・点滅・フェード・移り変わり）。v2 は `_events`、v3 は `basicBeatmapEvents`（`b` `et` `i` `f`）、v4 は難易度ごとのライトショーのファイル（Info.dat の `lightshowDataFilename`）の `basicEvents` と `basicEventsData`（`t` `i` `f`）。v4 は値が 0 のキーを省くが、明るさ `f` が省かれたら 1 とみなす（0 にすると点けた光が見えない）。付属のサンプル楽曲の譜面には照明が無い（2026-10-09）
 
 ## モーション入力（AirPods）
 
