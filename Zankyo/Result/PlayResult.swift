@@ -20,8 +20,8 @@ nonisolated struct PlayResult: Sendable, Hashable, Codable {
 
     var rank: Rank { Rank(accuracy: accuracy) }
 
-    /// 1 つもミスせずに終えた
-    var isFullCombo: Bool { noteCount > 0 && missCount == 0 }
+    /// 最初から最後までコンボが続いた。ミスのほか、ヘドバンの空振りでコンボが切れても外れる
+    var isFullCombo: Bool { noteCount > 0 && maxCombo >= noteCount }
 }
 
 /// ランク。Beat Saber と同じ達成率の区切り

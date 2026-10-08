@@ -35,6 +35,28 @@ struct PlayResultTests {
     }
 
     @Test
+    func emptySwingBreaksFullCombo() {
+        // ヘドバンで全部のノーツを切っても、途中の空振りでコンボが切れたらフルコンボにしない
+        let notes = (0..<3).map { FaceNote(beat: Double($0), time: 1 + Double($0), direction: nil) }
+        var judge = Judge(notes: notes, breaksComboOnEmptySwing: true)
+        judge.cut(CutEvent(timestamp: 0, direction: .down, peakRate: 4), at: 1)
+        judge.cut(CutEvent(timestamp: 0, direction: .right, peakRate: 4), at: 1.5)
+        judge.cut(CutEvent(timestamp: 0, direction: .down, peakRate: 4), at: 2)
+        judge.cut(CutEvent(timestamp: 0, direction: .down, peakRate: 4), at: 3)
+
+        let broken = judge.result(playedAt: Date())
+        #expect(broken.missCount == 0)
+        #expect(broken.maxCombo == 2)
+        #expect(!broken.isFullCombo)
+
+        var clean = Judge(notes: notes, breaksComboOnEmptySwing: true)
+        for time in [1.0, 2, 3] {
+            clean.cut(CutEvent(timestamp: 0, direction: .down, peakRate: 4), at: time)
+        }
+        #expect(clean.result(playedAt: Date()).isFullCombo)
+    }
+
+    @Test
     func emptyBeatmapHasZeroAccuracy() {
         #expect(Self.result(score: 0, maxScore: 0).accuracy == 0)
     }
