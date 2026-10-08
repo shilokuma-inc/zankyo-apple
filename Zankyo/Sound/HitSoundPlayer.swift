@@ -23,6 +23,8 @@ final class EngineHitSoundPlayer: HitSoundPlaying {
     private let players: [AVAudioPlayerNode]
     private let buffer: AVAudioPCMBuffer?
     private var nextVoice = 0
+    /// 鳴らした回の番号。試し聞きで、前の回の鳴り終わりが今の回を止めないようにする
+    private var playCount = 0
 
     init(settings: HitSoundSettings, managesAudioSession: Bool = false) {
         self.settings = settings
@@ -59,8 +61,19 @@ final class EngineHitSoundPlayer: HitSoundPlaying {
         // いちばん前に鳴らしたノードを使い回す（鳴り終わっていなければ、その音だけ止まる）
         let player = players[nextVoice]
         nextVoice = (nextVoice + 1) % players.count
+        playCount += 1
         player.stop()
-        player.scheduleBuffer(buffer, at: nil)
+        if managesAudioSession {
+            // 試し聞きは 1 回鳴らすだけなので、鳴り終わったらエンジンを止めてオーディオセッションを返す（ほかのアプリの音を止め続けない）
+            player.scheduleBuffer(
+                buffer,
+                at: nil,
+                completionCallbackType: .dataPlayedBack,
+                completionHandler: Self.finishedHandler(for: self, playCount: playCount)
+            )
+        } else {
+            player.scheduleBuffer(buffer, at: nil)
+        }
         player.play()
     }
 
@@ -72,6 +85,21 @@ final class EngineHitSoundPlayer: HitSoundPlaying {
             try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
         }
         #endif
+    }
+
+    private func finished(playCount: Int) {
+        guard playCount == self.playCount else { return }
+        stop()
+    }
+
+    // 鳴り終わりは音声のスレッドで呼ばれるので、MainActor に隔離されないクロージャを nonisolated な関数で作る
+    nonisolated private static func finishedHandler(
+        for player: EngineHitSoundPlayer,
+        playCount: Int
+    ) -> AVAudioPlayerNodeCompletionHandler {
+        { [weak player] _ in
+            Task { @MainActor [player] in player?.finished(playCount: playCount) }
+        }
     }
 
     private static func makeBuffer(sound: HitSound, format: AVAudioFormat) -> AVAudioPCMBuffer? {
