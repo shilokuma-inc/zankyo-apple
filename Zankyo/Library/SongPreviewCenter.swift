@@ -54,7 +54,10 @@ final class SongPreviewCenter {
                 guard !Task.isCancelled, request == current else { return }
                 let song = try await maps.loadSong(hash: entry.hash, info: info)
                 guard request == current else { return }
-                play(song, info: info, hash: entry.hash)
+                // 一覧では、押しても何も起きないように見えないよう、鳴らせなかったことを知らせる
+                if !play(song, info: info, hash: entry.hash) {
+                    self.error = "試聴を再生できませんでした。ほかのアプリで音を再生していないか確かめてください。"
+                }
             } catch {
                 guard request == current else { return }
                 loadingHash = nil
