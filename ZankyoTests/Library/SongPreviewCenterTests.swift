@@ -98,6 +98,21 @@ struct SongPreviewCenterTests {
     }
 
     @Test
+    func reportsPreviewThatCannotStart() async throws {
+        // 出力の機器が無いなどで鳴らせない
+        let fixture = try PreviewFixture()
+        defer { fixture.remove() }
+        fixture.previewer.failsToPlay = true
+        let center = fixture.center
+
+        center.toggle(fixture.first)
+        try await fixture.waitUntil { center.error != nil }
+
+        #expect(center.playingHash == nil)
+        #expect(center.loadingHash == nil)
+    }
+
+    @Test
     func previewFromDetailKeepsPlayingAfterLeaving() async throws {
         let fixture = try PreviewFixture()
         defer { fixture.remove() }
@@ -212,8 +227,13 @@ private struct PreviewFixture {
 private final class PreviewRecorder: SongPreviewing {
     private(set) var isPlaying = false
     private(set) var played: [Range<TimeInterval>] = []
+    /// 鳴らせないふりをする
+    var failsToPlay = false
 
     func play(_ song: DecodedSong, range: Range<TimeInterval>) throws {
+        if failsToPlay {
+            throw SongPreviewError.emptyRange
+        }
         played.append(range)
         isPlaying = true
     }
