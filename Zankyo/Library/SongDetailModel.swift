@@ -117,7 +117,8 @@ final class SongDetailModel {
         do {
             song = try await loadedSong(info: info)
         } catch {
-            if !Task.isCancelled {
+            // 止められた試聴の失敗は出さない（遊ぶ準備の失敗の知らせを上書きしないため）
+            if !Task.isCancelled, request == previewRequest {
                 playError = error.message
             }
             return
