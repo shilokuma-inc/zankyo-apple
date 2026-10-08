@@ -18,7 +18,7 @@ struct LibraryStoreTests {
         let entry = try #require(store.entries.first)
         #expect(entry.hash == Self.hash)
         #expect(entry.mapID == "1f33")
-        #expect(entry.pageURL.absoluteString == "https://beatsaver.com/maps/1f33")
+        #expect(entry.pageURL?.absoluteString == "https://beatsaver.com/maps/1f33")
         #expect(store.sizes[Self.hash] ?? 0 >= 5_120)
         #expect(store.totalSize == store.sizes[Self.hash])
 
