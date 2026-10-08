@@ -38,12 +38,17 @@ final class SongPreviewCenter {
             stop()
             return
         }
+        // 止めても、始まったデコードは途中で止まらない。続けて押したときにデコードを重ねない（長い曲は数百 MB になる）よう、前の読み込みが終わるのを待つ
+        let previous = loading
         stop()
         let current = request
         loadingHash = entry.hash
         loading = Task {
+            await previous?.value
+            guard !Task.isCancelled, request == current else { return }
             do throws(MapLoadError) {
                 let info = try await maps.loadInfo(hash: entry.hash)
+                guard !Task.isCancelled, request == current else { return }
                 let song = try await maps.loadSong(hash: entry.hash, info: info)
                 guard request == current else { return }
                 play(song, info: info, hash: entry.hash)
