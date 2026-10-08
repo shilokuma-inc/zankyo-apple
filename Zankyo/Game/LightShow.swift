@@ -115,15 +115,24 @@ nonisolated struct LightShow: Sendable {
         return Lighting(events: events.sorted { $0.time < $1.time }, ringSpins: spins, laserSpeeds: [])
     }
 
-    /// 前に残した点滅から `minimumFlashInterval` より近い点滅を除く（点灯・消灯は残す）
+    /// 前に残した点滅から `minimumFlashInterval` より近い点滅は、強く光らせずに置き換える（flash は点灯、fade は消灯）。
+    /// イベントを捨てると、色の変わり目や消える合図まで落ちて、前の光が残ってしまうため
     private static func throttled(_ events: [LightEvent]) -> [LightEvent] {
         var result: [LightEvent] = []
         var lastFlash = -TimeInterval.infinity
         for event in events {
-            if event.action == .flash || event.action == .fade {
-                guard event.time - lastFlash >= minimumFlashInterval else { continue }
-                lastFlash = event.time
+            guard event.action == .flash || event.action == .fade else {
+                result.append(event)
+                continue
             }
+            guard event.time - lastFlash >= minimumFlashInterval else {
+                let calmed: LightAction = event.action == .fade ? .off : .on
+                result.append(
+                    LightEvent(time: event.time, group: event.group, action: calmed, color: event.color, brightness: event.brightness)
+                )
+                continue
+            }
+            lastFlash = event.time
             result.append(event)
         }
         return result
