@@ -2,6 +2,7 @@ import SwiftUI
 
 /// 取り込んだ曲の詳細。難易度を選んで「スタート」を押すと、ノーツと音源を用意してプレイ画面を出す（曲は自動で始まる）
 struct SongDetailView: View {
+    let library: LibraryStore
     let motion: MotionMonitor
     let highScores: HighScoreStore
 
@@ -11,7 +12,8 @@ struct SongDetailView: View {
     /// 選んでいる難易度。未選択なら最初の難易度を使う
     @State private var selection: DifficultyInfo?
 
-    init(entry: LibraryEntry, motion: MotionMonitor, highScores: HighScoreStore) {
+    init(entry: LibraryEntry, library: LibraryStore, motion: MotionMonitor, highScores: HighScoreStore) {
+        self.library = library
         self.motion = motion
         self.highScores = highScores
         _model = State(initialValue: SongDetailModel(entry: entry))
@@ -20,6 +22,17 @@ struct SongDetailView: View {
     var body: some View {
         content
             .navigationTitle(model.entry.title)
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    let isFavorite = library.isFavorite(model.entry)
+                    Button(isFavorite ? "お気に入りから外す" : "お気に入りに追加", systemImage: isFavorite ? "heart.fill" : "heart") {
+                        library.toggleFavorite(model.entry)
+                    }
+                    .tint(.pink)
+                    .symbolEffect(.bounce, value: isFavorite)
+                    .disabled(library.isReadOnly)
+                }
+            }
             .task { await model.load() }
             .onDisappear {
                 preparation?.cancel()

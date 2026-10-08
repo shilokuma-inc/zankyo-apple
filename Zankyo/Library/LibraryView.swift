@@ -1,7 +1,23 @@
 import SwiftUI
 
 /// 取り込み済みの曲の一覧。曲ごとの容量と合計を出し、スワイプか長押しで消せる。曲を選ぶと難易度を選んで遊べる
+///
+/// ハートを付けた曲（お気に入り）だけに絞り込める。ハートは右へのスワイプ・長押しのメニュー・曲の詳細で付け外しする
 struct LibraryView: View {
+    enum Filter: String, CaseIterable, Identifiable {
+        case all
+        case favorites
+
+        var id: Self { self }
+
+        var title: String {
+            switch self {
+            case .all: "すべて"
+            case .favorites: "お気に入り"
+            }
+        }
+    }
+
     let library: LibraryStore
     let downloads: DownloadModel
     let motion: MotionMonitor
@@ -10,6 +26,8 @@ struct LibraryView: View {
 
     @State private var pendingDeletion: LibraryEntry?
     @State private var failedDeletion: LibraryEntry?
+    /// 絞り込み。次に開いたときも同じにする
+    @AppStorage("library.filter") private var filter: Filter = .all
 
     var body: some View {
         NavigationStack {
@@ -29,7 +47,7 @@ struct LibraryView: View {
             }
             .navigationTitle("ライブラリ")
             .navigationDestination(for: LibraryEntry.self) { entry in
-                SongDetailView(entry: entry, motion: motion, highScores: highScores)
+                SongDetailView(entry: entry, library: library, motion: motion, highScores: highScores)
             }
             .onAppear { library.refreshSizes() }
             .confirmationDialog(
@@ -54,28 +72,72 @@ struct LibraryView: View {
         }
     }
 
+    private var visibleEntries: [LibraryEntry] {
+        switch filter {
+        case .all: library.entries
+        case .favorites: library.favoriteEntries
+        }
+    }
+
     private var list: some View {
         List {
             Section {
-                ForEach(library.entries) { entry in
-                    NavigationLink(value: entry) {
-                        LibraryRow(entry: entry, size: library.sizes[entry.hash] ?? 0)
-                    }
-                    // List の標準の矢印はカードの外に出てしまうので消し、カードの中に出す
-                    .navigationLinkIndicatorVisibility(.hidden)
-                    .coverCardListRow()
-                    .swipeActions {
-                        Button("消す", role: .destructive) { pendingDeletion = entry }
-                    }
-                    .contextMenu {
-                        Button("消す", systemImage: "trash", role: .destructive) { pendingDeletion = entry }
+                Picker("表示する曲", selection: $filter) {
+                    ForEach(Filter.allCases) { filter in
+                        Text(filter.title).tag(filter)
                     }
                 }
-            } footer: {
-                // 合計は一覧の下（親指の近く）に出す
-                Text("\(library.entries.count) 曲・合計 \(Self.format(library.totalSize))")
-                    .monospacedDigit()
+                .pickerStyle(.segmented)
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets())
             }
+            if visibleEntries.isEmpty {
+                ContentUnavailableView {
+                    Label("お気に入りはまだありません", systemImage: "heart")
+                } description: {
+                    Text("曲を右へスワイプするか、曲の画面のハートを押すと、ここに並びます。")
+                }
+                .listRowBackground(Color.clear)
+            } else {
+                Section {
+                    ForEach(visibleEntries) { entry in
+                        row(entry)
+                    }
+                } footer: {
+                    // 合計は一覧の下（親指の近く）に出す
+                    Text("\(visibleEntries.count) 曲・合計 \(Self.format(visibleEntries.reduce(0) { $0 + (library.sizes[$1.hash] ?? 0) }))")
+                        .monospacedDigit()
+                }
+            }
+        }
+        .animation(.default, value: visibleEntries)
+    }
+
+    private func row(_ entry: LibraryEntry) -> some View {
+        let isFavorite = library.isFavorite(entry)
+        return NavigationLink(value: entry) {
+            LibraryRow(entry: entry, size: library.sizes[entry.hash] ?? 0, isFavorite: isFavorite)
+        }
+        // List の標準の矢印はカードの外に出てしまうので消し、カードの中に出す
+        .navigationLinkIndicatorVisibility(.hidden)
+        .coverCardListRow()
+        .swipeActions(edge: .leading) {
+            Button(isFavorite ? "外す" : "お気に入り", systemImage: isFavorite ? "heart.slash" : "heart") {
+                library.toggleFavorite(entry)
+            }
+            .tint(.pink)
+            // 新しいアプリが書いた一覧を読んでいるときは保存できないので、付け外しさせない
+            .disabled(library.isReadOnly)
+        }
+        .swipeActions {
+            Button("消す", role: .destructive) { pendingDeletion = entry }
+        }
+        .contextMenu {
+            Button(isFavorite ? "お気に入りから外す" : "お気に入りに追加", systemImage: isFavorite ? "heart.slash" : "heart") {
+                library.toggleFavorite(entry)
+            }
+            .disabled(library.isReadOnly)
+            Button("消す", systemImage: "trash", role: .destructive) { pendingDeletion = entry }
         }
     }
 
@@ -98,6 +160,7 @@ struct LibraryView: View {
 private struct LibraryRow: View {
     let entry: LibraryEntry
     let size: Int64
+    let isFavorite: Bool
 
     /// ジャケット画像。サムネイルと背景の両方に使う
     @State private var cover: CGImage?
@@ -120,9 +183,17 @@ private struct LibraryRow: View {
             HStack(alignment: .top, spacing: 12) {
                 thumbnail(cover)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(entry.title)
-                        .font(.headline)
-                        .lineLimit(2)
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text(entry.title)
+                            .font(.headline)
+                            .lineLimit(2)
+                        if isFavorite {
+                            Image(systemName: "heart.fill")
+                                .font(.subheadline)
+                                .foregroundStyle(.pink)
+                                .accessibilityLabel("お気に入り")
+                        }
+                    }
                     if !entry.songAuthorName.isEmpty {
                         Text(entry.songAuthorName)
                             .font(.subheadline)
