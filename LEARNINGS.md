@@ -30,6 +30,8 @@
 - 一時的なユニットテストでホストアプリに載せた画面は、テストが `Task.sleep` で待っている間（XCTest が run loop を独自のモードで回す）はタップが届かないことがある。ボタンを押して確かめるときは、テストで取り込みのファイル（`Downloads/<hash>.zip`）を置いたうえで `Library/Library.json` を Simulator のアプリのデータ領域（`simctl get_app_container … data`）に書き、アプリを普通に起動して操作する（2026-10-08）
 - サンプル楽曲を足すときは、テンポによって Easy と Normal のノーツ数が同じになり、`bundledSongIsPlayable`（易しいほどノーツが少ない）が落ちる。Easy は 1.3 秒以上空けて拾うので、4/4 で半小節が 1.3 秒以上になる BPM（92 以下）だと半小節ごとに拾い、Normal と同じになる。テンポを上げるか、旋律の音の優先度を変える（2026-10-09）
 - 一覧をスクロールした先の PR 用スクリーンショットは、コミットしない一時的な UI テストで `swipeUp` してから `XCUIScreen.main.screenshot().pngRepresentation` を書き出せば、Simulator を操作する許可が無くても撮れる。書き出し先は `TEST_RUNNER_SHOT_DIR=…` のように `TEST_RUNNER_` を付けた環境変数で `xcodebuild test` から渡す（2026-10-09）
+- 結果画面の PR 用の画面は、コミットしない一時的な UI テストで `-ZankyoDemoMotion` を付けて起動し、ライブラリの先頭の曲（歓喜の歌・約 62 秒）を「Easy でスタート」で始めて最後まで待てば、FINISH から結果画面まで録画できる。デモの首振りはノーツに合わないので、ランク E・0 点になる。良い成績の見た目は、一時的なユニットテストでホストアプリのウィンドウに `ResultView` を載せ、登場アニメーションが終わるまで（約 3 秒）待ってから `drawHierarchy` で書き出す（2026-10-09）
+- SwiftLint はビルドのプラグインでも走るので、コミットしない一時的なテストでも違反（長い行・`large_tuple` など）があるとビルドが止まる。一時的なテストは先頭で `// swiftlint:disable` するか、規則に合わせて書く（2026-10-09）
 
 ## beatsaver / 譜面
 
