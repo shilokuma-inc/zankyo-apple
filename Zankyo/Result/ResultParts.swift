@@ -121,7 +121,7 @@ struct CountingNumber: View, Animatable {
 
 /// 判定の内訳。ぴったり・早い・遅い・向き違い・ミスの数を、ノーツの数に対する棒で見せ、タイミングの傾向を目盛りで見せる
 struct BreakdownPanel: View {
-    let breakdown: PlayBreakdown
+    let breakdown: ScoreBreakdown
     let style: PlayStyle
     let rules: ScoringRules
     let maxCombo: Int
@@ -142,16 +142,16 @@ struct BreakdownPanel: View {
                     .foregroundStyle(palette.ink)
             }
             Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 8) {
-                row("ぴったり", breakdown.perfect, palette.laser)
-                row("早い", breakdown.early, palette.right.color)
-                row("遅い", breakdown.late, palette.vertical.color)
+                row("ぴったり", breakdown.perfectCount, palette.laser)
+                row("早い", breakdown.earlyCount, palette.right.color)
+                row("遅い", breakdown.lateCount, palette.vertical.color)
                 if style.usesDirection {
-                    row("向き違い", breakdown.badCut, palette.anyDirection.color)
+                    row("向き違い", breakdown.badCutCount, palette.anyDirection.color)
                 }
-                row("ミス", breakdown.miss, palette.warning)
+                row("ミス", breakdown.missCount, palette.warning)
             }
             if style.breaksComboOnEmptySwing {
-                Text("空振り \(breakdown.emptySwing) 回（コンボが切れた数）")
+                Text("空振り \(breakdown.emptySwingCount) 回（コンボが切れた数）")
                     .font(.footnote.monospacedDigit())
                     .foregroundStyle(palette.ink.opacity(0.75))
             }

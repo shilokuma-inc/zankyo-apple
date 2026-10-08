@@ -25,8 +25,6 @@ final class GameSession {
     private(set) var pausedByDisconnection = false
     /// 終えたときの結果。始められずに終えたときは nil
     private(set) var result: PlayResult?
-    /// 終えたときの判定の内訳。始められずに終えたときは nil
-    private(set) var breakdown: PlayBreakdown?
     /// この回より前のハイスコア
     private(set) var previousBest: PlayResult?
     /// この回でハイスコアを更新した
@@ -159,7 +157,6 @@ final class GameSession {
         finishSound?.play()
         let result = judge.result()
         self.result = result
-        breakdown = judge.playBreakdown()
         if let scoreKey, let highScores {
             previousBest = highScores.best(for: scoreKey)
             isNewRecord = highScores.record(result, for: scoreKey)

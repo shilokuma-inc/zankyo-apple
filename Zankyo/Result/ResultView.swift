@@ -15,7 +15,7 @@ struct PlayedSong: Hashable {
 /// 「視差効果を減らす」の設定では動かさず、はじめからすべて出す
 struct ResultView: View {
     let result: PlayResult
-    let breakdown: PlayBreakdown
+    let breakdown: ScoreBreakdown
     let previousBest: PlayResult?
     let isNewRecord: Bool
     /// 曲の情報（nil なら出さない）
@@ -25,8 +25,6 @@ struct ResultView: View {
     var style: PlayStyle = .directional
     /// 「早い・ぴったり・遅い」の区切りと、タイミングの目盛りの幅
     var rules = ScoringRules()
-    /// 点の内訳（nil なら出さない）
-    var scoreBreakdown: ScoreBreakdown?
     /// もう一度遊ぶ（nil ならボタンを出さない）
     var onRetry: (() -> Void)?
     let onClose: () -> Void
@@ -58,11 +56,7 @@ struct ResultView: View {
                         maxCombo: result.maxCombo,
                         progress: stage >= .breakdown ? 1 : 0
                     )
-                    if let scoreBreakdown {
-                        BreakdownCard(breakdown: scoreBreakdown) { showsGuide = true }
-                    } else {
-                        Button("スコアの仕組み", systemImage: "questionmark.circle") { showsGuide = true }
-                    }
+                    BreakdownCard(breakdown: breakdown) { showsGuide = true }
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.top, 8)
@@ -247,7 +241,14 @@ private struct BreakdownCard: View {
             playedAt: .now,
             scoringVersion: ScoringRules.version
         ),
-        breakdown: PlayBreakdown(perfect: 84, early: 22, late: 14, meanTimingError: -0.018),
+        breakdown: ScoreBreakdown(
+            judgements: (0..<120).map { index in
+                let timingError = Double(index % 5 - 2) * 0.03
+                let note = FaceNote(beat: Double(index), time: Double(index), direction: nil)
+                return .hit(note, CutScore(peakRate: 3.6, timingError: timingError, rules: ScoringRules()), timingError: timingError)
+            },
+            rules: ScoringRules()
+        ),
         previousBest: PlayResult(
             score: 16_900,
             maxScore: 21_850,

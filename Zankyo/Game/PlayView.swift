@@ -46,17 +46,16 @@ struct PlayView: View {
 
     var body: some View {
         Group {
-            if isShowingResult, session.phase == .finished, let result = session.result, let breakdown = session.breakdown {
+            if isShowingResult, session.phase == .finished, let result = session.result {
                 ResultView(
                     result: result,
-                    breakdown: breakdown,
+                    breakdown: session.judge.breakdown,
                     previousBest: session.previousBest,
                     isNewRecord: session.isNewRecord,
                     song: song,
                     cover: cover,
                     coverURL: coverURL,
                     style: session.style,
-                    scoreBreakdown: session.judge.breakdown,
                     onRetry: onRetry,
                     onClose: onExit
                 )

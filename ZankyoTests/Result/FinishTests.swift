@@ -3,7 +3,7 @@ import Foundation
 import Testing
 @testable import Zankyo
 
-struct PlayBreakdownTests {
+struct ScoreBreakdownTimingTests {
     @Test
     func countsJudgementsByTiming() {
         let notes = (0..<6).map { FaceNote(beat: Double($0), time: 1 + Double($0), direction: .left) }
@@ -16,14 +16,14 @@ struct PlayBreakdownTests {
         judge.cut(Self.cut(.right), at: 5)
         judge.advance(to: 10)
 
-        let breakdown = judge.playBreakdown()
+        let breakdown = judge.breakdown
 
-        #expect(breakdown.perfect == 2)
-        #expect(breakdown.early == 1)
-        #expect(breakdown.late == 1)
-        #expect(breakdown.badCut == 1)
-        #expect(breakdown.miss == 1)
-        #expect(breakdown.hit == 4)
+        #expect(breakdown.perfectCount == 2)
+        #expect(breakdown.earlyCount == 1)
+        #expect(breakdown.lateCount == 1)
+        #expect(breakdown.badCutCount == 1)
+        #expect(breakdown.missCount == 1)
+        #expect(breakdown.hitCount == 4)
         #expect(breakdown.noteCount == 6)
         // 切った 4 つのずれの平均（向き違いとミスは入れない）
         #expect(abs(breakdown.meanTimingError ?? 1) < 0.000_001)
@@ -39,11 +39,11 @@ struct PlayBreakdownTests {
         judge.cut(Self.cut(.right), at: 1.5)
         judge.cut(Self.cut(.down), at: 2.1)
 
-        let breakdown = judge.playBreakdown()
+        let breakdown = judge.breakdown
 
-        #expect(breakdown.emptySwing == 1)
+        #expect(breakdown.emptySwingCount == 1)
         #expect(breakdown.noteCount == 2)
-        #expect(breakdown.late == 1)
+        #expect(breakdown.lateCount == 1)
         #expect(breakdown.tendency == .late)
     }
 
@@ -52,9 +52,9 @@ struct PlayBreakdownTests {
         var judge = Judge(notes: [FaceNote(beat: 2, time: 1, direction: .up)])
         judge.advance(to: 5)
 
-        let breakdown = judge.playBreakdown()
+        let breakdown = judge.breakdown
 
-        #expect(breakdown.miss == 1)
+        #expect(breakdown.missCount == 1)
         #expect(breakdown.meanTimingError == nil)
         #expect(breakdown.tendency == nil)
     }
@@ -116,7 +116,7 @@ struct GameSessionFinishSoundTests {
         session.finish()
 
         #expect(sound.plays == 1)
-        #expect(session.breakdown?.miss == 1)
+        #expect(session.judge.breakdown.missCount == 1)
 
         session.stopFinishSound()
         #expect(sound.stops == 1)
@@ -136,7 +136,6 @@ struct GameSessionFinishSoundTests {
 
         #expect(session.phase == .finished)
         #expect(session.result == nil)
-        #expect(session.breakdown == nil)
         #expect(sound.plays == 0)
     }
 }

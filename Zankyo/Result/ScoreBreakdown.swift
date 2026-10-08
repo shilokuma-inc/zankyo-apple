@@ -1,7 +1,7 @@
 import Foundation
 
 /// 1 回のプレイの点の内訳。切ったノーツの「振りの強さ」と「タイミング」の平均と、どちらにずれたかを数え、
-/// 次にどこを直すと点が伸びるかを決める
+/// 次にどこを直すと点が伸びるかを決める。結果画面で見せる（ハイスコアには残さない）
 nonisolated struct ScoreBreakdown: Sendable, Hashable {
     /// 点を伸ばすために、次に気をつけるとよいこと
     nonisolated enum Advice: Sendable, Hashable {
@@ -38,10 +38,23 @@ nonisolated struct ScoreBreakdown: Sendable, Hashable {
     let perfectCount: Int
     let earlyCount: Int
     let lateCount: Int
+    /// コンボを切った空振り（ヘドバン）。ノーツの数には入らない
+    let emptySwingCount: Int
+    /// 切ったノーツのずれの平均（秒。負なら早い）。切ったノーツが無ければ nil
+    let meanTimingError: TimeInterval?
 
-    init(judgements: [Judgement], rules: ScoringRules) {
+    /// 判定したノーツの数
+    var noteCount: Int { hitCount + missCount + badCutCount }
+
+    /// 切ったタイミングの、平均での傾向。切ったノーツが無ければ nil
+    var tendency: TimingTendency? {
+        meanTimingError.map(TimingTendency.init(meanTimingError:))
+    }
+
+    init(judgements: [Judgement], rules: ScoringRules, emptySwingCount: Int = 0) {
         var swingTotal = 0
         var accuracyTotal = 0
+        var timingErrorTotal: TimeInterval = 0
         var hits = 0, misses = 0, badCuts = 0, perfect = 0, early = 0, late = 0
         for judgement in judgements {
             switch judgement {
@@ -49,6 +62,7 @@ nonisolated struct ScoreBreakdown: Sendable, Hashable {
                 hits += 1
                 swingTotal += score.swing
                 accuracyTotal += score.accuracy
+                timingErrorTotal += timingError
                 switch HitTiming(timingError: timingError, rules: rules) {
                 case .perfect: perfect += 1
                 case .early: early += 1
@@ -68,6 +82,8 @@ nonisolated struct ScoreBreakdown: Sendable, Hashable {
         perfectCount = perfect
         earlyCount = early
         lateCount = late
+        self.emptySwingCount = emptySwingCount
+        meanTimingError = hits > 0 ? timingErrorTotal / Double(hits) : nil
     }
 
     /// 次に気をつけるとよいこと。1 つも判定が無ければ nil
@@ -107,7 +123,27 @@ nonisolated struct ScoreBreakdown: Sendable, Hashable {
 nonisolated extension Judge {
     /// 今までの判定の点の内訳
     var breakdown: ScoreBreakdown {
-        ScoreBreakdown(judgements: judgements, rules: rules)
+        ScoreBreakdown(judgements: judgements, rules: rules, emptySwingCount: emptySwingCount)
+    }
+}
+
+/// 切ったタイミングの、平均での傾向
+nonisolated enum TimingTendency: Sendable, Hashable {
+    case early
+    case onTime
+    case late
+
+    /// 平均のずれがこの秒以内なら、ちょうどとみなす
+    static let tolerance: TimeInterval = 0.02
+    /// 平均のずれがこの秒を超えたら、キャリブレーションを勧める
+    static let calibrationHintThreshold: TimeInterval = 0.04
+
+    init(meanTimingError: TimeInterval) {
+        if abs(meanTimingError) <= Self.tolerance {
+            self = .onTime
+        } else {
+            self = meanTimingError < 0 ? .early : .late
+        }
     }
 }
 
