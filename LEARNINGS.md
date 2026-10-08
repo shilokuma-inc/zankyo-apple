@@ -24,6 +24,7 @@
 - `contentShape(.contextMenuPreview, …)` は macOS では使えない（コンパイルエラー。macOS のメニューにはプレビューが無い）。iOS / visionOS で通っても macOS で落ちるので、`#if !os(macOS)` で外す（2026-10-08）
 - Debug ビルドを `-ZankyoDemoMotion` 付きで起動すれば、Simulator でもライブラリから曲を選んでプレイ画面を普通に動かせる。`simctl io <udid> recordVideo` で録画し、`AVAssetImageGenerator` で切り出したコマを ImageIO で GIF にすると、Before / After を同じ曲・同じ区間で比べられる。デモの首振りはノーツに合わせないのでほぼミスになり、ヒットの表示は出ない。ヒットの表示は、コミットしない一時テストで `ImageRenderer` に描かせて確かめる（2026-10-08）
 - 判定の表示（点数など）は、iPhone 17 Pro では判定の線の下にちょうど 1 行分しか収まらない。`PlayView.judgementLabelHeight` を増やすと線の上（ノーツの通り道）に出てしまうので、表示を足すときは行を増やさず横に並べる（2026-10-08）
+- 一時的なユニットテストでホストアプリに載せた画面は、テストが `Task.sleep` で待っている間（XCTest が run loop を独自のモードで回す）はタップが届かないことがある。ボタンを押して確かめるときは、テストで取り込みのファイル（`Downloads/<hash>.zip`）を置いたうえで `Library/Library.json` を Simulator のアプリのデータ領域（`simctl get_app_container … data`）に書き、アプリを普通に起動して操作する（2026-10-08）
 
 ## beatsaver / 譜面
 
