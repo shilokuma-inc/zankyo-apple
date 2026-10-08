@@ -28,7 +28,7 @@ def ode_to_joy() -> Song:
     cb = "A/2 D/2 | A/2 D/2 | A/2 D/2 | D/2 A/2"
     bar = 4
     return Song(
-        slug="ode-to-joy", title="歓喜の歌", author="ベートーヴェン（AI 編曲）", bpm=120, beats_per_bar=bar,
+        slug="ode-to-joy", title="歓喜の歌", author="ベートーヴェン", bpm=120, beats_per_bar=bar,
         palette=NEON_GOLD, seed=1, preview_start=6,
         sections=[
             section("", "D/4 | D/4", bar, lead=None, bass="long", drums="light", chart=False),
@@ -63,7 +63,7 @@ def fur_elise() -> Song:
     soft = {"lead": "pluck", "bass": "broken", "drums": "waltz"}
     loud = {"lead": "lead", "double": "bell", "bass": "broken", "drums": "waltz", "arp": "8th"}
     return Song(
-        slug="fur-elise", title="エリーゼのために", author="ベートーヴェン（AI 編曲）", bpm=140, beats_per_bar=bar,
+        slug="fur-elise", title="エリーゼのために", author="ベートーヴェン", bpm=140, beats_per_bar=bar,
         palette=NEON_VIOLET, seed=2, preview_start=3,
         sections=[
             section("r/3 | r/2 E5/0.5 D#5/0.5", "Am/3 | Am/3", bar, **quiet, chart=False),
@@ -99,7 +99,7 @@ def mountain_king() -> Song:
         sections.append(section(theme, chords, bar, transpose=7, **{**options, "crash": False}))
     sections.append(section("B4/4", "Bm/4", bar, lead="lead", bass="long", crash=True, chart=False))
     return Song(
-        slug="mountain-king", title="山の魔王の宮殿にて", author="グリーグ（AI 編曲）", bpm=138, beats_per_bar=bar,
+        slug="mountain-king", title="山の魔王の宮殿にて", author="グリーグ", bpm=138, beats_per_bar=bar,
         palette=NEON_RED, seed=3, preview_start=30, sections=sections,
     )
 
@@ -129,7 +129,7 @@ def canon() -> Song:
                                 drums="basic", crash=index == 0))
     sections.append(section("D5/4", "D/4", bar, lead="strings", bass="long", crash=True, chart=False))
     return Song(
-        slug="canon", title="カノン", author="パッヘルベル（AI 編曲）", bpm=96, beats_per_bar=bar,
+        slug="canon", title="カノン", author="パッヘルベル", bpm=96, beats_per_bar=bar,
         palette=NEON_TEAL, seed=4, preview_start=25, sections=sections,
     )
 
@@ -150,7 +150,7 @@ def minuet() -> Song:
     cb = "G/3 | D/3 | Em/3 | A/3 | A/3 | Em/3 | A/3 | D/3"
     bar = 3
     return Song(
-        slug="minuet", title="メヌエット ト長調", author="ペツォールト（AI 編曲）", bpm=132, beats_per_bar=bar,
+        slug="minuet", title="メヌエット ト長調", author="ペツォールト", bpm=132, beats_per_bar=bar,
         palette=NEON_GREEN, seed=5, preview_start=4,
         sections=[
             section("", "G/3 | G/3", bar, lead=None, bass="waltz", chart=False),
@@ -182,7 +182,7 @@ def twinkle() -> Song:
     variation = " | ".join([one, two, three, four, five, six, five, six, one, two, three, four])
     bar = 4
     return Song(
-        slug="twinkle", title="きらきら星", author="フランス民謡（AI 編曲）", bpm=112, beats_per_bar=bar,
+        slug="twinkle", title="きらきら星", author="フランス民謡", bpm=112, beats_per_bar=bar,
         palette=NEON_BLUE, seed=6, preview_start=30,
         sections=[
             section("", "C/4 | G/2 C/2", bar, lead=None, bass="long", chart=False),
@@ -209,7 +209,7 @@ def neon_drive() -> Song:
     cb = "F/4 | G/4 | Em/4 | Am/4 | F/4 | G/4 | Am/4 | Am/4"
     bar = 4
     return Song(
-        slug="neon-drive", title="ネオン・ドライブ", author="斬響（AI 作曲）", bpm=116, beats_per_bar=bar,
+        slug="neon-drive", title="ネオン・ドライブ", author="斬響", bpm=116, beats_per_bar=bar,
         palette=NEON_PINK, seed=7, preview_start=8,
         sections=[
             section("", "Am/4 | F/4 | C/4 | G/4", bar, lead=None, bass="eighths", drums="basic", arp="16th", chart=False),
@@ -234,7 +234,7 @@ def zankyo_rush() -> Song:
     cbrk = "Gm/4 | Bb/4 | C/4 | A/4"
     bar = 4
     return Song(
-        slug="zankyo-rush", title="斬響ラッシュ", author="斬響（AI 作曲）", bpm=150, beats_per_bar=bar,
+        slug="zankyo-rush", title="斬響ラッシュ", author="斬響", bpm=150, beats_per_bar=bar,
         palette=NEON_FIRE, seed=8, preview_start=6,
         sections=[
             section("", "Dm/4 | Bb/4 | F/4 | C/4", bar, lead=None, bass=None, drums="four", arp="16th", chart=False),

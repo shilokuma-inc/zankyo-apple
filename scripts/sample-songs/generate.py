@@ -29,7 +29,7 @@ ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_OUTPUT = ROOT / "Zankyo" / "SampleSongs"
 # ZIP の中の日時。毎回同じファイルができるよう固定する
 ZIP_TIME = (2026, 10, 8, 0, 0, 0)
-MAPPER = "斬響（自動生成）"
+MAPPER = "斬響"
 
 
 def _zip(path: Path, files: list[tuple[str, bytes, bool]]) -> None:
