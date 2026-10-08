@@ -43,6 +43,7 @@ struct PlayView: View {
                     result: result,
                     previousBest: session.previousBest,
                     isNewRecord: session.isNewRecord,
+                    breakdown: session.judge.breakdown,
                     onRetry: onRetry,
                     onClose: onExit
                 )

@@ -35,14 +35,20 @@ nonisolated enum Rank: String, Sendable, Hashable, CaseIterable {
     case rankE = "E"
 
     init(accuracy: Double) {
-        switch accuracy {
-        case 0.9...: self = .rankSS
-        case 0.8...: self = .rankS
-        case 0.65...: self = .rankA
-        case 0.5...: self = .rankB
-        case 0.35...: self = .rankC
-        case 0.2...: self = .rankD
-        default: self = .rankE
+        // 上のランクから順に、下限を満たす最初のもの
+        self = Self.allCases.first { accuracy >= $0.minimumAccuracy } ?? .rankE
+    }
+
+    /// このランクになる達成率の下限
+    var minimumAccuracy: Double {
+        switch self {
+        case .rankSS: 0.9
+        case .rankS: 0.8
+        case .rankA: 0.65
+        case .rankB: 0.5
+        case .rankC: 0.35
+        case .rankD: 0.2
+        case .rankE: 0
         }
     }
 }
