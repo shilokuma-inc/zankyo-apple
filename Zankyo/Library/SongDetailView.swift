@@ -248,6 +248,7 @@ struct PlayScreen: View {
                     motion: motion,
                     cover: setup.cover,
                     coverURL: setup.entry.coverURL,
+                    lights: setup.lights,
                     onRetry: restart,
                     onExit: onExit
                 )

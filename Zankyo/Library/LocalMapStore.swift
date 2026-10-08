@@ -46,6 +46,16 @@ nonisolated enum MapLoadError: Error, Equatable, Sendable {
     }
 }
 
+/// 遊ぶのに要る 1 つの難易度の中身
+nonisolated struct PlayChart: Sendable {
+    /// 頭で切るノーツ
+    let notes: [FaceNote]
+    /// 背景の照明（無ければ空）
+    let lighting: Lighting
+    /// 拍と秒の対応（照明が無いときに、拍に合わせて光らせるのに使う）
+    let timeline: BeatTimeline
+}
+
 /// 取り込んだ曲を、遊べる形（曲情報・ノーツ・デコードした音源）に読み込む
 ///
 /// 取り込んだ ZIP（`Downloads/<hash>.zip`）は、初めて読むときに `Maps/<hash>/` へ展開する。展開の済んだフォルダはそのまま使う。
@@ -76,6 +86,13 @@ nonisolated struct LocalMapStore: Sendable {
     /// 難易度譜面を読み、頭で切るノーツに変換する
     @concurrent
     func loadNotes(hash: String, info: SongInfo, difficulty: DifficultyInfo) async throws(MapLoadError) -> [FaceNote] {
+        try await loadChart(hash: hash, info: info, difficulty: difficulty).notes
+    }
+
+    /// 難易度譜面を読み、頭で切るノーツと背景の照明にする。照明は v2 / v3 は譜面の中から、v4 はライトショーのファイルから読む
+    /// （読めなくても遊べるので、照明が無いものとして扱う）
+    @concurrent
+    func loadChart(hash: String, info: SongInfo, difficulty: DifficultyInfo) async throws(MapLoadError) -> PlayChart {
         let folder = try extractedFolder(hash: hash)
         let data = try read(difficulty.beatmapFilename, in: folder, limit: BeatmapParser.maxBytes)
         let beatmap: Beatmap
@@ -93,7 +110,12 @@ nonisolated struct LocalMapStore: Sendable {
         }
         let notes = FaceNoteConverter.convert(beatmap)
         guard !notes.isEmpty else { throw .invalidBeatmap }
-        return notes
+        var lighting = beatmap.lighting
+        if lighting.isEmpty, let name = difficulty.lightshowFilename,
+           let data = try? read(name, in: folder, limit: LightshowParser.maxBytes) {
+            lighting = LightshowParser.parse(data, timeline: beatmap.timeline)
+        }
+        return PlayChart(notes: notes, lighting: lighting, timeline: beatmap.timeline)
     }
 
     /// 音源をデコードする
