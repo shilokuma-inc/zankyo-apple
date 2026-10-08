@@ -44,6 +44,8 @@ class Song:
     seed: int
     # 曲の選択画面での試聴の頭（秒）
     preview_start: float = 10.0
+    # この曲を足した一覧の版。アプリは、入れたことのある版より新しい曲だけを入れる（消した曲を入れ直さない）
+    since: int = 1
     chart_notes: list[Note] = field(default_factory=list)
 
     @property
