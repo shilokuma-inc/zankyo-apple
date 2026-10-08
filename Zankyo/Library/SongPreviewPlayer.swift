@@ -35,7 +35,13 @@ final class SongPreviewPlayer: SongPreviewing {
         try session.setActive(true)
         #endif
         engine.connect(player, to: engine.mainMixerNode, format: song.format)
-        try engine.start()
+        do {
+            try engine.start()
+        } catch {
+            // まだ鳴らしていない（`isPlaying` が false の）ので `stop()` では返らない。取ったオーディオセッションをここで返す
+            Self.releaseSession()
+            throw error
+        }
         player.scheduleBuffer(loop, at: nil, options: .loops)
         player.play()
         isPlaying = true
@@ -47,6 +53,11 @@ final class SongPreviewPlayer: SongPreviewing {
         engine.stop()
         isPlaying = false
         // 遊ぶ画面の音（別のエンジン）を鳴らしている間に呼ばれても切らないよう、鳴らしていたときだけ手放す
+        Self.releaseSession()
+    }
+
+    /// オーディオセッションを手放し、止めていたほかのアプリの音に再開してよいと伝える
+    private static func releaseSession() {
         #if !os(macOS)
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
         #endif
