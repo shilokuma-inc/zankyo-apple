@@ -45,3 +45,7 @@
 - `CMHeadphoneMotionManager` の更新ハンドラと delegate は CoreMotion のキューで呼ばれる。MainActor 既定のメソッドの中でクロージャを書くと MainActor に隔離され、別スレッドで呼ばれた時点で実行時に落ちうるので、`nonisolated static func` で作って渡す。ハンドラの型は Swift では `CMHeadphoneMotionManager.DeviceMotionHandler`（`CMHeadphoneDeviceMotionHandler` は改名済みでエラー）。Simulator では `isDeviceMotionAvailable` が false（2026-10-07）
 - モーション入力の `AsyncStream` は受け取る側が 1 つなので、画面の見える化は入力を包む `MotionMonitor` でサンプルを中継して作る。判定には同じサンプルをそのまま渡す（2026-10-08）
 - モーションの取れない Simulator で頭の動きの表示を確かめるときは、Debug ビルドの起動引数 `-ZankyoDemoMotion` で決まった首振りを繰り返す入力に切り替えられる（2026-10-08）
+
+## 画面・テーマ
+
+- プレイ画面・キャリブレーション中の画面の色は `@Environment(\.palette)`（`ThemePalette`）から取る。明るいテーマ（モノクロ・ポップ・キュート）があるので、`.white` / `.black` を直に書くと文字や線が背景に溶ける。文字は `ink`、板は `panel`、光（`shadow`）は `glow(_:_:)` を使う。`NeonTheme` は並行ブランチのために残した deprecated の互換用で、選んだテーマに追従しない（2026-10-08）

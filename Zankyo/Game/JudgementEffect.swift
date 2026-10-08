@@ -12,6 +12,7 @@ struct JudgementEffect: View {
     let labelOffset: CGFloat
 
     @State private var progress: CGFloat = 0
+    @Environment(\.palette) private var palette
 
     var body: some View {
         ZStack {
@@ -30,20 +31,20 @@ struct JudgementEffect: View {
     }
 
     private func slash(for note: FaceNote) -> some View {
-        let color = NeonTheme.noteColor(for: note.direction).color
+        let color = palette.noteColor(for: note.direction).color
         let ring = noteSize * (0.8 + 1.4 * progress)
         return ZStack {
             // 広がって消える光の輪
             Circle()
                 .stroke(color, lineWidth: 1 + 3 * (1 - progress))
                 .frame(width: ring, height: ring)
-                .shadow(color: color, radius: 8)
+                .shadow(color: palette.glow(color), radius: 8)
             // 振った向きに走る斬撃
             Capsule()
-                .fill(.white)
+                .fill(palette.core)
                 .frame(width: noteSize * 2.4 * (0.3 + 0.7 * progress), height: 1 + 4 * (1 - progress))
-                .shadow(color: color, radius: 6)
-                .shadow(color: color, radius: 14)
+                .shadow(color: palette.glow(color), radius: 6)
+                .shadow(color: palette.glow(color), radius: 14)
                 .rotationEffect(Self.slashAngle(for: note.direction))
         }
         .opacity(Double(1 - progress))
@@ -60,8 +61,8 @@ struct JudgementEffect: View {
             if let timing {
                 Text(timing.label)
                     .font(.system(.headline, design: .rounded, weight: .heavy))
-                    .foregroundStyle(timing == .perfect ? NeonTheme.laser : .white.opacity(0.8))
-                    .shadow(color: timing == .perfect ? NeonTheme.laser : .clear, radius: 6)
+                    .foregroundStyle(timing == .perfect ? palette.laser : palette.ink.opacity(0.8))
+                    .shadow(color: timing == .perfect ? palette.glow(palette.laser) : .clear, radius: 6)
             }
         }
     }
@@ -81,15 +82,15 @@ struct JudgementEffect: View {
 
     private var textColor: Color {
         switch judgement {
-        case .hit: .white
-        case .badCut, .miss: NeonTheme.red.color
+        case .hit: palette.ink
+        case .badCut, .miss: palette.warning
         }
     }
 
     private var glowColor: Color {
         switch judgement {
-        case .hit(let note, _, _): NeonTheme.noteColor(for: note.direction).color
-        case .badCut, .miss: NeonTheme.red.color
+        case .hit(let note, _, _): palette.glow(palette.noteColor(for: note.direction).color)
+        case .badCut, .miss: palette.glow(palette.warning)
         }
     }
 

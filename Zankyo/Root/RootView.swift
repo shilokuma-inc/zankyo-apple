@@ -1,14 +1,17 @@
 import SwiftUI
 
-/// ライブラリと検索を行き来するルート。タブは画面下（片手の親指が届く位置）に出る
+/// ライブラリと検索を行き来するルート。タブは画面下（片手の親指が届く位置）に出る。選んだテーマはここからアプリ全体に効かせる
 struct RootView: View {
     enum Tab: Hashable {
         case library
         case search
         case calibration
+        case settings
     }
 
     @State private var selection: Tab = .library
+    /// 保存していない・知らない値なら既定のサイバーパンクにする
+    @AppStorage(AppTheme.storageKey) private var theme: AppTheme = .cyberpunk
     @State private var searchModel: SearchModel
     @State private var downloads: DownloadModel
     @State private var calibration: CalibrationModel
@@ -47,7 +50,11 @@ struct RootView: View {
             CalibrationView(model: calibration, motion: motion)
                 .tabItem { Label("キャリブレーション", systemImage: "metronome") }
                 .tag(Tab.calibration)
+            SettingsView(theme: $theme)
+                .tabItem { Label("設定", systemImage: "gearshape") }
+                .tag(Tab.settings)
         }
+        .appTheme(theme)
     }
 }
 

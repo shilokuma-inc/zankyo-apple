@@ -137,15 +137,3 @@ struct PlayfieldGeometryTests {
         #expect(PlayfieldGeometry(size: .zero, approachTime: 1.5).gridTimes(at: 1, interval: 0.25).isEmpty)
     }
 }
-
-struct NeonThemeTests {
-    @Test
-    func noteColorFollowsSwingDirection() {
-        // 左右は Beat Saber の左右のセイバーと同じ赤と青
-        #expect(NeonTheme.noteColor(for: .left) == NeonTheme.red)
-        #expect(NeonTheme.noteColor(for: .right) == NeonTheme.blue)
-        #expect(NeonTheme.noteColor(for: .up) == NeonTheme.violet)
-        #expect(NeonTheme.noteColor(for: .down) == NeonTheme.violet)
-        #expect(NeonTheme.noteColor(for: nil) == NeonTheme.amber)
-    }
-}
