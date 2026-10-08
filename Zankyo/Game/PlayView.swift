@@ -3,7 +3,8 @@ import SwiftUI
 /// プレイ画面。縦持ち・片手が前提で、手で触るのは画面下 1/3 の一時停止だけ（Discussion #3）
 ///
 /// ノーツは上から判定の線へ降りてきて、線の上のターゲット枠に収まる時刻に頭を振る（遊び方によっては矢印の向きに振る）。
-/// 画面を開くとカウントダウンのあと自動で曲が始まる。一時停止すると、再開・最初から・終了を選べる
+/// 画面を開くとカウントダウンのあと自動で曲が始まる。一時停止すると、再開・最初から・終了を選べる。
+/// 最後まで遊ぶと、レーンの上に「FINISH」を出してから結果画面に移る（タップで早送りできる）
 struct PlayView: View {
     let session: GameSession
     /// 頭の動きの見える化に使う。nil なら出さない
@@ -12,6 +13,8 @@ struct PlayView: View {
     var cover: CGImage?
     /// 譜面 ZIP に画像が無いときに取りに行く beatsaver の画像
     var coverURL: URL?
+    /// 結果画面に出す曲の情報（nil なら出さない）
+    var song: PlayedSong?
     /// 背景の光の演出。nil なら光らせない
     var lights: LightShow?
     /// 最初からやり直す・もう一度遊ぶ（nil ならボタンを出さない）
@@ -23,10 +26,15 @@ struct PlayView: View {
     @State private var countdownTask: Task<Void, Never>?
     /// 曲が始まる前に一時停止を押した（カウントダウンを止めてメニューを出している）
     @State private var isHoldingStart = false
+    /// 「FINISH」を見せ終えて、結果画面を出している
+    @State private var isShowingResult = false
+    @State private var resultTask: Task<Void, Never>?
 
     /// カウントダウンの始めの数と、1 つ数える秒
     static let countdownFrom = 3
     static let countdownStep: TimeInterval = 0.8
+    /// 曲を終えてから結果画面を出すまで、「FINISH」を見せる秒
+    static let finishHold: TimeInterval = 2.2
 
     /// ノーツが画面の上端から判定の線に届くまでの秒
     static let approachTime: TimeInterval = 1.5
@@ -42,17 +50,32 @@ struct PlayView: View {
 
     var body: some View {
         Group {
-            if session.phase == .finished, let result = session.result {
+            if isShowingResult, session.phase == .finished, let result = session.result {
                 ResultView(
                     result: result,
+                    breakdown: session.judge.breakdown,
                     previousBest: session.previousBest,
                     isNewRecord: session.isNewRecord,
-                    breakdown: session.judge.breakdown,
+                    song: song,
+                    cover: cover,
+                    coverURL: coverURL,
+                    style: session.style,
                     onRetry: onRetry,
                     onClose: onExit
                 )
+                .transition(.opacity)
             } else {
                 playContent
+            }
+        }
+        .animation(.easeInOut(duration: 0.4), value: isShowingResult)
+        // 最後まで遊んだら、「FINISH」を少し見せてから結果画面に移る
+        .onChange(of: session.phase) {
+            guard session.phase == .finished, session.result != nil else { return }
+            resultTask = Task {
+                try? await Task.sleep(for: .seconds(Self.finishHold))
+                guard !Task.isCancelled else { return }
+                isShowingResult = true
             }
         }
         .onAppear {
@@ -69,6 +92,7 @@ struct PlayView: View {
         .onDisappear {
             Self.setIdleTimerDisabled(false)
             cancelCountdown()
+            resultTask?.cancel()
             session.pause()
         }
     }
@@ -88,6 +112,13 @@ struct PlayView: View {
             .overlay {
                 if let countdown {
                     CountdownOverlay(value: countdown)
+                } else if session.phase == .finished, let result = session.result {
+                    FinishOverlay(isFullCombo: result.isFullCombo)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(palette.panel.opacity(0.35))
+                        .contentShape(.rect)
+                        .onTapGesture(perform: showResult)
+                        .accessibilityAction(named: "結果を見る", showResult)
                 } else if session.phase == .ready, !session.canStart {
                     MotionRequirementView(status: session.input.status)
                         .padding()
@@ -193,12 +224,14 @@ struct PlayView: View {
 
     @ViewBuilder private var controls: some View {
         if session.phase == .finished {
-            // 結果があれば body がリザルト画面に切り替わる。ここに来るのは始められずに終えたとき
-            VStack(spacing: 12) {
-                Text("曲を再生できませんでした。")
-                    .foregroundStyle(palette.ink)
-                Button("閉じる", action: onExit)
-                    .buttonStyle(NeonButtonStyle(prominent: true))
+            // 結果があれば、「FINISH」を見せたあと body がリザルト画面に切り替わる。結果が無いのは始められずに終えたとき
+            if session.result == nil {
+                VStack(spacing: 12) {
+                    Text("曲を再生できませんでした。")
+                        .foregroundStyle(palette.ink)
+                    Button("閉じる", action: onExit)
+                        .buttonStyle(NeonButtonStyle(prominent: true))
+                }
             }
         } else if session.phase == .ready, !session.canStart {
             Button("戻る", action: onExit)
@@ -246,6 +279,12 @@ struct PlayView: View {
     private func quit() {
         cancelCountdown()
         onExit()
+    }
+
+    /// 「FINISH」を待たずに結果画面を出す
+    private func showResult() {
+        resultTask?.cancel()
+        isShowingResult = true
     }
 
     /// 数え終えたら `action` を呼ぶ。途中で取り消されたら呼ばない

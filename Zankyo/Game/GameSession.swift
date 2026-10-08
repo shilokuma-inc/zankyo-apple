@@ -5,7 +5,7 @@ import Observation
 ///
 /// 振りは届いたときに判定し、窓を過ぎたノーツは画面のフレームごとの `tick()` でミスにする。
 /// 遊び方がヘドバンなら、ノーツの向きを問わない（矢印を出さず、向き違いにもしない）代わりに、空振りでコンボを切る。
-/// ハイスコアは遊び方ごとに分ける
+/// ハイスコアは遊び方ごとに分ける。最後まで遊んだら、終わりの音（効果音と、結果画面の間に流す曲）を鳴らす
 @Observable
 final class GameSession {
     enum Phase: Equatable {
@@ -39,6 +39,7 @@ final class GameSession {
     @ObservationIgnored private var wasInputReady = false
     @ObservationIgnored private let scoreKey: ScoreKey?
     @ObservationIgnored private let highScores: HighScoreStore?
+    @ObservationIgnored private let finishSound: (any FinishSounding)?
 
     init(
         notes: [FaceNote],
@@ -48,7 +49,8 @@ final class GameSession {
         offset: TimeInterval = 0,
         rules: ScoringRules = ScoringRules(),
         scoreKey: ScoreKey? = nil,
-        highScores: HighScoreStore? = nil
+        highScores: HighScoreStore? = nil,
+        finishSound: (any FinishSounding)? = nil
     ) {
         let notes = detection.style.usesDirection ? notes : notes.map { FaceNote(beat: $0.beat, time: $0.time, direction: nil) }
         judge = Judge(notes: notes, rules: rules, offset: offset, breaksComboOnEmptySwing: detection.style.breaksComboOnEmptySwing)
@@ -58,12 +60,16 @@ final class GameSession {
         self.input = input
         self.scoreKey = scoreKey?.playing(detection.style)
         self.highScores = highScores
+        self.finishSound = finishSound
     }
 
     /// 入力が使えるか、使い始めれば許可を尋ねられる状態なら始められる
     var canStart: Bool {
         input.status == .ready || input.status == .notDetermined
     }
+
+    /// 遊び方（ヘドバン・向きを合わせて切る）
+    var style: PlayStyle { detection.style }
 
     var score: Int { judge.keeper.score }
     var combo: Int { judge.keeper.combo }
@@ -140,7 +146,7 @@ final class GameSession {
         phase = .playing
     }
 
-    /// 終える。残ったノーツはすべてミスにし、結果をまとめてハイスコアに記録する
+    /// 終える。残ったノーツはすべてミスにし、結果をまとめてハイスコアに記録する。曲の音を止め、終わりの音を鳴らす
     func finish() {
         guard phase != .finished else { return }
         judge.advance(to: .greatestFiniteMagnitude)
@@ -148,6 +154,7 @@ final class GameSession {
         input.stop()
         task?.cancel()
         task = nil
+        finishSound?.play()
         let result = judge.result()
         self.result = result
         if let scoreKey, let highScores {
@@ -155,5 +162,10 @@ final class GameSession {
             isNewRecord = highScores.record(result, for: scoreKey)
         }
         phase = .finished
+    }
+
+    /// 終わりの音を止める。結果画面を閉じる・もう一度遊ぶときに呼ぶ
+    func stopFinishSound() {
+        finishSound?.stop()
     }
 }
