@@ -11,6 +11,8 @@ struct PlaySetup: Identifiable {
     let song: DecodedSong
     /// 譜面 ZIP のジャケット画像。無ければ nil
     let cover: CGImage?
+    /// 背景の光の演出（譜面の照明か、拍に合わせた光）
+    let lights: LightShow
 
     var scoreKey: ScoreKey {
         ScoreKey(mapHash: entry.hash, characteristic: difficulty.characteristic, difficulty: difficulty.difficulty)
@@ -96,10 +98,17 @@ final class SongDetailModel {
         preparing = difficulty
         defer { preparing = nil }
         do {
-            let notes = try await maps.loadNotes(hash: entry.hash, info: info, difficulty: difficulty)
+            let chart = try await maps.loadChart(hash: entry.hash, info: info, difficulty: difficulty)
             let song = try await loadedSong(info: info)
             guard !Task.isCancelled else { return }
-            play = PlaySetup(entry: entry, difficulty: difficulty, notes: notes, song: song, cover: cover)
+            play = PlaySetup(
+                entry: entry,
+                difficulty: difficulty,
+                notes: chart.notes,
+                song: song,
+                cover: cover,
+                lights: LightShow(lighting: chart.lighting, timeline: chart.timeline, duration: song.duration)
+            )
         } catch {
             guard !Task.isCancelled else { return }
             playError = error.message
