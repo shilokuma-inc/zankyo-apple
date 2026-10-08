@@ -19,7 +19,7 @@ nonisolated enum PlayStyle: String, CaseIterable, Identifiable, Sendable {
 
     var summary: String {
         switch self {
-        case .headbang: "向きは問わず、ノーツに合わせて頭を振る"
+        case .headbang: "向きは問わず、ノーツに合わせて頭を振る。空振りはコンボが切れる"
         case .directional: "矢印の向き（上下左右）に首を振る。違う向きはミス"
         }
     }
@@ -27,5 +27,10 @@ nonisolated enum PlayStyle: String, CaseIterable, Identifiable, Sendable {
     /// ノーツの向きを判定に使う
     var usesDirection: Bool {
         self == .directional
+    }
+
+    /// 空振り（ノーツの無いところで振った）でコンボを切る。向きを問わないと振り続けるだけで切れてしまうので、ヘドバンだけ切る
+    var breaksComboOnEmptySwing: Bool {
+        self == .headbang
     }
 }

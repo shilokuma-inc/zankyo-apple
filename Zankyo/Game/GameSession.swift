@@ -4,7 +4,8 @@ import Observation
 /// 1 曲分のプレイ。曲の時計・モーション入力・「切る」検出・判定をつなぐ
 ///
 /// 振りは届いたときに判定し、窓を過ぎたノーツは画面のフレームごとの `tick()` でミスにする。
-/// 遊び方がヘドバンなら、ノーツの向きを問わない（矢印を出さず、向き違いにもしない）。ハイスコアは遊び方ごとに分ける
+/// 遊び方がヘドバンなら、ノーツの向きを問わない（矢印を出さず、向き違いにもしない）代わりに、空振りでコンボを切る。
+/// ハイスコアは遊び方ごとに分ける
 @Observable
 final class GameSession {
     enum Phase: Equatable {
@@ -50,7 +51,7 @@ final class GameSession {
         highScores: HighScoreStore? = nil
     ) {
         let notes = detection.style.usesDirection ? notes : notes.map { FaceNote(beat: $0.beat, time: $0.time, direction: nil) }
-        judge = Judge(notes: notes, rules: rules, offset: offset)
+        judge = Judge(notes: notes, rules: rules, offset: offset, breaksComboOnEmptySwing: detection.style.breaksComboOnEmptySwing)
         self.detection = detection
         detector = detection.makeDetector()
         self.clock = clock
