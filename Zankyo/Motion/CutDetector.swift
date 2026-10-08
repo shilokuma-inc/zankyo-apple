@@ -26,12 +26,13 @@ nonisolated struct CutEvent: Sendable, Hashable {
     let peakRate: Double
 }
 
-/// 角速度のピークから「切る」動きを検出する。加速度は使わない（電車の揺れは直線加速度に乗るため）
+/// 角速度のピークから「切る」動きを検出する。遊び方が向きを合わせて切る（`PlayStyle.directional`）ときに使う。
+/// 加速度は使わない（電車の揺れは直線加速度に乗るため）
 ///
 /// 閾値に対する割合の大きい方の軸（yaw / pitch）が、その軸の閾値を超えてから `releaseRatio` を下回るまでを 1 回の振りとみなし、
 /// その間のピークの時刻・向きで 1 つの `CutEvent` を出す。振った後に首を戻す動きは逆向きのピークになるので、
 /// `returnWindow` の間は直前と逆向きの振りを出さない
-nonisolated struct CutDetector: Sendable {
+nonisolated struct CutDetector: SwingDetector {
     nonisolated struct Configuration: Sendable, Hashable {
         /// 左右（yaw）の振りとみなす角速度（ラジアン毎秒）
         var yawThreshold: Double = 2.0
@@ -99,11 +100,6 @@ nonisolated struct CutDetector: Sendable {
             peak = Peak(timestamp: sample.timestamp, direction: direction, rate: rate)
         }
         return cut
-    }
-
-    /// サンプル列をまとめて処理する（録画した列の再生やテスト用）
-    mutating func process(_ samples: some Sequence<MotionSample>) -> [CutEvent] {
-        samples.compactMap { process($0) }
     }
 
     /// 不応期と首を戻す動きを除いて、振りを確定する
