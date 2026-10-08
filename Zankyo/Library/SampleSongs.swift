@@ -83,11 +83,12 @@ struct SampleSongInstaller {
         self.suiteName = suiteName
     }
 
-    /// まだ入れていない版の一覧なら、すべての曲を入れる
+    /// まだ入れていない版の一覧なら、すべての曲を入れる。置けない曲があったときは版を覚えず、次の起動で入れ直す
     func installIfNeeded(into library: LibraryStore) {
         guard !library.isReadOnly, defaults.integer(forKey: Self.installedVersionKey) < catalog.version else { return }
-        install(catalog.songs, into: library)
-        defaults.set(catalog.version, forKey: Self.installedVersionKey)
+        if install(catalog.songs, into: library) {
+            defaults.set(catalog.version, forKey: Self.installedVersionKey)
+        }
     }
 
     /// ライブラリに無い（消した）サンプル楽曲
@@ -100,8 +101,11 @@ struct SampleSongInstaller {
         install(missingSongs(in: library), into: library)
     }
 
-    private func install(_ songs: [SampleSong], into library: LibraryStore) {
-        guard !library.isReadOnly else { return }
+    /// すべての曲を一覧に足せたら true
+    @discardableResult
+    private func install(_ songs: [SampleSong], into library: LibraryStore) -> Bool {
+        guard !library.isReadOnly else { return false }
+        var installedAll = true
         for song in songs where !library.contains(hash: song.hash) {
             let destination = downloadsDirectory.appending(path: "\(song.hash).zip", directoryHint: .notDirectory)
             do {
@@ -112,10 +116,13 @@ struct SampleSongInstaller {
             } catch {
                 Logger(subsystem: "jp.shilokuma.Zankyo", category: "SampleSongs")
                     .error("サンプル楽曲を置けなかった: \(error.localizedDescription, privacy: .public)")
+                installedAll = false
                 continue
             }
             library.add(LibraryEntry(sample: song, importedAt: importedAt(of: song)))
+            installedAll = installedAll && library.contains(hash: song.hash)
         }
+        return installedAll
     }
 
     /// 一覧の順に並び、取り込んだ曲より下に来るよう、古い日時を一覧の順に割り当てる
