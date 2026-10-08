@@ -126,6 +126,30 @@ struct CutDetectorTests {
     }
 
     @Test
+    func countsCurvedSwingOnce() {
+        // 先に上下、少し遅れて左右が強くなる 1 回の振り（弧を描く動き）。強い軸が入れ替わっても 1 回に数える
+        var detector = CutDetector()
+        let samples = MotionRecording.make(swings: [
+            .init(direction: .up, peakTime: 1.0, peakRate: 3, width: 0.4),
+            .init(direction: .right, peakTime: 1.15, peakRate: 4, width: 0.4)
+        ])
+
+        #expect(detector.process(samples).count == 1)
+    }
+
+    @Test
+    func detectsSwingOnAnotherAxisAfterFirstEnds() {
+        // 右に振り終えてからのうなずきは、別の振りとして数える
+        var detector = CutDetector()
+        let samples = MotionRecording.make(swings: [
+            .init(direction: .right, peakTime: 1.0, peakRate: 4),
+            .init(direction: .down, peakTime: 1.3, peakRate: 3)
+        ])
+
+        #expect(detector.process(samples).map(\.direction) == [.right, .down])
+    }
+
+    @Test
     func worksAtLowSampleRate() {
         // AirPods のサンプルは毎秒 25 回ほどのことがある
         let samples = MotionRecording.make(
