@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 設定の画面。遊び方とテーマを選ぶ。選ぶとすぐにアプリ全体へ反映し、見本でプレイ画面の見た目を確かめられる
+/// 設定の画面。遊び方・効果音・テーマを選ぶ。選ぶとすぐにアプリ全体へ反映し、見本でプレイ画面の見た目を確かめられる
 struct SettingsView: View {
     @Binding var theme: AppTheme
     /// 遊び方を切り替えると、頭の動きの表示とプレイ・キャリブレーションの検出にすぐ反映する
@@ -29,6 +29,7 @@ struct SettingsView: View {
                         Label("スコアの仕組みとハイスコアのコツ", systemImage: "questionmark.circle")
                     }
                 }
+                HitSoundSettingsSection()
                 Section("プレイ画面の見本") {
                     ThemePreview(showsDirections: motion.detection.style.usesDirection)
                         .frame(height: 220)

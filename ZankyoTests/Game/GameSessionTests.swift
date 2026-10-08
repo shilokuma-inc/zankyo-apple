@@ -266,10 +266,78 @@ struct GameSessionTests {
         #expect(session.judge.keeper.combo == 0)
     }
 
+    @Test
+    func playsHitSoundOnlyWhenNoteIsCut() async {
+        // 向きを合わせて切る遊び方で、切った・向き違い・ノーツの無い振り・ミスを 1 回ずつ
+        let notes = [
+            FaceNote(beat: 0, time: 1, direction: .right),
+            FaceNote(beat: 2, time: 2, direction: .up),
+            FaceNote(beat: 4, time: 3, direction: .left)
+        ]
+        let clock = ManualSongClock(duration: 5)
+        let sound = RecordingHitSound()
+        let session = GameSession(
+            notes: notes,
+            clock: clock,
+            input: RecordedMotionInput(samples: []),
+            detection: SwingDetection(style: .directional),
+            hitSound: sound
+        )
+
+        await session.play()
+        #expect(sound.calls == [.prepare])
+
+        session.handle(CutEvent(timestamp: 1, direction: .right, peakRate: 4))
+        session.handle(CutEvent(timestamp: 2, direction: .down, peakRate: 4))
+        session.handle(CutEvent(timestamp: 2.5, direction: .left, peakRate: 4))
+        clock.time = 3.5
+        session.tick()
+
+        #expect(sound.calls == [.prepare, .play])
+    }
+
+    @Test
+    func stopsHitSoundWhilePausedAndAtFinish() async {
+        let clock = ManualSongClock(duration: 5)
+        let sound = RecordingHitSound()
+        let session = GameSession(notes: Self.notes, clock: clock, input: RecordedMotionInput(samples: []), hitSound: sound)
+        await session.play()
+
+        session.pause()
+        session.resume()
+        session.finish()
+
+        // 止めている間と終えた後は、曲の時計がオーディオセッションを返せるようエンジンを止めておく
+        #expect(sound.calls == [.prepare, .stop, .prepare, .stop])
+    }
+
     private func waitUntil(_ condition: () -> Bool) async {
         for _ in 0..<100 where !condition() {
             await Task.yield()
         }
+    }
+}
+
+/// 呼ばれた順を覚えておく効果音
+private final class RecordingHitSound: HitSoundPlaying {
+    enum Call: Equatable {
+        case prepare
+        case play
+        case stop
+    }
+
+    private(set) var calls: [Call] = []
+
+    func prepare() {
+        calls.append(.prepare)
+    }
+
+    func play() {
+        calls.append(.play)
+    }
+
+    func stop() {
+        calls.append(.stop)
     }
 }
 

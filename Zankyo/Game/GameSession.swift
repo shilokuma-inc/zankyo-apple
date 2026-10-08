@@ -34,6 +34,8 @@ final class GameSession {
     @ObservationIgnored let clock: any SongClock
     @ObservationIgnored private let detection: SwingDetection
     @ObservationIgnored private var detector: any SwingDetector
+    /// ノーツを切ったときの効果音。nil なら鳴らさない
+    @ObservationIgnored private let hitSound: (any HitSoundPlaying)?
     @ObservationIgnored private var task: Task<Void, Never>?
     /// 一度でも入力が使える状態になった（始めた直後の、接続の通知が届く前の状態で止めないため）
     @ObservationIgnored private var wasInputReady = false
@@ -46,6 +48,7 @@ final class GameSession {
         clock: any SongClock,
         input: any MotionInput,
         detection: SwingDetection = SwingDetection(),
+        hitSound: (any HitSoundPlaying)? = nil,
         offset: TimeInterval = 0,
         rules: ScoringRules = ScoringRules(),
         scoreKey: ScoreKey? = nil,
@@ -56,6 +59,7 @@ final class GameSession {
         judge = Judge(notes: notes, rules: rules, offset: offset, breaksComboOnEmptySwing: detection.style.breaksComboOnEmptySwing)
         self.detection = detection
         detector = detection.makeDetector()
+        self.hitSound = hitSound
         self.clock = clock
         self.input = input
         self.scoreKey = scoreKey?.playing(detection.style)
@@ -91,6 +95,8 @@ final class GameSession {
             phase = .finished
             return
         }
+        // 曲と一緒に効果音のエンジンも起こし、最初に切ったときの音が遅れないようにする
+        hitSound?.prepare()
         phase = .playing
         for await sample in stream {
             guard let cut = detector.process(sample) else { continue }
@@ -98,11 +104,14 @@ final class GameSession {
         }
     }
 
-    /// 検出した振りを判定する。一時停止中・再生していない時刻の振りは数えない
+    /// 検出した振りを判定する。一時停止中・再生していない時刻の振りは数えない。切れたら効果音を鳴らす
     func handle(_ cut: CutEvent) {
         guard phase == .playing, let time = clock.songTime(atUptime: cut.timestamp) else { return }
         if let judgement = judge.cut(cut, at: time) {
             lastJudgement = judgement
+            if case .hit = judgement {
+                hitSound?.play()
+            }
         }
     }
 
@@ -129,6 +138,8 @@ final class GameSession {
     func pause() {
         guard phase == .playing else { return }
         clock.pause()
+        // 効果音のエンジンも止める（途中でやめて画面を閉じたとき、曲の時計がオーディオセッションを返せるように）
+        hitSound?.stop()
         phase = .paused
     }
 
@@ -142,6 +153,7 @@ final class GameSession {
         // 止めている間の動きの途中から振りを数えない。止める前の振りも、首を戻す動きの見分けに使わない
         detector = detection.makeDetector()
         judge.forgetLastSwing()
+        hitSound?.prepare()
         pausedByDisconnection = false
         phase = .playing
     }
@@ -150,6 +162,8 @@ final class GameSession {
     func finish() {
         guard phase != .finished else { return }
         judge.advance(to: .greatestFiniteMagnitude)
+        // 曲の時計がオーディオセッションを返す前に、効果音のエンジンを止める
+        hitSound?.stop()
         clock.stop()
         input.stop()
         task?.cancel()
