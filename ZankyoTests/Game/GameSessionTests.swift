@@ -219,6 +219,29 @@ struct GameSessionTests {
 
         #expect(session.judge.keeper.hitCount == 8)
         #expect(session.judge.keeper.missCount == 0)
+        // 拍ごとの首を戻す動きは空振りにしない。戻す動きから振り始めた最初の 1 回は空振りになるが、まだコンボは無い
+        #expect(session.judge.keeper.maxCombo == 8)
+    }
+
+    @Test
+    func headbangBreaksComboWhenShakingNonstop() async {
+        // ノーツは 1 秒おき。拍に関係なく 0.15 秒ごとに頭を振り続けると、ノーツは切れても空振りでコンボが続かない
+        let samples = (0...Int(6 * 50)).map { index in
+            let time = Double(index) / 50
+            return MotionSample(timestamp: time, yawRate: time <= 5 ? 5 * sin(2 * .pi * time / 0.3) : 0, pitchRate: 0)
+        }
+        let notes = (1...4).map { FaceNote(beat: Double($0), time: Double($0) + 0.075, direction: nil) }
+        let session = GameSession(
+            notes: notes,
+            clock: ManualSongClock(duration: 6),
+            input: RecordedMotionInput(samples: samples),
+            detection: SwingDetection(style: .headbang)
+        )
+
+        await session.play()
+
+        #expect(session.judge.keeper.hitCount == 4)
+        #expect(session.judge.keeper.maxCombo == 1)
     }
 
     private func waitUntil(_ condition: () -> Bool) async {
