@@ -34,6 +34,7 @@ struct SettingsView: View {
                         .frame(height: 220)
                         .listRowInsets(EdgeInsets())
                 }
+                BackgroundLightSettingsSection()
                 Section {
                     ForEach(AppTheme.allCases) { item in
                         ThemeRow(theme: item, isSelected: item == theme) {
@@ -90,6 +91,10 @@ private struct ThemePreview: View {
     /// ノーツに向きの矢印を出す（向きを問わないヘドバンでは出さない）
     let showsDirections: Bool
 
+    /// 背景の光の演出。オンなら、拍に合わせて光った瞬間の光を見本にも出す
+    @AppStorage(BackgroundLightSetting.storageKey) private var showsLights = BackgroundLightSetting.defaultValue
+    private static let lights = LightShow(lighting: .empty, timeline: BeatTimeline(bpm: 120), duration: 10).state(at: 0.08)
+
     /// 見本のノーツ（判定の線に届くまでの秒と向き）
     private static let notes: [(remaining: TimeInterval, direction: SwingDirection?)] = [
         (0.15, .left), (0.4, .right), (0.65, .up), (0.9, nil)
@@ -99,6 +104,9 @@ private struct ThemePreview: View {
         GeometryReader { proxy in
             let geometry = PlayfieldGeometry(size: proxy.size, approachTime: 1)
             ZStack {
+                if showsLights {
+                    PlayfieldLights(geometry: geometry, state: Self.lights)
+                }
                 PlayfieldLane(geometry: geometry)
                 PlayfieldGrid(geometry: geometry, currentTime: 0)
                 ForEach(Self.notes.indices, id: \.self) { index in
@@ -117,7 +125,7 @@ private struct ThemePreview: View {
             MultiplierRing(multiplier: 4, progress: 0.6)
                 .padding(12)
         }
-        .background { PlayfieldBackdrop() }
+        .background { PlayfieldBackdrop(back: showsLights ? Self.lights.back : nil) }
         .clipped()
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("プレイ画面の見本")
