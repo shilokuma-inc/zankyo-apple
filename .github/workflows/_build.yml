@@ -43,12 +43,31 @@ jobs:
           echo "SIMULATOR_ID=$(jq -r .udid <<<"$simulator")" >> "$GITHUB_ENV"
           echo "project=$project scheme=$project simulator=$(jq -r '"\(.name) (\(.udid))"' <<<"$simulator")"
 
+      # ogg-swift / vorbis-swift は中身を gitlab.xiph.org のサブモジュールから取るため、毎回取り直すと
+      # 取得元が落ちたときにすべてのビルドが止まる（解決にかかる時間も 24〜262 秒とばらつく）。解決できた SourcePackages を保存して使い回す。
+      # 復元できれば、取得元に届かなくても解決とビルドが通る
+      - name: Restore Swift packages
+        id: spm-cache
+        uses: actions/cache/restore@v6
+        with:
+          path: DerivedData/SourcePackages
+          # restore-keys は付けない。依存が変わったときに古い依存入りのキャッシュを復元し、そのまま保存し直して肥大化するため
+          key: spm-${{ runner.os }}-${{ hashFiles('**/Package.resolved') }}
+
       - name: Resolve Swift packages
         run: |
           xcodebuild -resolvePackageDependencies \
             -project "$PROJECT_NAME.xcodeproj" \
             -scheme "$SCHEME" \
             -derivedDataPath DerivedData
+
+      # 後のテストが落ちた回でも、解決できた依存は保存する（actions/cache の後処理での保存は、ジョブが成功したときだけ）
+      - name: Save Swift packages
+        if: steps.spm-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: DerivedData/SourcePackages
+          key: ${{ steps.spm-cache.outputs.cache-primary-key }}
 
       - name: SwiftLint
         # Build Tool Plugin と同じバージョンの SwiftLint（SPM が解決したバイナリ）で .swiftlint.yml を検証する

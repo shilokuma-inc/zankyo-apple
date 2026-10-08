@@ -33,6 +33,7 @@
 - 結果画面の PR 用の画面は、コミットしない一時的な UI テストで `-ZankyoDemoMotion` を付けて起動し、ライブラリの先頭の曲（歓喜の歌・約 62 秒）を「Easy でスタート」で始めて最後まで待てば、FINISH から結果画面まで録画できる。デモの首振りはノーツに合わないので、ランク E・0 点になる。良い成績の見た目は、一時的なユニットテストでホストアプリのウィンドウに `ResultView` を載せ、登場アニメーションが終わるまで（約 3 秒）待ってから `drawHierarchy` で書き出す（2026-10-09）
 - SwiftLint はビルドのプラグインでも走るので、コミットしない一時的なテストでも違反（長い行・`large_tuple` など）があるとビルドが止まる。一時的なテストは先頭で `// swiftlint:disable` するか、規則に合わせて書く（2026-10-09）
 - SwiftUI の `Canvas` で、楕円の `Path` を円の `radialGradient` で塗ると、楕円の縁で色が途切れて段差に見える。円のグラデーションを `drawLayer` の中で `scaleBy(x:y:)` して楕円にすると、縁まで滑らかに消える（2026-10-09）
+- ogg-swift / vorbis-swift は中身（libogg / libvorbis）を `gitlab.xiph.org` のサブモジュールから取るので、xiph.org が落ちると依存の解決で CI が止まる（2026-10-08 に 502 / 504 が続いた）。CI では解決できた `DerivedData/SourcePackages` をキャッシュしている。取得元に届かないときの動きは、`url."https://offline.invalid/xiph/".insteadOf = https://gitlab.xiph.org/` と `url."https://offline.invalid/github/".insteadOf = https://github.com/` を書いた git の設定ファイルを `GIT_CONFIG_GLOBAL` で渡して `xcodebuild -resolvePackageDependencies` を実行すると、手元で試せる（サブモジュールの URL も書き換わる）（2026-10-09）
 
 ## beatsaver / 譜面
 
