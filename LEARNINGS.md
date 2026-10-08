@@ -23,6 +23,8 @@
 - `Zankyo/` の下に置いたリソースは、フォルダ同期グループでもサブフォルダを保たずにバンドルの直下へ平らに入る。同じ名前のファイルを別のフォルダに置くと衝突するので、`sample-<slug>.zip` のように名前で分ける（`Zankyo/SampleSongs/`）（2026-10-08）
 - Swift Testing の `#expect` の中で `allSatisfy(\.isSample)` のようにキーパスを渡すと、マクロの展開先で「call can throw」のコンパイルエラーになる。クロージャ（`allSatisfy { $0.isSample }`）で書く（2026-10-08）
 - サンプル楽曲の音源（Ogg Vorbis）は、SPM で取得済みの vorbis-swift の `examples/encoder_example.c` をビルドして作れる（`scripts/sample-songs/build-encoder.sh`）。libogg の `config_types.h` は configure で作られるので、固定幅の型で書いて足す（2026-10-08）
+- 検索画面の PR 用スクリーンショットは、Simulator に日本語キーボードが入っていると、外から送った文字がかな変換されて検索語を打てない。コミットしない一時パッチで `RootView` に起動引数（`-ScreenshotQuery camellia` など）を読む `.task` を足し、検索タブを開いて `SearchModel.submit()` まで呼ぶと、Before / After を同じ条件で撮れる。取り込んだ曲はアプリを入れ直しても残るので、ライブラリ画面は一度取り込めば Before / After のビルドを入れ替えて撮れる（2026-10-08）
+- `contentShape(.contextMenuPreview, …)` は macOS では使えない（コンパイルエラー。macOS のメニューにはプレビューが無い）。iOS / visionOS で通っても macOS で落ちるので、`#if !os(macOS)` で外す（2026-10-08）
 
 ## beatsaver / 譜面
 

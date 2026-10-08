@@ -117,6 +117,26 @@ nonisolated struct LocalMapStore: Sendable {
         return CoverImage.decode(data)
     }
 
+    /// 一覧に出すジャケット画像を縮小して読む。まだ展開していない曲は、ZIP を展開せずに `Info.dat` と画像だけを ZIP から読む
+    /// （一覧に並ぶ全曲を展開すると、端末の容量を倍近く使うため）。無い・読めないときは nil
+    @concurrent
+    func loadListCover(hash: String) async -> CGImage? {
+        guard let (folder, zip) = paths(hash: hash) else { return nil }
+        if FileManager.default.fileExists(atPath: folder.path(percentEncoded: false)) {
+            guard let infoData = try? read("Info.dat", in: folder, limit: SongInfoParser.maxBytes),
+                  let name = (try? SongInfoParser.parse(infoData))?.coverImageFilename,
+                  let data = try? read(name, in: folder, limit: CoverImage.maxBytes) else { return nil }
+            return CoverImage.decode(data)
+        }
+        guard let archive = try? MapArchive(url: zip),
+              let infoEntry = archive.entry(named: "Info.dat"),
+              let infoData = try? archive.read(infoEntry, limit: UInt64(SongInfoParser.maxBytes)),
+              let name = (try? SongInfoParser.parse(infoData))?.coverImageFilename,
+              let entry = archive.entry(named: name),
+              let data = try? archive.read(entry, limit: UInt64(CoverImage.maxBytes)) else { return nil }
+        return CoverImage.decode(data)
+    }
+
     /// v4 の音声データにある拍と秒の対応。無い・読めないときは nil（Info.dat の BPM で一定とする）
     private func audioTimeline(info: SongInfo, folder: URL) -> BeatTimeline? {
         guard let name = info.audioDataFilename,
@@ -126,14 +146,10 @@ nonisolated struct LocalMapStore: Sendable {
 
     /// 展開済みのフォルダ。まだなら取り込んだ ZIP を展開する
     private func extractedFolder(hash: String) throws(MapLoadError) -> URL {
-        // hash を検証してからパスを作る（パスの区切りや `..` を入れない）
-        guard BeatsaverValidation.isValidHash(hash) else { throw .notDownloaded }
-        let key = hash.lowercased()
-        let folder = mapsDirectory.appending(path: key, directoryHint: .isDirectory)
+        guard let (folder, zip) = paths(hash: hash) else { throw .notDownloaded }
         if FileManager.default.fileExists(atPath: folder.path(percentEncoded: false)) {
             return folder
         }
-        let zip = downloadsDirectory.appending(path: "\(key).zip", directoryHint: .notDirectory)
         guard FileManager.default.fileExists(atPath: zip.path(percentEncoded: false)) else { throw .notDownloaded }
         do {
             try FileManager.default.createDirectory(at: mapsDirectory, withIntermediateDirectories: true)
@@ -148,6 +164,17 @@ nonisolated struct LocalMapStore: Sendable {
             throw .storage
         }
         return folder
+    }
+
+    /// 展開先のフォルダと取り込んだ ZIP の場所（どちらもまだ無いことがある）。hash が不正なら nil
+    private func paths(hash: String) -> (folder: URL, zip: URL)? {
+        // hash を検証してからパスを作る（パスの区切りや `..` を入れない）
+        guard BeatsaverValidation.isValidHash(hash) else { return nil }
+        let key = hash.lowercased()
+        return (
+            mapsDirectory.appending(path: key, directoryHint: .isDirectory),
+            downloadsDirectory.appending(path: "\(key).zip", directoryHint: .notDirectory)
+        )
     }
 
     /// 展開したフォルダのファイル。名前は展開時に小文字にそろえてある
