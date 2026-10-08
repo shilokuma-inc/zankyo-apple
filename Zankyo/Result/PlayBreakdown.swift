@@ -47,7 +47,7 @@ nonisolated enum TimingTendency: Sendable, Hashable {
 
 nonisolated extension Judge {
     /// 今までの判定の内訳（終えた後に呼ぶ）
-    func breakdown() -> PlayBreakdown {
+    func playBreakdown() -> PlayBreakdown {
         var breakdown = PlayBreakdown(emptySwing: emptySwingCount)
         var totalTimingError: TimeInterval = 0
         for judgement in judgements {

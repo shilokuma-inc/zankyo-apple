@@ -159,7 +159,7 @@ final class GameSession {
         finishSound?.play()
         let result = judge.result()
         self.result = result
-        breakdown = judge.breakdown()
+        breakdown = judge.playBreakdown()
         if let scoreKey, let highScores {
             previousBest = highScores.best(for: scoreKey)
             isNewRecord = highScores.record(result, for: scoreKey)

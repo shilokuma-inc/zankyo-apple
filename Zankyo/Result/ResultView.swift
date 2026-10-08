@@ -25,6 +25,8 @@ struct ResultView: View {
     var style: PlayStyle = .directional
     /// 「早い・ぴったり・遅い」の区切りと、タイミングの目盛りの幅
     var rules = ScoringRules()
+    /// 点の内訳（nil なら出さない）
+    var scoreBreakdown: ScoreBreakdown?
     /// もう一度遊ぶ（nil ならボタンを出さない）
     var onRetry: (() -> Void)?
     let onClose: () -> Void
@@ -34,6 +36,7 @@ struct ResultView: View {
     /// 数え上げている途中の点数
     @State private var countedScore = 0.0
     @State private var revealTask: Task<Void, Never>?
+    @State private var showsGuide = false
 
     @Environment(\.palette) private var palette
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -55,6 +58,11 @@ struct ResultView: View {
                         maxCombo: result.maxCombo,
                         progress: stage >= .breakdown ? 1 : 0
                     )
+                    if let scoreBreakdown {
+                        BreakdownCard(breakdown: scoreBreakdown) { showsGuide = true }
+                    } else {
+                        Button("スコアの仕組み", systemImage: "questionmark.circle") { showsGuide = true }
+                    }
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.top, 8)
@@ -77,6 +85,16 @@ struct ResultView: View {
         .preferredColorScheme(palette.colorScheme)
         .onAppear(perform: reveal)
         .onDisappear { revealTask?.cancel() }
+        .sheet(isPresented: $showsGuide) {
+            NavigationStack {
+                ScoringGuideView()
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("閉じる") { showsGuide = false }
+                        }
+                    }
+            }
+        }
     }
 
     private var scoreBlock: some View {
@@ -172,6 +190,48 @@ struct ResultView: View {
             case .badges: .spring(duration: 0.5, bounce: 0.5)
             }
         }
+    }
+}
+
+/// 点の内訳。1 ノーツあたりの「振りの強さ」と「タイミング」の平均と、次に気をつけるとよいこと
+private struct BreakdownCard: View {
+    let breakdown: ScoreBreakdown
+    let onShowGuide: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("点の内訳（1 ノーツの平均）")
+                .font(.headline)
+            meter("振りの強さ", value: breakdown.averageSwing, max: CutScore.maxSwing)
+            meter("タイミング", value: breakdown.averageAccuracy, max: CutScore.maxAccuracy)
+            Text("ぴったり \(breakdown.perfectCount)・早い \(breakdown.earlyCount)・遅い \(breakdown.lateCount)")
+                .font(.footnote.monospacedDigit())
+                .foregroundStyle(.secondary)
+            if let advice = breakdown.advice {
+                Label(advice.message, systemImage: "lightbulb")
+                    .font(.subheadline)
+            }
+            Button("スコアの仕組み", systemImage: "questionmark.circle", action: onShowGuide)
+                .font(.subheadline)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
+        .background(.quaternary.opacity(0.5), in: .rect(cornerRadius: 16))
+    }
+
+    private func meter(_ title: String, value: Double, max: Int) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(title)
+                Spacer()
+                Text("\(Int(value.rounded())) / \(max)")
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+            }
+            .font(.subheadline)
+            ProgressView(value: min(value, Double(max)), total: Double(max))
+        }
+        .accessibilityElement(children: .combine)
     }
 }
 

@@ -56,6 +56,7 @@ struct PlayView: View {
                     cover: cover,
                     coverURL: coverURL,
                     style: session.style,
+                    scoreBreakdown: session.judge.breakdown,
                     onRetry: onRetry,
                     onClose: onExit
                 )

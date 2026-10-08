@@ -16,7 +16,7 @@ struct PlayBreakdownTests {
         judge.cut(Self.cut(.right), at: 5)
         judge.advance(to: 10)
 
-        let breakdown = judge.breakdown()
+        let breakdown = judge.playBreakdown()
 
         #expect(breakdown.perfect == 2)
         #expect(breakdown.early == 1)
@@ -39,7 +39,7 @@ struct PlayBreakdownTests {
         judge.cut(Self.cut(.right), at: 1.5)
         judge.cut(Self.cut(.down), at: 2.1)
 
-        let breakdown = judge.breakdown()
+        let breakdown = judge.playBreakdown()
 
         #expect(breakdown.emptySwing == 1)
         #expect(breakdown.noteCount == 2)
@@ -52,7 +52,7 @@ struct PlayBreakdownTests {
         var judge = Judge(notes: [FaceNote(beat: 2, time: 1, direction: .up)])
         judge.advance(to: 5)
 
-        let breakdown = judge.breakdown()
+        let breakdown = judge.playBreakdown()
 
         #expect(breakdown.miss == 1)
         #expect(breakdown.meanTimingError == nil)
