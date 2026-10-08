@@ -63,8 +63,8 @@ nonisolated struct CutDetector: Sendable {
     let configuration: Configuration
     private var peak: Peak?
     private var lastCut: CutEvent?
-    /// 直前に終えた振りの向き。角速度が閾値を下回るまで、同じ向きの振りを始めない
-    private var settling: SwingDirection?
+    /// 直前の振りを終えたときに、閾値を超えていた向き。それぞれ閾値をいったん下回るまで、その向きの振りを始めない
+    private var settling: Set<SwingDirection> = []
 
     init(configuration: Configuration = Configuration()) {
         self.configuration = configuration
@@ -78,23 +78,24 @@ nonisolated struct CutDetector: Sendable {
 
         var cut: CutEvent?
         if var current = peak {
-            if direction == current.direction, rate > current.rate {
-                current = Peak(timestamp: sample.timestamp, direction: direction, rate: rate)
+            // 振りの軸の角速度で追う。別の軸が強くなっただけでは終えない（弧を描く 1 回の振りを、上下と左右の 2 回に数えない）
+            let currentRate = Self.rate(toward: current.direction, in: sample)
+            if currentRate > current.rate {
+                current = Peak(timestamp: sample.timestamp, direction: current.direction, rate: currentRate)
             }
-            let isReleased = direction != current.direction || rate < current.rate * configuration.releaseRatio
+            let isReleased = currentRate < current.rate * configuration.releaseRatio
             guard isReleased else {
                 peak = current
                 return nil
             }
             peak = nil
-            settling = current.direction
+            // このとき閾値を超えている向きは、いったん閾値を下回るまで振りにしない（すぐ下で絞る）。
+            // 強い振りの減っていく途中で同じ向きをもう一度数えず、弧を描く振りの後半（別の軸がまだ強い）も別の振りにしない
+            settling = Set(SwingDirection.allCases)
             cut = emit(current)
         }
-        // 強い振りの減っていく途中で、同じ向きの振りをもう一度数えない。いったん閾値を下回るまで待つ
-        if rate < threshold || direction != settling {
-            settling = nil
-        }
-        if peak == nil, settling == nil, rate >= threshold {
+        settling = settling.filter { Self.rate(toward: $0, in: sample) >= configuration.threshold(for: $0) }
+        if peak == nil, !settling.contains(direction), rate >= threshold {
             peak = Peak(timestamp: sample.timestamp, direction: direction, rate: rate)
         }
         return cut
@@ -119,6 +120,16 @@ nonisolated struct CutDetector: Sendable {
         let cut = CutEvent(timestamp: peak.timestamp, direction: peak.direction, peakRate: peak.rate)
         lastCut = cut
         return cut
+    }
+
+    /// その向きへの角速度。逆向きに動いているときは負
+    private static func rate(toward direction: SwingDirection, in sample: MotionSample) -> Double {
+        switch direction {
+        case .right: sample.yawRate
+        case .left: -sample.yawRate
+        case .up: sample.pitchRate
+        case .down: -sample.pitchRate
+        }
     }
 
     /// 閾値に対する割合の大きい方の軸と、その向き・角速度。斜めの振りは近い方の軸に丸める
