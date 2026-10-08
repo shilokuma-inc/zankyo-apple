@@ -15,12 +15,16 @@ struct HitTarget: View {
     }
 
     let notes: [Note]
+    /// 直前に判定したノーツの、判定の線に届くまでの残り秒。判定したノーツは `notes` から外れるので、
+    /// ぴったりの瞬間の前後に切ったときもターゲット枠を光らせるために別に受け取る。無ければ nil
+    var judgedRemaining: TimeInterval?
     /// 判定の線の上でのノーツの大きさ
     let noteSize: CGFloat
 
     var body: some View {
         let size = noteSize * PlayfieldGeometry.targetScale
-        let flash = notes.map { PlayfieldGeometry.targetFlash(remaining: $0.remaining) }.max() ?? 0
+        let remainings = notes.map(\.remaining) + [judgedRemaining].compactMap { $0 }
+        let flash = remainings.map(PlayfieldGeometry.targetFlash(remaining:)).max() ?? 0
         ZStack {
             ForEach(notes, id: \.index) { note in
                 if let scale = PlayfieldGeometry.cueScale(remaining: note.remaining) {

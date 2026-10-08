@@ -145,6 +145,7 @@ struct PlayView: View {
                     notes: visibleNotes.map { item in
                         HitTarget.Note(index: item.index, remaining: item.note.time - session.currentTime, direction: item.note.direction)
                     },
+                    judgedRemaining: session.lastJudgement.map { $0.note.time - session.currentTime },
                     noteSize: Self.noteSize
                 )
                 .position(x: geometry.centerX, y: geometry.hitY)
