@@ -8,7 +8,7 @@ struct PlayedSong: Hashable {
     let difficulty: String
 }
 
-/// プレイを終えたときの結果。プレイ画面と同じ空間の上に、曲の情報・ランク・点数・判定の内訳を光らせて並べる。
+/// プレイを終えたときの結果。プレイ画面と同じ空間の上に、曲の情報・ランク・点数・判定の内訳・点の内訳とアドバイスを光らせて並べる。
 /// 操作（もう一度・閉じる）は片手の親指が届く画面下に横に並べ、よく使う「もう一度」を右に置く
 ///
 /// 開いたら順に見せる: ランクが光って現れ → 点数が数え上がり → 内訳の棒が伸び → フルコンボ・ハイスコア更新が弾けて出る。
@@ -56,7 +56,7 @@ struct ResultView: View {
                         maxCombo: result.maxCombo,
                         progress: stage >= .breakdown ? 1 : 0
                     )
-                    BreakdownCard(breakdown: breakdown) { showsGuide = true }
+                    PointsPanel(breakdown: breakdown, progress: stage >= .breakdown ? 1 : 0) { showsGuide = true }
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.top, 8)
@@ -184,48 +184,6 @@ struct ResultView: View {
             case .badges: .spring(duration: 0.5, bounce: 0.5)
             }
         }
-    }
-}
-
-/// 点の内訳。1 ノーツあたりの「振りの強さ」と「タイミング」の平均と、次に気をつけるとよいこと
-private struct BreakdownCard: View {
-    let breakdown: ScoreBreakdown
-    let onShowGuide: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("点の内訳（1 ノーツの平均）")
-                .font(.headline)
-            meter("振りの強さ", value: breakdown.averageSwing, max: CutScore.maxSwing)
-            meter("タイミング", value: breakdown.averageAccuracy, max: CutScore.maxAccuracy)
-            Text("ぴったり \(breakdown.perfectCount)・早い \(breakdown.earlyCount)・遅い \(breakdown.lateCount)")
-                .font(.footnote.monospacedDigit())
-                .foregroundStyle(.secondary)
-            if let advice = breakdown.advice {
-                Label(advice.message, systemImage: "lightbulb")
-                    .font(.subheadline)
-            }
-            Button("スコアの仕組み", systemImage: "questionmark.circle", action: onShowGuide)
-                .font(.subheadline)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding()
-        .background(.quaternary.opacity(0.5), in: .rect(cornerRadius: 16))
-    }
-
-    private func meter(_ title: String, value: Double, max: Int) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text(title)
-                Spacer()
-                Text("\(Int(value.rounded())) / \(max)")
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
-            }
-            .font(.subheadline)
-            ProgressView(value: min(value, Double(max)), total: Double(max))
-        }
-        .accessibilityElement(children: .combine)
     }
 }
 

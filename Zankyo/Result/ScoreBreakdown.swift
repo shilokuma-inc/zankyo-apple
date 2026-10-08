@@ -135,8 +135,6 @@ nonisolated enum TimingTendency: Sendable, Hashable {
 
     /// 平均のずれがこの秒以内なら、ちょうどとみなす
     static let tolerance: TimeInterval = 0.02
-    /// 平均のずれがこの秒を超えたら、キャリブレーションを勧める
-    static let calibrationHintThreshold: TimeInterval = 0.04
 
     init(meanTimingError: TimeInterval) {
         if abs(meanTimingError) <= Self.tolerance {

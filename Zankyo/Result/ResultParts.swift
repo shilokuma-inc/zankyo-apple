@@ -198,7 +198,7 @@ struct BreakdownPanel: View {
     }
 }
 
-/// 切ったタイミングの平均のずれ。真ん中がぴったりで、左が早い・右が遅い。ずれが大きいときはキャリブレーションを勧める
+/// 切ったタイミングの平均のずれ。真ん中がぴったりで、左が早い・右が遅い（直し方は点の内訳のアドバイスで伝える）
 struct TimingGauge: View {
     /// 平均のずれ（秒。負なら早い）
     let meanTimingError: TimeInterval
@@ -232,11 +232,6 @@ struct TimingGauge: View {
             .font(.caption2)
             .foregroundStyle(palette.ink.opacity(0.6))
             .accessibilityHidden(true)
-            if abs(meanTimingError) > TimingTendency.calibrationHintThreshold {
-                Text("ずれが大きいときは、キャリブレーションで合わせられます")
-                    .font(.caption)
-                    .foregroundStyle(palette.ink.opacity(0.75))
-            }
         }
         .accessibilityElement(children: .combine)
     }
@@ -270,5 +265,87 @@ struct TimingGauge: View {
         case .early: return "平均 \(milliseconds)ms 早め"
         case .late: return "平均 \(milliseconds)ms 遅め"
         }
+    }
+}
+
+/// 点の内訳。1 ノーツあたりの「振りの強さ」と「タイミング」の点の平均を光る棒で見せ、次に気をつけるとよいことと、スコアの仕組みへの入り口を置く
+struct PointsPanel: View {
+    let breakdown: ScoreBreakdown
+    /// 棒の伸び具合（0〜1）。現れるときに伸ばす
+    let progress: CGFloat
+    let onShowGuide: () -> Void
+
+    @Environment(\.palette) private var palette
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("点の内訳（1 ノーツの平均）")
+                .font(.system(.headline, design: .rounded, weight: .heavy))
+                .foregroundStyle(palette.laser)
+            meter("振りの強さ", value: breakdown.averageSwing, max: CutScore.maxSwing, color: palette.right.color)
+            meter("タイミング", value: breakdown.averageAccuracy, max: CutScore.maxAccuracy, color: palette.vertical.color)
+            if let advice = breakdown.advice {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Image(systemName: "lightbulb.fill")
+                        .foregroundStyle(palette.textColor(for: palette.anyDirection))
+                        .shadow(color: palette.glow(palette.anyDirection.color, 0.8), radius: 6)
+                    Text(advice.message)
+                        .font(.subheadline)
+                        .foregroundStyle(palette.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .accessibilityElement(children: .combine)
+            }
+            Button(action: onShowGuide) {
+                Label("スコアの仕組み", systemImage: "questionmark.circle")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(palette.laser)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .overlay {
+                        Capsule().stroke(palette.laser.opacity(0.7), lineWidth: 1)
+                    }
+                    .contentShape(.capsule)
+            }
+            .buttonStyle(.plain)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background {
+            RoundedRectangle(cornerRadius: 20)
+                .fill(palette.panel.opacity(0.55))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 20)
+                        .stroke(palette.laser.opacity(0.45), lineWidth: 1)
+                }
+        }
+    }
+
+    private func meter(_ title: String, value: Double, max: Int, color: Color) -> some View {
+        let fraction = max > 0 ? CGFloat(min(value, Double(max)) / Double(max)) : 0
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(palette.ink)
+                Spacer()
+                Text("\(Int(value.rounded())) / \(max)")
+                    .font(.subheadline.monospacedDigit().weight(.bold))
+                    .foregroundStyle(palette.ink)
+            }
+            Capsule()
+                .fill(color.opacity(0.15))
+                .frame(height: 8)
+                .overlay(alignment: .leading) {
+                    GeometryReader { proxy in
+                        Capsule()
+                            .fill(color)
+                            .frame(width: proxy.size.width * fraction * progress)
+                            .shadow(color: palette.glow(color, 0.8), radius: 4)
+                    }
+                }
+                .accessibilityHidden(true)
+        }
+        .accessibilityElement(children: .combine)
     }
 }
