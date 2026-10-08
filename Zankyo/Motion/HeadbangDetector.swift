@@ -16,6 +16,9 @@ nonisolated struct HeadbangDetector: SwingDetector {
         var releaseRatio: Double = 0.5
         /// 振りを出した後、次の振りを出さない時間（秒）。1 回の振りの速さの揺れを 2 回に数えない
         var refractory: TimeInterval = 0.12
+        /// 振りを終えた後、速さのうち直前の振りと逆向きの成分がこの割合以上なら、止まりきらずに折り返したとみなして次の振りを始める。
+        /// 向きが少し変わっただけ（弧を描く振りの後半）では始めない
+        var reversalRatio: Double = 0.7
     }
 
     /// 振りの途中のピーク
@@ -37,7 +40,7 @@ nonisolated struct HeadbangDetector: SwingDetector {
     let configuration: Configuration
     private var peak: Peak?
     /// 直前に終えた振り。速さが閾値を下回るか、逆向きに動き出すまで次の振りを始めない
-    /// （減っていく途中の強い振りを、もう一度数えない）
+    /// （減っていく途中の強い振りや、向きを変えながら続く弧を描く振りを、もう一度数えない）
     private var settling: Peak?
     private var lastCutTime: TimeInterval?
 
@@ -65,7 +68,8 @@ nonisolated struct HeadbangDetector: SwingDetector {
             settling = current
             cut = emit(current)
         }
-        if let previous = settling, speed < configuration.threshold || previous.rate(along: sample) <= 0 {
+        if let previous = settling,
+           speed < configuration.threshold || previous.rate(along: sample) <= -configuration.reversalRatio * speed {
             settling = nil
         }
         if peak == nil, settling == nil, speed >= configuration.threshold {
@@ -80,7 +84,13 @@ nonisolated struct HeadbangDetector: SwingDetector {
             return nil
         }
         lastCutTime = peak.timestamp
-        return CutEvent(timestamp: peak.timestamp, direction: Self.direction(of: peak), peakRate: peak.speed)
+        return CutEvent(
+            timestamp: peak.timestamp,
+            direction: Self.direction(of: peak),
+            peakRate: peak.speed,
+            yawRate: peak.yawRate,
+            pitchRate: peak.pitchRate
+        )
     }
 
     /// 振りの向きを、近い方の軸に丸める。判定には使わず、頭の動きの表示で光らせる矢印に使う

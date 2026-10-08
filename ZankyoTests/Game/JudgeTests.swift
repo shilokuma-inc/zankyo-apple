@@ -308,6 +308,30 @@ struct JudgeTests {
         #expect(judge.keeper.combo == 1)
     }
 
+    @Test
+    func diagonalReturnSwingIsNotEmptySwing() {
+        // 左寄りに振り下ろし（丸めると下）、右寄りに戻す（丸めると右）。丸めた向きは真逆でなくても、首を戻す動きとみなす
+        let notes = [FaceNote(beat: 0, time: 1, direction: nil), FaceNote(beat: 4, time: 5, direction: nil)]
+        var judge = Judge(notes: notes, breaksComboOnEmptySwing: true)
+        judge.cut(CutEvent(timestamp: 0, direction: .down, peakRate: 3.2, yawRate: -1, pitchRate: -3), at: 1)
+
+        judge.cut(CutEvent(timestamp: 0, direction: .right, peakRate: 1.9, yawRate: 1.5, pitchRate: 1.2), at: 1.3)
+
+        #expect(judge.keeper.combo == 1)
+    }
+
+    @Test
+    func sidewaysSwingAfterHitIsEmptySwing() {
+        // 振り下ろした後の横向きの振りは、首を戻す動きではない
+        let notes = [FaceNote(beat: 0, time: 1, direction: nil), FaceNote(beat: 4, time: 5, direction: nil)]
+        var judge = Judge(notes: notes, breaksComboOnEmptySwing: true)
+        judge.cut(Self.cut(.down), at: 1)
+
+        judge.cut(Self.cut(.right), at: 1.3)
+
+        #expect(judge.keeper.combo == 0)
+    }
+
     private static func cut(_ direction: SwingDirection, peakRate: Double = 4) -> CutEvent {
         CutEvent(timestamp: 0, direction: direction, peakRate: peakRate)
     }
