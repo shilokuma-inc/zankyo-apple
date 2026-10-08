@@ -142,7 +142,7 @@ struct CalibrationModelTests {
         let nods = clicks.enumerated().dropFirst(4).map { index, click in
             MotionRecording.Swing(direction: index.isMultiple(of: 2) ? .up : .down, peakTime: click + 0.1, peakRate: 1.8)
         }
-        var detection = CutDetector.Configuration(pitchThreshold: 2.0)
+        var detection = SwingDetection(style: .directional, directional: .init(pitchThreshold: 2.0))
         let model = CalibrationModel(
             input: RecordedMotionInput(samples: MotionRecording.make(swings: nods)),
             metronome: FakeMetronome(clicks: clicks),
@@ -158,7 +158,7 @@ struct CalibrationModelTests {
         }
 
         // 画面で閾値を下げたら、次に測るときから使う
-        detection.pitchThreshold = 1.5
+        detection.directional.pitchThreshold = 1.5
         await model.measure()
         guard case .finished(let result) = model.phase else {
             Issue.record("閾値 1.5 ならうなずきを数えるはず: \(model.phase)")

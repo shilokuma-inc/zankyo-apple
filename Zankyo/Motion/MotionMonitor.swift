@@ -10,8 +10,8 @@ import Observation
 final class MotionMonitor: MotionInput {
     let base: any MotionInput
     private(set) var state: HeadMotionState
-    /// 「切る」検出の閾値。画面の表示に使い、キャリブレーションとプレイの判定にも同じものを渡す
-    var detection: CutDetector.Configuration {
+    /// 遊び方と「切る」検出の閾値。画面の表示に使い、キャリブレーションとプレイの判定にも同じものを渡す
+    var detection: SwingDetection {
         didSet { state.reconfigure(detection) }
     }
     /// 最後にサンプルを受け取った、起動からの秒（届いているかの表示に使う）
@@ -32,12 +32,12 @@ final class MotionMonitor: MotionInput {
 
     init(
         base: any MotionInput,
-        detection: CutDetector.Configuration = CutDetector.Configuration(),
+        detection: SwingDetection = SwingDetection(),
         now: @escaping () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }
     ) {
         self.base = base
         self.detection = detection
-        state = HeadMotionState(configuration: detection)
+        state = HeadMotionState(detection: detection)
         self.now = now
     }
 

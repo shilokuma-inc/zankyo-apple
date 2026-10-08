@@ -181,6 +181,8 @@ struct GameSessionResultTests {
         #expect(result.missCount == 1)
         #expect(session.isNewRecord)
         #expect(session.previousBest == nil)
-        #expect(store.best(for: key) == result)
+        // ハイスコアは遊び方（既定はヘドバン）ごとに分けて記録する
+        #expect(store.best(for: key.playing(.headbang)) == result)
+        #expect(store.best(for: key.playing(.directional)) == nil)
     }
 }

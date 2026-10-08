@@ -44,9 +44,14 @@ struct GameSessionTests {
             notes: notes,
             clock: ManualSongClock(duration: 2),
             input: RecordedMotionInput(samples: samples),
-            detection: .init(pitchThreshold: 2.0)
+            detection: SwingDetection(style: .directional, directional: .init(pitchThreshold: 2.0))
         )
-        let gentle = GameSession(notes: notes, clock: ManualSongClock(duration: 2), input: RecordedMotionInput(samples: samples))
+        let gentle = GameSession(
+            notes: notes,
+            clock: ManualSongClock(duration: 2),
+            input: RecordedMotionInput(samples: samples),
+            detection: SwingDetection(style: .directional)
+        )
 
         await strict.play()
         await gentle.play()
@@ -64,7 +69,8 @@ struct GameSessionTests {
         clock.time = 2.5
         session.tick()
         #expect(session.judge.keeper.missCount == 2)
-        #expect(session.lastJudgement == .miss(Self.notes[1]))
+        // 既定のヘドバンでは、向きを外したノーツで判定する
+        #expect(session.lastJudgement == .miss(FaceNote(beat: 4, time: 2, direction: nil)))
 
         clock.time = 4
         session.tick()
