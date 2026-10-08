@@ -39,6 +39,13 @@ struct PlayView: View {
     @Environment(\.palette) private var palette
     /// 「視差効果を減らす」がオンなら、背景の光を点滅させない
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// 設定画面で背景の光の演出をオフにしていたら、光らせない
+    @AppStorage(BackgroundLightSetting.storageKey) private var showsLights = BackgroundLightSetting.defaultValue
+
+    /// 使う背景の光（設定でオフなら nil）
+    private var activeLights: LightShow? {
+        showsLights ? lights : nil
+    }
 
     var body: some View {
         Group {
@@ -118,7 +125,7 @@ struct PlayView: View {
             }
         }
         .animation(.easeOut(duration: 0.2), value: isMenuShown)
-        .background { LitPlayfieldBackdrop(lights: lights, session: session) }
+        .background { LitPlayfieldBackdrop(lights: activeLights, session: session) }
         .preferredColorScheme(palette.colorScheme)
     }
 
@@ -146,7 +153,7 @@ struct PlayView: View {
         GeometryReader { proxy in
             let geometry = PlayfieldGeometry(size: proxy.size, approachTime: Self.approachTime)
             ZStack {
-                if let lights {
+                if let lights = activeLights {
                     PlayfieldLights(geometry: geometry, state: reduceMotion ? .calm : lights.state(at: session.currentTime))
                 }
                 PlayfieldLane(geometry: geometry)
