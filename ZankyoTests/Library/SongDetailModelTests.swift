@@ -65,6 +65,33 @@ struct SongDetailModelTests {
     }
 
     @Test
+    func stalePreviewFailureIsNotReported() async throws {
+        // 音源が壊れていてデコードに失敗する譜面
+        let fixture = try Fixture(song: Data("not ogg".utf8))
+        defer { fixture.remove() }
+        let model = fixture.model
+        await model.load()
+        let easy = try #require(model.info?.difficulties.first { $0.difficulty == .easy })
+
+        // 試聴のデコードを待っている間に遊ぶ準備を始め、その準備は画面を離れて取り消された
+        let preview = Task { await model.togglePreview() }
+        for _ in 0..<1_000 where !model.isLoadingPreview {
+            await Task.yield()
+        }
+        try #require(model.isLoadingPreview)
+        let preparation = Task {
+            withUnsafeCurrentTask { $0?.cancel() }
+            await model.prepare(easy)
+        }
+        await preparation.value
+        await preview.value
+
+        // 止められた試聴のデコードの失敗は知らせない
+        #expect(model.playError == nil)
+        #expect(fixture.previewer.played.isEmpty)
+    }
+
+    @Test
     func previewDoesNotStartAfterCancellation() async throws {
         let fixture = try Fixture()
         defer { fixture.remove() }
@@ -97,7 +124,8 @@ private struct Fixture {
     let previewer = RecordingPreviewer()
     private let root: URL
 
-    init() throws {
+    /// - Parameter song: 音源のファイルの中身。nil なら 0.5 秒のサイン波
+    init(song: Data? = nil) throws {
         root = try TestFixtures.temporaryDirectory()
         let store = LocalMapStore(
             downloadsDirectory: root.appending(path: "Downloads", directoryHint: .isDirectory),
@@ -107,7 +135,7 @@ private struct Fixture {
         let zip = TestZip.make([
             (name: "Info.dat", data: Data(InfoFixtures.v2().utf8)),
             (name: "EasyStandard.dat", data: Data(Self.easy.utf8)),
-            (name: "song.egg", data: try Data(contentsOf: try TestFixtures.sineSong))
+            (name: "song.egg", data: try song ?? Data(contentsOf: try TestFixtures.sineSong))
         ])
         try zip.write(to: store.downloadsDirectory.appending(path: "\(Self.hash).zip"))
 
