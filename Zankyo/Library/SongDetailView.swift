@@ -282,6 +282,7 @@ struct PlayScreen: View {
             clock: AudioSongClock(song: setup.song),
             input: motion,
             detection: motion.detection,
+            hitSound: EngineHitSoundPlayer(settings: HitSoundStore().settings),
             offset: CalibrationStore().offset,
             scoreKey: setup.scoreKey,
             highScores: highScores
