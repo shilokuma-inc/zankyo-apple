@@ -5,9 +5,13 @@ struct ResultView: View {
     let result: PlayResult
     let previousBest: PlayResult?
     let isNewRecord: Bool
+    /// 点の内訳（nil なら出さない）
+    var breakdown: ScoreBreakdown?
     /// もう一度遊ぶ（nil ならボタンを出さない）
     var onRetry: (() -> Void)?
     let onClose: () -> Void
+
+    @State private var showsGuide = false
 
     var body: some View {
         VStack(spacing: 16) {
@@ -43,6 +47,11 @@ struct ResultView: View {
                         row("ミス", "\(result.missCount)")
                     }
                     .font(.body.monospacedDigit())
+                    if let breakdown {
+                        BreakdownCard(breakdown: breakdown) { showsGuide = true }
+                    } else {
+                        Button("スコアの仕組み", systemImage: "questionmark.circle") { showsGuide = true }
+                    }
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.top, 24)
@@ -62,6 +71,16 @@ struct ResultView: View {
             .controlSize(.large)
         }
         .padding()
+        .sheet(isPresented: $showsGuide) {
+            NavigationStack {
+                ScoringGuideView()
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("閉じる") { showsGuide = false }
+                        }
+                    }
+            }
+        }
     }
 
     private func row(_ title: String, _ value: String) -> some View {
@@ -69,6 +88,48 @@ struct ResultView: View {
             Text(title).foregroundStyle(.secondary)
             Text(value)
         }
+    }
+}
+
+/// 点の内訳。1 ノーツあたりの「振りの強さ」と「タイミング」の平均と、次に気をつけるとよいこと
+private struct BreakdownCard: View {
+    let breakdown: ScoreBreakdown
+    let onShowGuide: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("点の内訳（1 ノーツの平均）")
+                .font(.headline)
+            meter("振りの強さ", value: breakdown.averageSwing, max: CutScore.maxSwing)
+            meter("タイミング", value: breakdown.averageAccuracy, max: CutScore.maxAccuracy)
+            Text("ぴったり \(breakdown.perfectCount)・早い \(breakdown.earlyCount)・遅い \(breakdown.lateCount)")
+                .font(.footnote.monospacedDigit())
+                .foregroundStyle(.secondary)
+            if let advice = breakdown.advice {
+                Label(advice.message, systemImage: "lightbulb")
+                    .font(.subheadline)
+            }
+            Button("スコアの仕組み", systemImage: "questionmark.circle", action: onShowGuide)
+                .font(.subheadline)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
+        .background(.quaternary.opacity(0.5), in: .rect(cornerRadius: 16))
+    }
+
+    private func meter(_ title: String, value: Double, max: Int) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(title)
+                Spacer()
+                Text("\(Int(value.rounded())) / \(max)")
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+            }
+            .font(.subheadline)
+            ProgressView(value: min(value, Double(max)), total: Double(max))
+        }
+        .accessibilityElement(children: .combine)
     }
 }
 

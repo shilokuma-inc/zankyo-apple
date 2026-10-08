@@ -22,6 +22,13 @@ struct SettingsView: View {
                 } footer: {
                     Text("ハイスコアは遊び方ごとに記録します。遊び方を変えたら、キャリブレーションで測り直すと判定が合いやすくなります。")
                 }
+                Section {
+                    NavigationLink {
+                        ScoringGuideView()
+                    } label: {
+                        Label("スコアの仕組みとハイスコアのコツ", systemImage: "questionmark.circle")
+                    }
+                }
                 HitSoundSettingsSection()
                 Section("プレイ画面の見本") {
                     ThemePreview(showsDirections: motion.detection.style.usesDirection)

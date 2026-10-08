@@ -61,6 +61,10 @@ nonisolated enum HitTiming: Sendable, Hashable {
 nonisolated struct ScoreKeeper: Sendable, Hashable {
     /// 各段から次の段に上がるのに要る、続けて切った数
     static let multiplierSteps = [1: 2, 2: 4, 4: 8]
+    /// 最大の倍率
+    static var maxMultiplier: Int {
+        (multiplierSteps.keys.max() ?? 1) * 2
+    }
 
     private(set) var score = 0
     private(set) var combo = 0
