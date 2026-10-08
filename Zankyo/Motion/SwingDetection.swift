@@ -6,7 +6,8 @@ nonisolated protocol SwingDetector: Sendable {
     mutating func process(_ sample: MotionSample) -> CutEvent?
 }
 
-extension SwingDetector {
+// MainActor 既定のため、extension に書くと MainActor に隔離される。検出器と同じく nonisolated にする
+nonisolated extension SwingDetector {
     /// サンプル列をまとめて処理する（録画した列の再生やテスト用）
     mutating func process(_ samples: some Sequence<MotionSample>) -> [CutEvent] {
         samples.compactMap { process($0) }
