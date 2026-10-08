@@ -158,6 +158,7 @@ struct PlayView: View {
                 if let judgement = session.lastJudgement {
                     JudgementEffect(
                         judgement: judgement,
+                        rules: session.judge.rules,
                         noteSize: Self.noteSize,
                         labelOffset: geometry.judgementLabelOffset(noteSize: Self.noteSize, labelHeight: judgementLabelHeight)
                     )
