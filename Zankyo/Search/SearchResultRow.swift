@@ -50,10 +50,7 @@ struct SearchResultRow: View {
                 .padding(.top, 4)
             }
         }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background { CoverBackdrop(cover: cover) }
-        .clipShape(.rect(cornerRadius: 20))
+        .coverCard(cover)
     }
 
     /// 左に出すジャケット画像のサムネイル。画像が無いあいだは音符を出す
@@ -92,30 +89,5 @@ struct SearchResultRow: View {
         return order.filter(names.contains)
             .map { $0 == "ExpertPlus" ? "Expert+" : $0 }
             .joined(separator: " / ")
-    }
-}
-
-/// 検索結果の行の背景。ジャケット画像を大きくぼかし、文字が読めるように薄くして画面の背景色の上に重ねる
-private struct CoverBackdrop: View {
-    let cover: Image?
-
-    var body: some View {
-        ZStack {
-            Rectangle()
-                .fill(.background)
-            if let cover {
-                Color.clear
-                    .overlay {
-                        cover.resizable().scaledToFill()
-                    }
-                    .clipped()
-                    // ぼかすと色が混ざってくすむので、彩度を上げて曲の色を残す
-                    .saturation(1.6)
-                    // 端まで色を残すため、ぼかしで縁が透けないようにする
-                    .blur(radius: 24, opaque: true)
-                    .opacity(0.5)
-            }
-        }
-        .accessibilityHidden(true)
     }
 }
