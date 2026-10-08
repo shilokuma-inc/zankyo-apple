@@ -11,9 +11,11 @@ nonisolated struct SampleSong: Sendable, Hashable {
     let mapperName: String
     /// 同梱した譜面 ZIP
     let archive: URL
+    /// この曲を足した一覧の版。入れたことのある版より新しい曲だけを入れる
+    var since = 1
 }
 
-/// 同梱したサンプル楽曲の一覧（`SampleSongs.json`）。版が上がったら、初回と同じように入れ直す
+/// 同梱したサンプル楽曲の一覧（`SampleSongs.json`）。曲を足したら版を上げる
 nonisolated struct SampleSongCatalog: Sendable {
     let version: Int
     let songs: [SampleSong]
@@ -41,7 +43,8 @@ nonisolated struct SampleSongCatalog: Sendable {
                 songName: song.songName,
                 songAuthorName: song.songAuthorName,
                 mapperName: song.mapperName,
-                archive: archive
+                archive: archive,
+                since: song.since ?? 1
             )
         }
         self.init(version: file.version, songs: songs)
@@ -56,13 +59,15 @@ nonisolated private struct CatalogFile: Decodable {
         let songName: String
         let songAuthorName: String
         let mapperName: String
+        /// 最初の版の一覧には無い
+        let since: Int?
     }
 
     let version: Int
     let songs: [Song]
 }
 
-/// サンプル楽曲をライブラリに入れる。一覧の版が上がったとき（初回を含む）にまとめて入れ、消した曲は「戻す」まで入れ直さない
+/// サンプル楽曲をライブラリに入れる。一覧の版が上がったとき（初回を含む）に、その版で足した曲を入れる。消した曲は「戻す」まで入れ直さない
 ///
 /// 入れ方は取り込んだ曲と同じ: 譜面 ZIP を `Downloads/<hash>.zip` に置き、一覧に足す（展開は遊ぶときに行う）
 struct SampleSongInstaller {
@@ -83,10 +88,12 @@ struct SampleSongInstaller {
         self.suiteName = suiteName
     }
 
-    /// まだ入れていない版の一覧なら、すべての曲を入れる。置けない・一覧に保存できない曲があったときは版を覚えず、次の起動で入れ直す
+    /// まだ入れていない版の一覧なら、入れたことのある版より後に足した曲を入れる（初めてなら全曲）。
+    /// 前の版の曲は、利用者が消していても入れ直さない。置けない・一覧に保存できない曲があったときは版を覚えず、次の起動で入れ直す
     func installIfNeeded(into library: LibraryStore) {
-        guard !library.isReadOnly, defaults.integer(forKey: Self.installedVersionKey) < catalog.version else { return }
-        if install(catalog.songs, into: library) {
+        let installedVersion = defaults.integer(forKey: Self.installedVersionKey)
+        guard !library.isReadOnly, installedVersion < catalog.version else { return }
+        if install(catalog.songs.filter { $0.since > installedVersion }, into: library) {
             defaults.set(catalog.version, forKey: Self.installedVersionKey)
         }
     }
@@ -127,10 +134,16 @@ struct SampleSongInstaller {
     }
 
     /// 一覧の順に並び、取り込んだ曲より下に来るよう、古い日時を一覧の順に割り当てる
+    ///
+    /// 起点は初版の曲数（8）に固定する。一覧の曲数を起点にすると、曲を足したときに前の版で入れた曲と日時が重なって並びが崩れるため、
+    /// 初版で入れた曲の日時（1970 年の 8〜1 秒）はそのままにし、後から足した曲はその後ろ（0 秒、-1 秒…）に続ける
     private func importedAt(of song: SampleSong) -> Date {
         let position = catalog.songs.firstIndex(of: song) ?? catalog.songs.count
-        return Date(timeIntervalSince1970: TimeInterval(catalog.songs.count - position))
+        return Date(timeIntervalSince1970: TimeInterval(Self.firstCatalogCount - position))
     }
+
+    /// 初版の一覧の曲数。並び順の日時の起点
+    private static let firstCatalogCount = 8
 
     private var defaults: UserDefaults {
         suiteName.flatMap(UserDefaults.init(suiteName:)) ?? .standard
