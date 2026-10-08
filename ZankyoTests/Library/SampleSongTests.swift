@@ -102,6 +102,35 @@ struct SampleSongInstallerTests {
     }
 
     @Test
+    func retriesWhenSongsCannotBePlaced() throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: "SampleSongInstallerTests-\(UUID().uuidString)")
+        let suite = "ZankyoTests.SampleSongs.\(UUID().uuidString)"
+        defer {
+            try? FileManager.default.removeItem(at: root)
+            UserDefaults().removePersistentDomain(forName: suite)
+        }
+        let downloads = root.appending(path: "Downloads")
+        let library = LibraryStore(
+            directory: root.appending(path: "Library"),
+            downloadsDirectory: downloads,
+            mapsDirectory: root.appending(path: "Maps")
+        )
+        let installer = SampleSongInstaller(downloadsDirectory: downloads, suiteName: suite)
+        // 置き場所にファイルがあってフォルダを作れない（書けない）状態
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        try Data([1]).write(to: downloads)
+
+        installer.installIfNeeded(into: library)
+        #expect(library.entries.isEmpty)
+        #expect(UserDefaults(suiteName: suite)?.integer(forKey: SampleSongInstaller.installedVersionKey) == 0)
+
+        // 書けるようになったら、次の起動で入れ直す
+        try FileManager.default.removeItem(at: downloads)
+        installer.installIfNeeded(into: library)
+        #expect(library.entries.count == installer.catalog.songs.count)
+    }
+
+    @Test
     func samplesStayBelowImportedSongs() throws {
         let root = FileManager.default.temporaryDirectory.appending(path: "SampleSongInstallerTests-\(UUID().uuidString)")
         let suite = "ZankyoTests.SampleSongs.\(UUID().uuidString)"
