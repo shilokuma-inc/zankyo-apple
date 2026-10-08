@@ -145,6 +145,48 @@ nonisolated struct LocalMapStoreTests {
         #expect(await store.loadCover(hash: Self.hash, info: info) == nil)
     }
 
+    @Test
+    func loadsListCoverFromZipWithoutExtracting() async throws {
+        let store = try Self.makeStore(files: [
+            (name: "Info.dat", data: Data(InfoFixtures.v2(coverFilename: "cover.png").utf8)),
+            (name: "cover.png", data: try TestImage.make(width: 1024, height: 1024))
+        ])
+        defer { try? FileManager.default.removeItem(at: store.downloadsDirectory.deletingLastPathComponent()) }
+
+        let cover = try #require(await store.loadListCover(hash: Self.hash))
+
+        #expect(cover.width == CoverImage.maxPixelSize)
+        // 一覧のためだけに展開しない
+        #expect(!FileManager.default.fileExists(atPath: store.mapsDirectory.appending(path: Self.hash).path(percentEncoded: false)))
+    }
+
+    @Test
+    func loadsListCoverFromExtractedFolder() async throws {
+        let store = try Self.makeStore(files: [
+            (name: "Info.dat", data: Data(InfoFixtures.v2(coverFilename: "cover.png").utf8)),
+            (name: "cover.png", data: try TestImage.make(width: 64, height: 64))
+        ])
+        defer { try? FileManager.default.removeItem(at: store.downloadsDirectory.deletingLastPathComponent()) }
+        _ = try await store.loadInfo(hash: Self.hash)
+        // 展開済みなら ZIP が無くても読める
+        try FileManager.default.removeItem(at: store.downloadsDirectory.appending(path: "\(Self.hash).zip"))
+
+        let cover = try #require(await store.loadListCover(hash: Self.hash))
+
+        #expect(cover.width == 64)
+    }
+
+    @Test
+    func listCoverIsNilWhenMapHasNoImageOrIsMissing() async throws {
+        // Info.dat は cover.jpg を指すが、ZIP に入っていない
+        let store = try Self.makeStore()
+        defer { try? FileManager.default.removeItem(at: store.downloadsDirectory.deletingLastPathComponent()) }
+
+        #expect(await store.loadListCover(hash: Self.hash) == nil)
+        #expect(await store.loadListCover(hash: String(repeating: "cd", count: 20)) == nil)
+        #expect(await store.loadListCover(hash: "../\(Self.hash)") == nil)
+    }
+
     private static func makeStore(files: [(name: String, data: Data)]) throws -> LocalMapStore {
         let store = try makeStore(writeZip: false)
         try TestZip.make(files).write(to: store.downloadsDirectory.appending(path: "\(hash).zip"))
