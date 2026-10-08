@@ -133,8 +133,9 @@ final class GameSession {
         } catch {
             return
         }
-        // 止めている間の動きの途中から振りを数えない
+        // 止めている間の動きの途中から振りを数えない。止める前の振りも、首を戻す動きの見分けに使わない
         detector = detection.makeDetector()
+        judge.forgetLastSwing()
         pausedByDisconnection = false
         phase = .playing
     }

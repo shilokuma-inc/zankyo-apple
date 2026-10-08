@@ -244,6 +244,28 @@ struct GameSessionTests {
         #expect(session.judge.keeper.maxCombo == 1)
     }
 
+    @Test
+    func resumeForgetsSwingBeforePause() async {
+        // 振り下ろして切った直後に止め、再開してすぐ上へ振る。止める前の振りの戻しとはみなさず、空振りにする
+        let notes = [FaceNote(beat: 0, time: 1, direction: nil), FaceNote(beat: 8, time: 5, direction: nil)]
+        let clock = ManualSongClock(duration: 6)
+        let session = GameSession(
+            notes: notes,
+            clock: clock,
+            input: RecordedMotionInput(samples: []),
+            detection: SwingDetection(style: .headbang)
+        )
+        await session.play()
+        session.handle(CutEvent(timestamp: 1, direction: .down, peakRate: 4))
+        #expect(session.judge.keeper.combo == 1)
+
+        session.pause()
+        session.resume()
+        session.handle(CutEvent(timestamp: 1.2, direction: .up, peakRate: 4))
+
+        #expect(session.judge.keeper.combo == 0)
+    }
+
     private func waitUntil(_ condition: () -> Bool) async {
         for _ in 0..<100 where !condition() {
             await Task.yield()

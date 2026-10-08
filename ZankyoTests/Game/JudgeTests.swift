@@ -332,6 +332,18 @@ struct JudgeTests {
         #expect(judge.keeper.combo == 0)
     }
 
+    @Test
+    func forgottenSwingIsNotUsedForReturn() {
+        let notes = [FaceNote(beat: 0, time: 1, direction: nil), FaceNote(beat: 4, time: 5, direction: nil)]
+        var judge = Judge(notes: notes, breaksComboOnEmptySwing: true)
+        judge.cut(Self.cut(.down), at: 1)
+
+        judge.forgetLastSwing()
+        judge.cut(Self.cut(.up), at: 1.2)
+
+        #expect(judge.keeper.combo == 0)
+    }
+
     private static func cut(_ direction: SwingDirection, peakRate: Double = 4) -> CutEvent {
         CutEvent(timestamp: 0, direction: direction, peakRate: peakRate)
     }

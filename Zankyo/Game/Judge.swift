@@ -90,6 +90,11 @@ nonisolated struct Judge: Sendable {
         keeper.breakCombo()
     }
 
+    /// 直前の振りを忘れる。一時停止の前の振りを、再開した後の首を戻す動きの見分けに使わない
+    mutating func forgetLastSwing() {
+        lastSwing = nil
+    }
+
     /// オフセットを引いた時刻 `time` までに時間窓を過ぎたノーツをミスにする
     private mutating func missPassedNotes(before time: TimeInterval) -> [Judgement] {
         guard time.isFinite else { return [] }
