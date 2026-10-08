@@ -29,6 +29,12 @@ struct ScoreReadout: View {
                 }
             }
         }
+        // ミスでもコンボは 0 に戻るので、VoiceOver には空振りで切れたことを読み上げて区別できるようにする
+        .onChange(of: emptySwings) { previous, current in
+            if current > previous {
+                AccessibilityNotification.Announcement("空振り。コンボが切れました").post()
+            }
+        }
     }
 }
 

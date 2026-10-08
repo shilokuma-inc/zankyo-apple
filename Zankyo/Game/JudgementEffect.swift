@@ -105,7 +105,7 @@ struct JudgementEffect: View {
 }
 
 /// 空振り（ヘドバンでノーツの無いところで振った）でコンボが切れたことの表示。空振りごとに作り直す前提で、現れたときに 1 度だけ浮かんで消える。
-/// 消えた後も残るので、VoiceOver では読まない（コンボの数が 0 に戻ることで伝わる）
+/// 消えた後も残るので、VoiceOver ではこの文字を読まず、空振りのたびに読み上げで知らせる（`ScoreReadout`）
 struct EmptySwingEffect: View {
     @State private var progress: CGFloat = 0
     @Environment(\.palette) private var palette
