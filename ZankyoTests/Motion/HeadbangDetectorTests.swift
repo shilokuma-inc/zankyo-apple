@@ -37,6 +37,34 @@ struct HeadbangDetectorTests {
     }
 
     @Test
+    func countsWideArcSwingOnce() {
+        // 同じ速さのまま、向きが 0.3 秒で 120 度回る（頭を回すような）振りを、2 回に数えない。
+        // 向きが 90 度を超えたところで次の振りを始めると、後半が別の振り（ヘドバンでは空振り）になる
+        let samples = (0...40).map { index in
+            let time = Double(index) / 100
+            let progress = min(max((time - 0.05) / 0.3, 0), 1)
+            let speed = (0.05...0.35).contains(time) ? 4.0 : 0
+            let angle = Double.pi * 2 / 3 * progress
+            return MotionSample(timestamp: time, yawRate: speed * cos(angle), pitchRate: -speed * sin(angle))
+        }
+        var detector = HeadbangDetector()
+
+        #expect(detector.process(samples).count == 1)
+    }
+
+    @Test
+    func reportsSwingVector() throws {
+        // 丸めた向きのほかに、ピークの角速度の成分を出す（首を戻す動きの見分けに使う）
+        var detector = HeadbangDetector()
+        let samples = Self.stroke(peakTime: 0.5, peakRate: 3) { rate in (rate * 0.6, -rate * 0.8) }
+        let cut = try #require(detector.process(samples).first)
+
+        #expect(cut.direction == .down)
+        #expect(abs(cut.yawRate - 1.8) < 0.05)
+        #expect(abs(cut.pitchRate + 2.4) < 0.05)
+    }
+
+    @Test
     func ignoresSlowSway() {
         // 電車の揺れのようなゆっくりした回転は、2 つの軸を合わせても閾値に届かない
         let samples = (0..<500).map { index in

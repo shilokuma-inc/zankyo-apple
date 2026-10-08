@@ -125,7 +125,7 @@ struct PlayView: View {
     private var header: some View {
         HStack(alignment: .center, spacing: 12) {
             CoverThumbnail(image: cover, url: coverURL)
-            ScoreReadout(score: session.score, combo: session.combo)
+            ScoreReadout(score: session.score, combo: session.combo, emptySwings: session.judge.emptySwingCount)
                 .accessibilityElement(children: .combine)
             Spacer()
             // 始める前は自分で取得して向きを見せ、プレイ中はゲームが取得したものを見せる

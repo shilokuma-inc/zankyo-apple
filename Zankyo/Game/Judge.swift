@@ -27,12 +27,14 @@ nonisolated struct Judge: Sendable {
     /// 時間窓にノーツの無い振り（空振り）でコンボを切る。向きを問わないヘドバンでは、振り続けるだけで切れてしまうので切る
     let breaksComboOnEmptySwing: Bool
     private(set) var keeper = ScoreKeeper()
+    /// コンボを切った空振りの数。画面で空振りを知らせるのに使う
+    private(set) var emptySwingCount = 0
     private(set) var judgements: [Judgement] = []
     private let notes: [FaceNote]
     /// まだ判定していない最初のノーツ
     private var nextIndex = 0
-    /// 首を戻す動きを空振りにしないために覚えておく、直前の振り（オフセットを引いた時刻と向き）。戻す動きを 1 回見たら忘れる
-    private var lastSwing: (time: TimeInterval, direction: SwingDirection)?
+    /// 首を戻す動きを空振りにしないために覚えておく、直前の振り（オフセットを引いた時刻と振り）。戻す動きを 1 回見たら忘れる
+    private var lastSwing: (time: TimeInterval, event: CutEvent)?
 
     init(
         notes: [FaceNote],
@@ -69,7 +71,7 @@ nonisolated struct Judge: Sendable {
             swingMissed(event, at: time)
             return nil
         }
-        lastSwing = (time, event.direction)
+        lastSwing = (time, event)
         let note = notes[nextIndex]
         let timingError = time - note.time
         if let direction = note.direction, direction != event.direction {
@@ -82,12 +84,18 @@ nonisolated struct Judge: Sendable {
     /// 空振りの扱い。直前の振りの後 `returnSwingWindow` の中の逆向きの振りは首を戻す動きとみなし、1 回だけコンボを切らない
     private mutating func swingMissed(_ event: CutEvent, at time: TimeInterval) {
         guard breaksComboOnEmptySwing else { return }
-        if let lastSwing, event.direction == lastSwing.direction.opposite, time - lastSwing.time <= rules.returnSwingWindow {
+        if let lastSwing, event.isOpposite(to: lastSwing.event), time - lastSwing.time <= rules.returnSwingWindow {
             self.lastSwing = nil
             return
         }
-        lastSwing = (time, event.direction)
+        lastSwing = (time, event)
         keeper.breakCombo()
+        emptySwingCount += 1
+    }
+
+    /// 直前の振りを忘れる。一時停止の前の振りを、再開した後の首を戻す動きの見分けに使わない
+    mutating func forgetLastSwing() {
+        lastSwing = nil
     }
 
     /// オフセットを引いた時刻 `time` までに時間窓を過ぎたノーツをミスにする

@@ -21,9 +21,35 @@ nonisolated enum SwingDirection: Sendable, Hashable, CaseIterable {
 nonisolated struct CutEvent: Sendable, Hashable {
     /// 角速度がピークに達した時刻（判定のタイミングに使う）
     let timestamp: TimeInterval
+    /// 振りの向きを上下左右に丸めたもの
     let direction: SwingDirection
     /// ピークの角速度（ラジアン毎秒。スコアの振りの大きさに使う）
     let peakRate: Double
+    /// ピークの角速度の左右・上下の成分（ラジアン毎秒）。丸める前の振りの向きで、首を戻す動きの見分けに使う
+    let yawRate: Double
+    let pitchRate: Double
+
+    /// - Parameters:
+    ///   - yawRate: ピークの左右の成分。省くと、`direction` の向きに `peakRate` の速さで振ったとみなす
+    ///   - pitchRate: ピークの上下の成分。省き方は `yawRate` と同じ
+    init(timestamp: TimeInterval, direction: SwingDirection, peakRate: Double, yawRate: Double? = nil, pitchRate: Double? = nil) {
+        self.timestamp = timestamp
+        self.direction = direction
+        self.peakRate = peakRate
+        let axis: (yaw: Double, pitch: Double) = switch direction {
+        case .right: (1, 0)
+        case .left: (-1, 0)
+        case .up: (0, 1)
+        case .down: (0, -1)
+        }
+        self.yawRate = yawRate ?? axis.yaw * peakRate
+        self.pitchRate = pitchRate ?? axis.pitch * peakRate
+    }
+
+    /// `other` とおおむね逆向き（向きの差が 90 度より大きい）の振り。上下左右に丸める前の向きで比べるので、斜めの振りも見分けられる
+    func isOpposite(to other: CutEvent) -> Bool {
+        yawRate * other.yawRate + pitchRate * other.pitchRate < 0
+    }
 }
 
 /// 角速度のピークから「切る」動きを検出する。遊び方が向きを合わせて切る（`PlayStyle.directional`）ときに使う。
