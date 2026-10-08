@@ -39,6 +39,9 @@ struct ResultView: View {
     @Environment(\.palette) private var palette
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    /// 結果の上下の端を消すグラデーションの長さ。スクロールしていない位置で端が薄くならないよう、内容の上下にも同じだけ余白を取る
+    private static let edgeFadeLength: CGFloat = 24
+
     var body: some View {
         VStack(spacing: 12) {
             ScrollView {
@@ -59,8 +62,11 @@ struct ResultView: View {
                     PointsPanel(breakdown: breakdown, progress: stage >= .breakdown ? 1 : 0) { showsGuide = true }
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.top, 8)
+                .padding(.horizontal)
+                .padding(.vertical, Self.edgeFadeLength)
             }
+            .scrollIndicators(.hidden)
+            .verticalEdgeFade(length: Self.edgeFadeLength)
             HStack(spacing: 12) {
                 Button(action: onClose) {
                     Label("閉じる", systemImage: "xmark")
@@ -73,8 +79,8 @@ struct ResultView: View {
                     .buttonStyle(NeonButtonStyle(prominent: true))
                 }
             }
+            .padding([.horizontal, .bottom])
         }
-        .padding()
         .background { PlayfieldBackdrop() }
         .preferredColorScheme(palette.colorScheme)
         .onAppear(perform: reveal)
