@@ -31,6 +31,7 @@
 - サンプル楽曲を足すときは、テンポによって Easy と Normal のノーツ数が同じになり、`bundledSongIsPlayable`（易しいほどノーツが少ない）が落ちる。Easy は 1.3 秒以上空けて拾うので、4/4 で半小節が 1.3 秒以上になる BPM（92 以下）だと半小節ごとに拾い、Normal と同じになる。テンポを上げるか、旋律の音の優先度を変える（2026-10-09）
 - 一覧をスクロールした先の PR 用スクリーンショットは、コミットしない一時的な UI テストで `swipeUp` してから `XCUIScreen.main.screenshot().pngRepresentation` を書き出せば、Simulator を操作する許可が無くても撮れる。書き出し先は `TEST_RUNNER_SHOT_DIR=…` のように `TEST_RUNNER_` を付けた環境変数で `xcodebuild test` から渡す（2026-10-09）
 - SwiftUI の `Canvas` で、楕円の `Path` を円の `radialGradient` で塗ると、楕円の縁で色が途切れて段差に見える。円のグラデーションを `drawLayer` の中で `scaleBy(x:y:)` して楕円にすると、縁まで滑らかに消える（2026-10-09）
+- ogg-swift / vorbis-swift は中身（libogg / libvorbis）を `gitlab.xiph.org` のサブモジュールから取るので、xiph.org が落ちると依存の解決で CI が止まる（2026-10-08 に 502 / 504 が続いた）。CI では解決できた `DerivedData/SourcePackages` をキャッシュしている。取得元に届かないときの動きは、`GIT_CONFIG_GLOBAL` に `url."https://offline.invalid/".insteadOf` を書いた設定を渡して `xcodebuild -resolvePackageDependencies` を実行すると手元で試せる（2026-10-09）
 
 ## beatsaver / 譜面
 
