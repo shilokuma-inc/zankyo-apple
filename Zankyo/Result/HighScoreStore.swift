@@ -1,16 +1,27 @@
 import Foundation
 import os
 
-/// ハイスコアを分ける単位（曲・characteristic・難易度）
+/// ハイスコアを分ける単位（曲・characteristic・難易度・遊び方）
 nonisolated struct ScoreKey: Sendable, Hashable {
     /// beatsaver の譜面ハッシュ（`hash`。ZIP 全体の SHA-1 ではない）。同じ曲でも譜面が更新されたら別のハイスコアにする
     let mapHash: String
     let characteristic: BeatmapCharacteristic
     let difficulty: BeatmapDifficulty
+    /// 遊び方。遊び方を選べるようになる前の記録は、向きを合わせて切る遊び方のもの
+    var playStyle: PlayStyle = .directional
 
-    /// 保存ファイルの中のキー。スコアの計算方法のバージョンを頭に付け、違うバージョンの点数を同じ枠で比べない
+    /// 遊び方だけを変えたキー
+    func playing(_ style: PlayStyle) -> ScoreKey {
+        var key = self
+        key.playStyle = style
+        return key
+    }
+
+    /// 保存ファイルの中のキー。スコアの計算方法のバージョンを頭に付け、違うバージョンの点数を同じ枠で比べない。
+    /// 向きを合わせて切る遊び方は、遊び方を選べるようになる前と同じキーにして、今までの記録を引き継ぐ
     func storageKey(scoringVersion: Int) -> String {
-        "s\(scoringVersion)/\(mapHash.lowercased())/\(characteristic.rawValue)/\(difficulty.rawValue)"
+        let key = "s\(scoringVersion)/\(mapHash.lowercased())/\(characteristic.rawValue)/\(difficulty.rawValue)"
+        return playStyle == .directional ? key : "\(key)/\(playStyle.rawValue)"
     }
 }
 
@@ -29,6 +40,7 @@ nonisolated struct ScoreKey: Sendable, Hashable {
 /// }
 /// ```
 /// - キーの `s1` は `ScoringRules.version`。計算方法を変えたら新しい枠に記録し、古い枠は消さずに残す
+/// - ヘドバンの記録はキーの末尾に遊び方を付ける（`.../Expert/headbang`）。向きを合わせて切る遊び方は付けない（`ScoreKey.storageKey`）
 /// - 読めないファイルは `.broken-<時刻>` を付けて退避し、空から始める。新しいアプリが書いた未知の版は上書きしない
 final class HighScoreStore {
     static let fileVersion = 1

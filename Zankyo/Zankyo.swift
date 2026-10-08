@@ -18,7 +18,7 @@ struct Zankyo: App {
     init() {
         let input = MotionInputFactory.makeDefault()
         _motionInput = State(initialValue: input)
-        _motion = State(initialValue: MotionMonitor(base: input, detection: SwingSensitivityStore().configuration))
+        _motion = State(initialValue: MotionMonitor(base: input, detection: SwingSensitivityStore().detection))
         // 取り込みをしなくても遊べるよう、初回はサンプル楽曲をライブラリに入れておく
         let library = LibraryStore()
         SampleSongInstaller().installIfNeeded(into: library)

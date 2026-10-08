@@ -44,9 +44,14 @@ struct GameSessionTests {
             notes: notes,
             clock: ManualSongClock(duration: 2),
             input: RecordedMotionInput(samples: samples),
-            detection: .init(pitchThreshold: 2.0)
+            detection: SwingDetection(style: .directional, directional: .init(pitchThreshold: 2.0))
         )
-        let gentle = GameSession(notes: notes, clock: ManualSongClock(duration: 2), input: RecordedMotionInput(samples: samples))
+        let gentle = GameSession(
+            notes: notes,
+            clock: ManualSongClock(duration: 2),
+            input: RecordedMotionInput(samples: samples),
+            detection: SwingDetection(style: .directional)
+        )
 
         await strict.play()
         await gentle.play()
@@ -64,7 +69,8 @@ struct GameSessionTests {
         clock.time = 2.5
         session.tick()
         #expect(session.judge.keeper.missCount == 2)
-        #expect(session.lastJudgement == .miss(Self.notes[1]))
+        // 既定のヘドバンでは、向きを外したノーツで判定する
+        #expect(session.lastJudgement == .miss(FaceNote(beat: 4, time: 2, direction: nil)))
 
         clock.time = 4
         session.tick()
@@ -156,6 +162,86 @@ struct GameSessionTests {
         #expect(clock.currentTime == 3)
         now = 200
         #expect(clock.currentTime == 10)
+    }
+
+    @Test
+    func headbangIgnoresNoteDirections() async {
+        // ヘドバンでは、ノーツの向きと違う向きに振っても切れる。ノーツの向きは外して判定する
+        let samples = MotionRecording.make(swings: [
+            .init(direction: .down, peakTime: 1, peakRate: 4),
+            .init(direction: .left, peakTime: 2, peakRate: 4),
+            .init(direction: .up, peakTime: 3, peakRate: 4)
+        ])
+        let headbang = GameSession(
+            notes: Self.notes,
+            clock: ManualSongClock(duration: 4),
+            input: RecordedMotionInput(samples: samples),
+            detection: SwingDetection(style: .headbang)
+        )
+        let directional = GameSession(
+            notes: Self.notes,
+            clock: ManualSongClock(duration: 4),
+            input: RecordedMotionInput(samples: samples),
+            detection: SwingDetection(style: .directional)
+        )
+
+        await headbang.play()
+        await directional.play()
+
+        #expect(headbang.judge.keeper.hitCount == 3)
+        #expect(headbang.judge.remainingNotes.isEmpty)
+        #expect(headbang.judge.judgements.allSatisfy { $0.note.direction == nil })
+        // 向きを合わせて切る遊び方では、右と上のノーツは向き違い
+        #expect(directional.judge.keeper.hitCount == 1)
+        #expect(directional.judge.judgements.filter { if case .badCut = $0 { true } else { false } }.count == 2)
+    }
+
+    @Test(arguments: [true, false])
+    func headbangHitsEveryBeatOfContinuousNodding(startsWithUpStroke: Bool) async {
+        // 120 BPM で 1 拍に 1 回うなずき続ける。振り下ろしを拍に合わせていれば、首を戻す動きから振り始めても全部のノーツを切れる
+        let period = 0.5
+        let sign = startsWithUpStroke ? 1.0 : -1.0
+        let samples = (0...Int(5 * 50)).map { index in
+            let time = Double(index) / 50
+            return MotionSample(timestamp: time, yawRate: 0, pitchRate: time <= 4 ? sign * 4 * sin(2 * .pi * time / period) : 0)
+        }
+        // 振り下ろしの速さのピーク（上下の角速度が負の山）の時刻にノーツを置く
+        let firstDownPeak = startsWithUpStroke ? 0.375 : 0.125
+        let notes = (0..<8).map { FaceNote(beat: Double($0), time: firstDownPeak + Double($0) * period, direction: .left) }
+        let session = GameSession(
+            notes: notes,
+            clock: ManualSongClock(duration: 5),
+            input: RecordedMotionInput(samples: samples),
+            detection: SwingDetection(style: .headbang)
+        )
+
+        await session.play()
+
+        #expect(session.judge.keeper.hitCount == 8)
+        #expect(session.judge.keeper.missCount == 0)
+        // 拍ごとの首を戻す動きは空振りにしない。戻す動きから振り始めた最初の 1 回は空振りになるが、まだコンボは無い
+        #expect(session.judge.keeper.maxCombo == 8)
+    }
+
+    @Test
+    func headbangBreaksComboWhenShakingNonstop() async {
+        // ノーツは 1 秒おき。拍に関係なく 0.15 秒ごとに頭を振り続けると、ノーツは切れても空振りでコンボが続かない
+        let samples = (0...Int(6 * 50)).map { index in
+            let time = Double(index) / 50
+            return MotionSample(timestamp: time, yawRate: time <= 5 ? 5 * sin(2 * .pi * time / 0.3) : 0, pitchRate: 0)
+        }
+        let notes = (1...4).map { FaceNote(beat: Double($0), time: Double($0) + 0.075, direction: nil) }
+        let session = GameSession(
+            notes: notes,
+            clock: ManualSongClock(duration: 6),
+            input: RecordedMotionInput(samples: samples),
+            detection: SwingDetection(style: .headbang)
+        )
+
+        await session.play()
+
+        #expect(session.judge.keeper.hitCount == 4)
+        #expect(session.judge.keeper.maxCombo == 1)
     }
 
     private func waitUntil(_ condition: () -> Bool) async {

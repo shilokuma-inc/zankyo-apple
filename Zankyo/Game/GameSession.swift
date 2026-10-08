@@ -3,7 +3,9 @@ import Observation
 
 /// 1 曲分のプレイ。曲の時計・モーション入力・「切る」検出・判定をつなぐ
 ///
-/// 振りは届いたときに判定し、窓を過ぎたノーツは画面のフレームごとの `tick()` でミスにする
+/// 振りは届いたときに判定し、窓を過ぎたノーツは画面のフレームごとの `tick()` でミスにする。
+/// 遊び方がヘドバンなら、ノーツの向きを問わない（矢印を出さず、向き違いにもしない）代わりに、空振りでコンボを切る。
+/// ハイスコアは遊び方ごとに分ける
 @Observable
 final class GameSession {
     enum Phase: Equatable {
@@ -30,7 +32,8 @@ final class GameSession {
 
     let input: any MotionInput
     @ObservationIgnored let clock: any SongClock
-    @ObservationIgnored private var detector: CutDetector
+    @ObservationIgnored private let detection: SwingDetection
+    @ObservationIgnored private var detector: any SwingDetector
     @ObservationIgnored private var task: Task<Void, Never>?
     /// 一度でも入力が使える状態になった（始めた直後の、接続の通知が届く前の状態で止めないため）
     @ObservationIgnored private var wasInputReady = false
@@ -41,17 +44,19 @@ final class GameSession {
         notes: [FaceNote],
         clock: any SongClock,
         input: any MotionInput,
-        detection: CutDetector.Configuration = CutDetector.Configuration(),
+        detection: SwingDetection = SwingDetection(),
         offset: TimeInterval = 0,
         rules: ScoringRules = ScoringRules(),
         scoreKey: ScoreKey? = nil,
         highScores: HighScoreStore? = nil
     ) {
-        judge = Judge(notes: notes, rules: rules, offset: offset)
-        detector = CutDetector(configuration: detection)
+        let notes = detection.style.usesDirection ? notes : notes.map { FaceNote(beat: $0.beat, time: $0.time, direction: nil) }
+        judge = Judge(notes: notes, rules: rules, offset: offset, breaksComboOnEmptySwing: detection.style.breaksComboOnEmptySwing)
+        self.detection = detection
+        detector = detection.makeDetector()
         self.clock = clock
         self.input = input
-        self.scoreKey = scoreKey
+        self.scoreKey = scoreKey?.playing(detection.style)
         self.highScores = highScores
     }
 
@@ -129,7 +134,7 @@ final class GameSession {
             return
         }
         // 止めている間の動きの途中から振りを数えない
-        detector = CutDetector(configuration: detector.configuration)
+        detector = detection.makeDetector()
         pausedByDisconnection = false
         phase = .playing
     }

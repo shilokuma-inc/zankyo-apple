@@ -53,7 +53,7 @@ struct RootView: View {
             CalibrationView(model: calibration, motion: motion)
                 .tabItem { Label("キャリブレーション", systemImage: "metronome") }
                 .tag(Tab.calibration)
-            SettingsView(theme: $theme)
+            SettingsView(theme: $theme, motion: motion)
                 .tabItem { Label("設定", systemImage: "gearshape") }
                 .tag(Tab.settings)
         }

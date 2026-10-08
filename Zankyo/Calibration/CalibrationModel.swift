@@ -26,8 +26,9 @@ final class CalibrationModel {
     let input: any MotionInput
     @ObservationIgnored private let metronome: any Metronome
     @ObservationIgnored private let store: CalibrationStore
-    /// 測り始めるときの「切る」検出の閾値（キャリブレーションの画面で変えられるので、測るたびに読む）
-    @ObservationIgnored private let detection: () -> CutDetector.Configuration
+    /// 測り始めるときの遊び方と「切る」検出の閾値（キャリブレーションの画面や設定で変えられるので、測るたびに読む）。
+    /// プレイと同じ検出で測り、検出の仕方によるずれもオフセットに含める
+    @ObservationIgnored private let detection: () -> SwingDetection
     @ObservationIgnored private let now: () -> TimeInterval
     @ObservationIgnored private var task: Task<Void, Never>?
     /// 測る回ごとの番号。前の回の締め切りが、新しい回の入力を止めないようにする
@@ -37,7 +38,7 @@ final class CalibrationModel {
         input: any MotionInput,
         metronome: any Metronome,
         store: CalibrationStore = CalibrationStore(),
-        detection: @escaping () -> CutDetector.Configuration = { CutDetector.Configuration() },
+        detection: @escaping () -> SwingDetection = { SwingDetection() },
         now: @escaping () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }
     ) {
         self.input = input
@@ -128,7 +129,8 @@ final class CalibrationModel {
         }
         defer { stopper.cancel() }
 
-        let cuts = await detectCuts(in: stream, until: deadline, generation: currentGeneration)
+        let detection = detection()
+        let cuts = await detectCuts(in: stream, using: detection, until: deadline, generation: currentGeneration)
         // 中止の後に新しい回が始まっていたら、その回の入力と音を止めない
         guard generation == currentGeneration else { return }
         input.stop()
@@ -138,17 +140,18 @@ final class CalibrationModel {
         if let result = CalibrationAnalyzer.analyze(clickTimes: clicks, cutTimes: cuts) {
             phase = .finished(result)
         } else {
-            phase = .failed("振りを十分に検出できませんでした。低い音に合わせて、首を左右か上下にはっきり振ってください。")
+            phase = .failed(Self.failureMessage(for: detection.style))
         }
     }
 
     /// 列が終わるか `deadline` を過ぎるまで振りを検出し、その時刻を返す。検出するたびに `cutTimes` に出す
     private func detectCuts(
         in stream: AsyncStream<MotionSample>,
+        using detection: SwingDetection,
         until deadline: TimeInterval,
         generation currentGeneration: Int
     ) async -> [TimeInterval] {
-        var detector = CutDetector(configuration: detection())
+        var detector = detection.makeDetector()
         var cuts: [TimeInterval] = []
         for await sample in stream {
             if let cut = detector.process(sample) {
@@ -161,5 +164,12 @@ final class CalibrationModel {
             if sample.timestamp > deadline { break }
         }
         return cuts
+    }
+
+    private static func failureMessage(for style: PlayStyle) -> String {
+        switch style {
+        case .headbang: "振りを十分に検出できませんでした。低い音に合わせて、頭をはっきり振ってください。"
+        case .directional: "振りを十分に検出できませんでした。低い音に合わせて、首を左右か上下にはっきり振ってください。"
+        }
     }
 }

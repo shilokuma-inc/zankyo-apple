@@ -47,7 +47,7 @@ struct HeadMotionStateTests {
 
     @Test
     func strengthFollowsRateAndDecays() {
-        var state = HeadMotionState()
+        var state = HeadMotionState(detection: SwingDetection(style: .directional))
         state.update(with: MotionSample(timestamp: 1, yawRate: 3, pitchRate: -1))
         #expect(state.strength == 1.5)
 
@@ -58,11 +58,21 @@ struct HeadMotionStateTests {
 
     @Test
     func strengthUsesThresholdOfEachAxis() {
-        var state = HeadMotionState(configuration: .init(yawThreshold: 2.0, pitchThreshold: 1.0))
+        let detection = SwingDetection(style: .directional, directional: .init(yawThreshold: 2.0, pitchThreshold: 1.0))
+        var state = HeadMotionState(detection: detection)
         state.update(with: MotionSample(timestamp: 1, yawRate: 1, pitchRate: 1.5))
 
         // 上下は 1.5 / 1.0、左右は 1 / 2.0。大きい方を強さにする
         #expect(state.strength == 1.5)
+    }
+
+    @Test
+    func strengthUsesHeadbangSpeed() {
+        var state = HeadMotionState(detection: SwingDetection(style: .headbang, headbang: .init(threshold: 2.5)))
+        state.update(with: MotionSample(timestamp: 1, yawRate: 3, pitchRate: -4))
+
+        // ヘドバンは向きを問わないので、2 つの軸を合わせた速さ（5）を閾値（2.5）で割る
+        #expect(state.strength == 2)
     }
 
     @Test
@@ -71,9 +81,10 @@ struct HeadMotionStateTests {
         state.update(with: MotionSample(timestamp: 1, yawRate: 0, pitchRate: 0, orientation: HeadOrientation(yaw: 0.1, pitch: 0)))
         state.update(with: MotionSample(timestamp: 1.1, yawRate: 0, pitchRate: 0, orientation: HeadOrientation(yaw: 0.4, pitch: 0)))
 
-        state.reconfigure(.init(pitchThreshold: 2.4))
+        state.reconfigure(SwingDetection(style: .directional, directional: .init(pitchThreshold: 2.4)))
 
-        #expect(state.configuration.pitchThreshold == 2.4)
+        #expect(state.detection.style == .directional)
+        #expect(state.detection.directional.pitchThreshold == 2.4)
         #expect(abs(state.orientation.yaw - 0.3) < 1e-9)
     }
 

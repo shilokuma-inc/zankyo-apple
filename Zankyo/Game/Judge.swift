@@ -24,16 +24,26 @@ nonisolated struct Judge: Sendable {
     let rules: ScoringRules
     /// 動きが音より遅れる秒（キャリブレーションの値）。振りの時刻から引く
     let offset: TimeInterval
+    /// 時間窓にノーツの無い振り（空振り）でコンボを切る。向きを問わないヘドバンでは、振り続けるだけで切れてしまうので切る
+    let breaksComboOnEmptySwing: Bool
     private(set) var keeper = ScoreKeeper()
     private(set) var judgements: [Judgement] = []
     private let notes: [FaceNote]
     /// まだ判定していない最初のノーツ
     private var nextIndex = 0
+    /// 首を戻す動きを空振りにしないために覚えておく、直前の振り（オフセットを引いた時刻と向き）。戻す動きを 1 回見たら忘れる
+    private var lastSwing: (time: TimeInterval, direction: SwingDirection)?
 
-    init(notes: [FaceNote], rules: ScoringRules = ScoringRules(), offset: TimeInterval = 0) {
+    init(
+        notes: [FaceNote],
+        rules: ScoringRules = ScoringRules(),
+        offset: TimeInterval = 0,
+        breaksComboOnEmptySwing: Bool = false
+    ) {
         self.notes = notes.sorted { $0.time < $1.time }
         self.rules = rules
         self.offset = offset.isFinite ? offset : 0
+        self.breaksComboOnEmptySwing = breaksComboOnEmptySwing
     }
 
     var isFinished: Bool { nextIndex >= notes.count }
@@ -47,22 +57,37 @@ nonisolated struct Judge: Sendable {
         missPassedNotes(before: songTime - offset)
     }
 
-    /// 振りを照合する。時間窓の中にノーツが無い振りは何もしない（減点しない）
+    /// 振りを照合する。時間窓の中にノーツが無い振り（空振り）は判定にしない。
+    /// `breaksComboOnEmptySwing` ならコンボを切る（首を戻す動きは除く）。そうでなければ何もしない
     @discardableResult
     mutating func cut(_ event: CutEvent, at songTime: TimeInterval) -> Judgement? {
         let time = songTime - offset
         guard time.isFinite else { return nil }
         // 振りより前に窓を過ぎたノーツは、先にミスにしておく
         _ = missPassedNotes(before: time)
-        guard nextIndex < notes.count else { return nil }
+        guard nextIndex < notes.count, abs(time - notes[nextIndex].time) <= rules.hitWindow else {
+            swingMissed(event, at: time)
+            return nil
+        }
+        lastSwing = (time, event.direction)
         let note = notes[nextIndex]
         let timingError = time - note.time
-        guard abs(timingError) <= rules.hitWindow else { return nil }
         if let direction = note.direction, direction != event.direction {
             return record(.badCut(note, event.direction))
         }
         let score = CutScore(peakRate: event.peakRate, timingError: timingError, rules: rules)
         return record(.hit(note, score, timingError: timingError))
+    }
+
+    /// 空振りの扱い。直前の振りの後 `returnSwingWindow` の中の逆向きの振りは首を戻す動きとみなし、1 回だけコンボを切らない
+    private mutating func swingMissed(_ event: CutEvent, at time: TimeInterval) {
+        guard breaksComboOnEmptySwing else { return }
+        if let lastSwing, event.direction == lastSwing.direction.opposite, time - lastSwing.time <= rules.returnSwingWindow {
+            self.lastSwing = nil
+            return
+        }
+        lastSwing = (time, event.direction)
+        keeper.breakCombo()
     }
 
     /// オフセットを引いた時刻 `time` までに時間窓を過ぎたノーツをミスにする

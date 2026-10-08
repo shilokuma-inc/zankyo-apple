@@ -33,6 +33,9 @@ nonisolated struct ScoringRules: Sendable, Hashable {
     var perfectWindow: TimeInterval = 0.05
     /// 振りの点が満点になる角速度（ラジアン毎秒）
     var fullSwingRate: Double = 4.0
+    /// 空振りでコンボを切る遊び方（ヘドバン）で、振った後この秒の中の逆向きの振り（首を戻す動き）は 1 回だけ空振りにしない。
+    /// ヘドバンは振り下ろしと戻しで 1 拍に 2 回振りが出るので、戻すたびにコンボが切れないようにする
+    var returnSwingWindow: TimeInterval = 0.8
 }
 
 /// 切ったタイミングの早い・遅い。判定の表示で、ぴったりのタイミングからどちらにずれたかを伝える
@@ -89,6 +92,11 @@ nonisolated struct ScoreKeeper: Sendable, Hashable {
 
     mutating func recordMiss() {
         missCount += 1
+        breakCombo()
+    }
+
+    /// コンボを切り、倍率を 1 段下げる。ミスのほか、ヘドバンの空振り（ノーツの無いところで振った）でも切る。空振りはミスに数えない
+    mutating func breakCombo() {
         combo = 0
         multiplier = max(multiplier / 2, 1)
         multiplierProgress = 0
