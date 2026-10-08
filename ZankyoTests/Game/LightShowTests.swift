@@ -62,6 +62,24 @@ struct LightShowTests {
     }
 
     @Test
+    func throttledFlashesStillChangeColorAndTurnOff() {
+        let show = LightShow(
+            lighting: lighting([
+                LightEvent(time: 0, group: .back, action: .flash, color: .left, brightness: 1),
+                // 0.1 秒後の点滅（青）は強く光らせないが、色は青に変わる
+                LightEvent(time: 0.1, group: .back, action: .flash, color: .right, brightness: 1),
+                // さらに 0.1 秒後のフェードは、消える合図として残る
+                LightEvent(time: 0.2, group: .back, action: .fade, color: .right, brightness: 1)
+            ]),
+            timeline: timeline,
+            duration: 60
+        )
+
+        #expect(show.state(at: 0.15).back == LightState.Light(color: .right, intensity: 1))
+        #expect(show.state(at: 0.25).back.intensity == 0)
+    }
+
+    @Test
     func ringsTurnWithEachSpin() {
         let show = LightShow(lighting: lighting([], ringSpins: [1, 2]), timeline: timeline, duration: 60)
 
