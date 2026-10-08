@@ -62,7 +62,9 @@ struct CalibrationView: View {
     private var explanation: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("イヤホンを付けて、クリック音に合わせて首を振ってください。")
-            Text("最初の 4 回の高い音は聞くだけ。続く低い音ごとに、左右か上下に 1 回ずつ振ります。")
+            Text(motion.detection.style.usesDirection
+                ? "最初の 4 回の高い音は聞くだけ。続く低い音ごとに、左右か上下に 1 回ずつ振ります。"
+                : "最初の 4 回の高い音は聞くだけ。続く低い音ごとに、頭を 1 回ずつ振ります（向きはどれでもかまいません）。")
                 .foregroundStyle(.secondary)
             Text("測っている間はプレイ画面と同じく、上から降りてくる印が判定の線に重なる瞬間に音が鳴ります。")
                 .foregroundStyle(.secondary)
