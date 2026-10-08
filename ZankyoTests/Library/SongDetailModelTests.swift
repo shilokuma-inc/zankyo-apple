@@ -42,6 +42,29 @@ struct SongDetailModelTests {
     }
 
     @Test
+    func failedPreparationCancelsPendingPreview() async throws {
+        let fixture = try Fixture()
+        defer { fixture.remove() }
+        let model = fixture.model
+        await model.load()
+        // Expert+ の譜面ファイルは ZIP に入っていないので、遊ぶ準備は失敗する
+        let expertPlus = try #require(model.info?.difficulties.first { $0.difficulty == .expertPlus })
+
+        // 試聴のデコードを待っている間に「スタート」を押し、準備が失敗した
+        let preview = Task { await model.togglePreview() }
+        for _ in 0..<1_000 where !model.isLoadingPreview {
+            await Task.yield()
+        }
+        try #require(model.isLoadingPreview)
+        await model.prepare(expertPlus)
+        await preview.value
+
+        #expect(model.playError != nil)
+        #expect(!model.isPreviewing)
+        #expect(fixture.previewer.played.isEmpty)
+    }
+
+    @Test
     func previewDoesNotStartAfterCancellation() async throws {
         let fixture = try Fixture()
         defer { fixture.remove() }
