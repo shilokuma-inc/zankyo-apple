@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "songs": [
+    {
+      "id": "ode-to-joy",
+      "resource": "sample-ode-to-joy",
+      "hash": "606d46ac528c3c8f0cb44542ea47f70d210371b5",
+      "songName": "歓喜の歌",
+      "songAuthorName": "ベートーヴェン（AI 編曲）",
+      "mapperName": "斬響（自動生成）"
+    },
+    {
+      "id": "fur-elise",
+      "resource": "sample-fur-elise",
+      "hash": "fc0f5316c9ffaf66162880824e99cc7f6f277a63",
+      "songName": "エリーゼのために",
+      "songAuthorName": "ベートーヴェン（AI 編曲）",
+      "mapperName": "斬響（自動生成）"
+    },
+    {
+      "id": "mountain-king",
+      "resource": "sample-mountain-king",
+      "hash": "5b2288be14203fee2789f3b46da792a9cb746a56",
+      "songName": "山の魔王の宮殿にて",
+      "songAuthorName": "グリーグ（AI 編曲）",
+      "mapperName": "斬響（自動生成）"
+    },
+    {
+      "id": "canon",
+      "resource": "sample-canon",
+      "hash": "a036e23f2a7b4d5d08df55db0b1024b48d705ea2",
+      "songName": "カノン",
+      "songAuthorName": "パッヘルベル（AI 編曲）",
+      "mapperName": "斬響（自動生成）"
+    },
+    {
+      "id": "minuet",
+      "resource": "sample-minuet",
+      "hash": "13f50f66e3c0eb2bdfaf932376e1da2765e89daf",
+      "songName": "メヌエット ト長調",
+      "songAuthorName": "ペツォールト（AI 編曲）",
+      "mapperName": "斬響（自動生成）"
+    },
+    {
+      "id": "twinkle",
+      "resource": "sample-twinkle",
+      "hash": "b88fa1c6ebd5acd075ac9b3b0baf66ea64ec6523",
+      "songName": "きらきら星",
+      "songAuthorName": "フランス民謡（AI 編曲）",
+      "mapperName": "斬響（自動生成）"
+    },
+    {
+      "id": "neon-drive",
+      "resource": "sample-neon-drive",
+      "hash": "71e5c095edb5c16285c2d2c3e87df3951e6f14c0",
+      "songName": "ネオン・ドライブ",
+      "songAuthorName": "斬響（AI 作曲）",
+      "mapperName": "斬響（自動生成）"
+    },
+    {
+      "id": "zankyo-rush",
+      "resource": "sample-zankyo-rush",
+      "hash": "160f0315f794dfdc6b46dfc158c502e4099739b2",
+      "songName": "斬響ラッシュ",
+      "songAuthorName": "斬響（AI 作曲）",
+      "mapperName": "斬響（自動生成）"
+    }
+  ]
+}
