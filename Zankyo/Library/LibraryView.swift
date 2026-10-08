@@ -118,6 +118,9 @@ struct LibraryView: View {
         return NavigationLink(value: entry) {
             LibraryRow(entry: entry, size: library.sizes[entry.hash] ?? 0, isFavorite: isFavorite)
         }
+        // List の標準の矢印はカードの外に出てしまうので消し、カードの中に出す
+        .navigationLinkIndicatorVisibility(.hidden)
+        .coverCardListRow()
         .swipeActions(edge: .leading) {
             Button(isFavorite ? "外す" : "お気に入り", systemImage: isFavorite ? "heart.slash" : "heart") {
                 library.toggleFavorite(entry)
@@ -149,54 +152,85 @@ struct LibraryView: View {
     }
 }
 
-/// 一覧の 1 曲。マッパー名を必ず出す（Discussion #3 Q9。譜面ページへのリンクは曲の詳細画面に出す）
+/// 一覧の 1 曲。マッパー名を必ず出す（Discussion #3 Q9。譜面ページへのリンクは曲の詳細画面に出す）。
+/// 背景にジャケット画像をぼかして敷き、曲ごとの色が行全体で分かるようにする
 private struct LibraryRow: View {
     let entry: LibraryEntry
     let size: Int64
     let isFavorite: Bool
 
+    /// ジャケット画像。サムネイルと背景の両方に使う
+    @State private var cover: CGImage?
+
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            AsyncImage(url: entry.coverURL) { image in
-                image.resizable().scaledToFill()
-            } placeholder: {
+        content(cover: cover.map { Image(decorative: $0, scale: 1) })
+            .task(id: entry.hash) {
+                // 取り込んだ譜面 ZIP の画像を先に使う（オフラインの電車の中でも出せる）。無ければ取り込んだときの beatsaver の画像を取りに行く
+                if let local = await LocalMapStore().loadListCover(hash: entry.hash) {
+                    cover = local
+                } else if let url = entry.coverURL {
+                    cover = await CoverImageLoader().load(url)
+                }
+            }
+    }
+
+    /// 1 曲分のカード。`cover` は読み込んだジャケット画像（読み込み中・失敗時は nil）で、サムネイルと背景の両方に使う
+    private func content(cover: Image?) -> some View {
+        HStack(spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
+                thumbnail(cover)
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text(entry.title)
+                            .font(.headline)
+                            .lineLimit(2)
+                        if isFavorite {
+                            Image(systemName: "heart.fill")
+                                .font(.subheadline)
+                                .foregroundStyle(.pink)
+                                .accessibilityLabel("お気に入り")
+                        }
+                    }
+                    if !entry.songAuthorName.isEmpty {
+                        Text(entry.songAuthorName)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                    // 行全体が曲の詳細へのリンクなので、譜面ページへのリンクは詳細画面に置く（行の中に置くと、行をタップしたつもりで開いてしまう）
+                    Text("マッパー: \(entry.mapperName)")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                    Text(LibraryView.format(size))
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Spacer(minLength: 0)
+            Image(systemName: "chevron.right")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.tertiary)
+                .accessibilityHidden(true)
+        }
+        .coverCard(cover)
+    }
+
+    /// 左に出すジャケット画像のサムネイル。画像が無いあいだは音符を出す
+    private func thumbnail(_ cover: Image?) -> some View {
+        Group {
+            if let cover {
+                cover.resizable().scaledToFill()
+            } else {
                 Image(systemName: "music.note")
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(.quaternary)
             }
-            .frame(width: 56, height: 56)
-            .clipShape(.rect(cornerRadius: 8))
-            .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text(entry.title)
-                        .font(.headline)
-                        .lineLimit(2)
-                    if isFavorite {
-                        Image(systemName: "heart.fill")
-                            .font(.subheadline)
-                            .foregroundStyle(.pink)
-                            .accessibilityLabel("お気に入り")
-                    }
-                }
-                if !entry.songAuthorName.isEmpty {
-                    Text(entry.songAuthorName)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-                // 行全体が曲の詳細へのリンクなので、譜面ページへのリンクは詳細画面に置く（行の中に置くと、行をタップしたつもりで開いてしまう）
-                Text("マッパー: \(entry.mapperName)")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                Text(LibraryView.format(size))
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
-            }
         }
-        .padding(.vertical, 4)
+        .frame(width: 56, height: 56)
+        .clipShape(.rect(cornerRadius: 8))
+        .accessibilityHidden(true)
     }
 }
 
