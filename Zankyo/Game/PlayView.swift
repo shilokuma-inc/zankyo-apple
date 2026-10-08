@@ -2,7 +2,7 @@ import SwiftUI
 
 /// プレイ画面。縦持ち・片手が前提で、手で触るのは画面下 1/3 の一時停止だけ（Discussion #3）
 ///
-/// ノーツは上から判定の線へ降りてきて、線に重なる時刻に向きの矢印の方へ首を振る。
+/// ノーツは上から判定の線へ降りてきて、線の上のターゲット枠に収まる時刻に向きの矢印の方へ首を振る。
 /// 画面を開くとカウントダウンのあと自動で曲が始まる。一時停止すると、再開・最初から・終了を選べる
 struct PlayView: View {
     let session: GameSession
@@ -141,6 +141,13 @@ struct PlayView: View {
             ZStack {
                 PlayfieldLane(geometry: geometry)
                 PlayfieldGrid(geometry: geometry, currentTime: session.currentTime)
+                HitTarget(
+                    notes: visibleNotes.map { item in
+                        HitTarget.Note(index: item.index, remaining: item.note.time - session.currentTime, direction: item.note.direction)
+                    },
+                    noteSize: Self.noteSize
+                )
+                .position(x: geometry.centerX, y: geometry.hitY)
                 ForEach(visibleNotes, id: \.index) { item in
                     let remaining = item.note.time - session.currentTime
                     let y = geometry.y(remaining: remaining)
