@@ -4,6 +4,8 @@ import SwiftUI
 struct ScoreReadout: View {
     let score: Int
     let combo: Int
+    /// コンボを切った空振りの数。増えるたびに、コンボの横に「空振り」と出す
+    var emptySwings = 0
 
     @Environment(\.palette) private var palette
 
@@ -16,9 +18,16 @@ struct ScoreReadout: View {
                 .minimumScaleFactor(0.5)
                 .foregroundStyle(palette.ink)
                 .shadow(color: palette.glow(palette.laser, 0.8), radius: 8)
-            Text("コンボ \(combo)")
-                .font(.subheadline.monospacedDigit().weight(.semibold))
-                .foregroundStyle(palette.laser)
+            HStack(spacing: 8) {
+                Text("コンボ \(combo)")
+                    .font(.subheadline.monospacedDigit().weight(.semibold))
+                    .foregroundStyle(palette.laser)
+                // コンボが切れた理由を、コンボのすぐ横に出す
+                if emptySwings > 0 {
+                    EmptySwingEffect()
+                        .id(emptySwings)
+                }
+            }
         }
     }
 }

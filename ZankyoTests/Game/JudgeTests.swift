@@ -318,6 +318,7 @@ struct JudgeTests {
         judge.cut(CutEvent(timestamp: 0, direction: .right, peakRate: 1.9, yawRate: 1.5, pitchRate: 1.2), at: 1.3)
 
         #expect(judge.keeper.combo == 1)
+        #expect(judge.emptySwingCount == 0)
     }
 
     @Test
@@ -330,6 +331,7 @@ struct JudgeTests {
         judge.cut(Self.cut(.right), at: 1.3)
 
         #expect(judge.keeper.combo == 0)
+        #expect(judge.emptySwingCount == 1)
     }
 
     @Test

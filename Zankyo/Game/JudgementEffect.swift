@@ -104,6 +104,28 @@ struct JudgementEffect: View {
     }
 }
 
+/// 空振り（ヘドバンでノーツの無いところで振った）でコンボが切れたことの表示。空振りごとに作り直す前提で、現れたときに 1 度だけ浮かんで消える。
+/// 消えた後も残るので、VoiceOver では読まない（コンボの数が 0 に戻ることで伝わる）
+struct EmptySwingEffect: View {
+    @State private var progress: CGFloat = 0
+    @Environment(\.palette) private var palette
+
+    var body: some View {
+        Text("空振り")
+            .font(.system(.subheadline, design: .rounded, weight: .heavy))
+            .foregroundStyle(palette.warning)
+            .shadow(color: palette.glow(palette.warning), radius: 6)
+            .offset(y: -12 * progress)
+            .opacity(Double(1 - progress))
+            .accessibilityHidden(true)
+            .onAppear {
+                withAnimation(.easeOut(duration: 0.8)) {
+                    progress = 1
+                }
+            }
+    }
+}
+
 private extension HitTiming {
     var label: String {
         switch self {

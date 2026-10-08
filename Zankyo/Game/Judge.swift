@@ -27,6 +27,8 @@ nonisolated struct Judge: Sendable {
     /// 時間窓にノーツの無い振り（空振り）でコンボを切る。向きを問わないヘドバンでは、振り続けるだけで切れてしまうので切る
     let breaksComboOnEmptySwing: Bool
     private(set) var keeper = ScoreKeeper()
+    /// コンボを切った空振りの数。画面で空振りを知らせるのに使う
+    private(set) var emptySwingCount = 0
     private(set) var judgements: [Judgement] = []
     private let notes: [FaceNote]
     /// まだ判定していない最初のノーツ
@@ -88,6 +90,7 @@ nonisolated struct Judge: Sendable {
         }
         lastSwing = (time, event)
         keeper.breakCombo()
+        emptySwingCount += 1
     }
 
     /// 直前の振りを忘れる。一時停止の前の振りを、再開した後の首を戻す動きの見分けに使わない
