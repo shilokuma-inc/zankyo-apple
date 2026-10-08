@@ -49,6 +49,7 @@
 - `CMHeadphoneMotionManager` の更新ハンドラと delegate は CoreMotion のキューで呼ばれる。MainActor 既定のメソッドの中でクロージャを書くと MainActor に隔離され、別スレッドで呼ばれた時点で実行時に落ちうるので、`nonisolated static func` で作って渡す。ハンドラの型は Swift では `CMHeadphoneMotionManager.DeviceMotionHandler`（`CMHeadphoneDeviceMotionHandler` は改名済みでエラー）。Simulator では `isDeviceMotionAvailable` が false（2026-10-07）
 - モーション入力の `AsyncStream` は受け取る側が 1 つなので、画面の見える化は入力を包む `MotionMonitor` でサンプルを中継して作る。判定には同じサンプルをそのまま渡す（2026-10-08）
 - モーションの取れない Simulator で頭の動きの表示を確かめるときは、Debug ビルドの起動引数 `-ZankyoDemoMotion` で決まった首振りを繰り返す入力に切り替えられる（2026-10-08）
+- 首を戻す逆向きの振りを間引く検出（`CutDetector` の `returnWindow`）は、戻す動きから振り始めると戻す側に位相がそろい、拍の裏の振りばかり数え続ける。向きを決めないヘドバン（`HeadbangDetector`）では間引かず、裏の振りはノーツの時間窓（前後 0.15 秒）に入らないことで判定から外す。ノーツの最小間隔（0.35 秒）の半分が時間窓より広いことが前提なので、どちらかを変えるときは見直す（2026-10-08）
 
 ## 画面・テーマ
 

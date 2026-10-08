@@ -252,6 +252,62 @@ struct JudgeTests {
         #expect(judge.keeper.score == judge.maxScore)
     }
 
+    @Test
+    func emptySwingBreaksComboWhenEnabled() {
+        // ヘドバンでは、時間窓にノーツの無い振り（空振り）でコンボを切り、倍率も 1 段下げる。ミスには数えない
+        let notes = (0..<4).map { FaceNote(beat: Double($0), time: 1 + Double($0), direction: nil) }
+        var judge = Judge(notes: notes, breaksComboOnEmptySwing: true)
+        judge.cut(Self.cut(.down), at: 1)
+        judge.cut(Self.cut(.down), at: 2)
+        #expect(judge.keeper.combo == 2)
+        #expect(judge.keeper.multiplier == 2)
+
+        #expect(judge.cut(Self.cut(.right), at: 2.5) == nil)
+
+        #expect(judge.keeper.combo == 0)
+        #expect(judge.keeper.multiplier == 1)
+        #expect(judge.keeper.missCount == 0)
+        #expect(judge.remainingNotes.count == 2)
+    }
+
+    @Test
+    func returnSwingAfterHitIsNotEmptySwing() {
+        // 振り下ろして切った後、首を戻す逆向きの振りはコンボを切らない。戻した後にもう一度振ると空振り
+        let notes = [FaceNote(beat: 0, time: 1, direction: nil), FaceNote(beat: 2, time: 3, direction: nil)]
+        var judge = Judge(notes: notes, breaksComboOnEmptySwing: true)
+        judge.cut(Self.cut(.down), at: 1)
+
+        judge.cut(Self.cut(.up), at: 1.25)
+        #expect(judge.keeper.combo == 1)
+
+        judge.cut(Self.cut(.down), at: 1.5)
+        #expect(judge.keeper.combo == 0)
+    }
+
+    @Test
+    func lateReturnSwingIsEmptySwing() {
+        // 振ってから `returnSwingWindow` より後の逆向きの振りは、首を戻す動きとみなさない
+        let notes = [FaceNote(beat: 0, time: 1, direction: nil), FaceNote(beat: 4, time: 5, direction: nil)]
+        var judge = Judge(notes: notes, breaksComboOnEmptySwing: true)
+        judge.cut(Self.cut(.down), at: 1)
+
+        judge.cut(Self.cut(.up), at: 1 + ScoringRules().returnSwingWindow + 0.1)
+
+        #expect(judge.keeper.combo == 0)
+    }
+
+    @Test
+    func emptySwingKeepsComboByDefault() {
+        // 向きを合わせて切る遊び方では、これまでどおり空振りで何もしない
+        var judge = Judge(notes: Self.notes)
+        judge.cut(Self.cut(.left), at: 1)
+
+        judge.cut(Self.cut(.left), at: 1.5)
+        judge.cut(Self.cut(.left), at: 1.6)
+
+        #expect(judge.keeper.combo == 1)
+    }
+
     private static func cut(_ direction: SwingDirection, peakRate: Double = 4) -> CutEvent {
         CutEvent(timestamp: 0, direction: direction, peakRate: peakRate)
     }

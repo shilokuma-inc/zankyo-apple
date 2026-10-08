@@ -2,7 +2,7 @@ import Foundation
 
 /// 画面に出す頭の動きの状態。サンプルを受け取るたびに、正面からの向き・振りの強さ・検出した振りを更新する
 ///
-/// 振りの検出は判定と同じ `CutDetector` で行うので、ここで光った向きはプレイでもそのまま「切った」向きになる
+/// 振りの検出は判定と同じ検出（`SwingDetection`）で行うので、ここで光った振りはプレイでもそのまま「切った」振りになる
 nonisolated struct HeadMotionState: Sendable {
     /// 検出した振りを光らせておく秒
     static let cutHighlightDuration: TimeInterval = 0.35
@@ -11,24 +11,25 @@ nonisolated struct HeadMotionState: Sendable {
 
     /// 正面からの向き（ラジアン。右・上が正）
     private(set) var orientation = HeadOrientation(yaw: 0, pitch: 0)
-    /// 振りの強さ。各軸の角速度をその軸の閾値で割った大きい方（1 以上で振りになる）。すぐ消えないよう、ゆっくり下げる
+    /// 振りの強さ。閾値に対する割合（1 以上で振りになる。`SwingDetection.strength(of:)`）。すぐ消えないよう、ゆっくり下げる
     private(set) var strength: Double = 0
     /// 最後に検出した振り
     private(set) var lastCut: CutEvent?
     /// 最後に受け取ったサンプルの時刻
     private(set) var lastSampleTime: TimeInterval?
 
-    private var detector: CutDetector
+    /// 遊び方と検出の設定
+    private(set) var detection: SwingDetection
+    private var detector: any SwingDetector
     /// 正面とみなす向き（入力の基準での値）
     private var neutral: HeadOrientation?
     /// 向きの取れない入力のときに、角速度を積み上げた向き
     private var integrated = HeadOrientation(yaw: 0, pitch: 0)
 
-    init(configuration: CutDetector.Configuration = CutDetector.Configuration()) {
-        detector = CutDetector(configuration: configuration)
+    init(detection: SwingDetection = SwingDetection()) {
+        self.detection = detection
+        detector = detection.makeDetector()
     }
-
-    var configuration: CutDetector.Configuration { detector.configuration }
 
     /// `time`（サンプルと同じ物差しの秒）の時点で、光らせている振りの向き
     func highlightedDirection(at time: TimeInterval) -> SwingDirection? {
@@ -56,8 +57,7 @@ nonisolated struct HeadMotionState: Sendable {
         self.neutral = neutral
         orientation = HeadOrientation(yaw: Self.wrap(raw.yaw - neutral.yaw), pitch: Self.wrap(raw.pitch - neutral.pitch))
 
-        let current = max(abs(sample.yawRate) / configuration.yawThreshold, abs(sample.pitchRate) / configuration.pitchThreshold)
-        strength = max(current, strength - Self.strengthDecayPerSecond * elapsed, 0)
+        strength = max(detection.strength(of: sample), strength - Self.strengthDecayPerSecond * elapsed, 0)
 
         if let cut = detector.process(sample) {
             lastCut = cut
@@ -71,14 +71,15 @@ nonisolated struct HeadMotionState: Sendable {
         orientation = HeadOrientation(yaw: 0, pitch: 0)
     }
 
-    /// 閾値を変える。向きと正面はそのままにし、検出の途中の振りは捨てる
-    mutating func reconfigure(_ configuration: CutDetector.Configuration) {
-        detector = CutDetector(configuration: configuration)
+    /// 遊び方や閾値を変える。向きと正面はそのままにし、検出の途中の振りは捨てる
+    mutating func reconfigure(_ detection: SwingDetection) {
+        self.detection = detection
+        detector = detection.makeDetector()
     }
 
     /// 取得し直すときに、前の回の状態を消す（正面も決め直す）
     mutating func reset() {
-        self = HeadMotionState(configuration: detector.configuration)
+        self = HeadMotionState(detection: detection)
     }
 
     /// 角度を -π〜π に収める

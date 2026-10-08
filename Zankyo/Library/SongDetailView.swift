@@ -122,7 +122,13 @@ struct SongDetailView: View {
     }
 
     private func difficultyRow(_ difficulty: DifficultyInfo) -> some View {
-        let key = ScoreKey(mapHash: model.entry.hash, characteristic: difficulty.characteristic, difficulty: difficulty.difficulty)
+        // ハイスコアは遊び方ごとに記録しているので、今の遊び方のものを出す
+        let key = ScoreKey(
+            mapHash: model.entry.hash,
+            characteristic: difficulty.characteristic,
+            difficulty: difficulty.difficulty,
+            playStyle: motion.detection.style
+        )
         let isSelected = difficulty == selectedDifficulty
         return Button {
             selection = difficulty

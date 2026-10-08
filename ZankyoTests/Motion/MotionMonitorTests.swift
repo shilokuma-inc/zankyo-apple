@@ -20,18 +20,21 @@ struct MotionMonitorTests {
 
         // 判定に使うサンプルは手を加えずに渡す
         #expect(received == [sample])
-        #expect(monitor.state.strength == 1.5)
+        // 既定のヘドバンの閾値（1.5 rad/s）の 2 倍
+        #expect(monitor.state.strength == 2)
         #expect(monitor.lastReceivedAt == 100)
     }
 
     @Test
     func changingDetectionUpdatesState() {
-        let monitor = MotionMonitor(base: ManualMotionInput(), detection: .init(pitchThreshold: 1.2))
-        #expect(monitor.state.configuration.pitchThreshold == 1.2)
+        let monitor = MotionMonitor(base: ManualMotionInput(), detection: SwingDetection(headbang: .init(threshold: 1.2)))
+        #expect(monitor.state.detection.headbang.threshold == 1.2)
 
-        monitor.detection.pitchThreshold = 2.0
+        monitor.detection.headbang.threshold = 2.0
+        monitor.detection.style = .directional
 
-        #expect(monitor.state.configuration.pitchThreshold == 2.0)
+        #expect(monitor.state.detection.headbang.threshold == 2.0)
+        #expect(monitor.state.detection.style == .directional)
     }
 
     @Test
