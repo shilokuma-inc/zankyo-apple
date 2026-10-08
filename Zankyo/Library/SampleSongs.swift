@@ -83,7 +83,7 @@ struct SampleSongInstaller {
         self.suiteName = suiteName
     }
 
-    /// まだ入れていない版の一覧なら、すべての曲を入れる。置けない曲があったときは版を覚えず、次の起動で入れ直す
+    /// まだ入れていない版の一覧なら、すべての曲を入れる。置けない・一覧に保存できない曲があったときは版を覚えず、次の起動で入れ直す
     func installIfNeeded(into library: LibraryStore) {
         guard !library.isReadOnly, defaults.integer(forKey: Self.installedVersionKey) < catalog.version else { return }
         if install(catalog.songs, into: library) {
@@ -101,7 +101,7 @@ struct SampleSongInstaller {
         install(missingSongs(in: library), into: library)
     }
 
-    /// すべての曲を一覧に足せたら true
+    /// すべての曲を一覧に足し、一覧のファイルに保存できたら true
     @discardableResult
     private func install(_ songs: [SampleSong], into library: LibraryStore) -> Bool {
         guard !library.isReadOnly else { return false }
@@ -119,8 +119,9 @@ struct SampleSongInstaller {
                 installedAll = false
                 continue
             }
-            library.add(LibraryEntry(sample: song, importedAt: importedAt(of: song)))
-            installedAll = installedAll && library.contains(hash: song.hash)
+            if !library.add(LibraryEntry(sample: song, importedAt: importedAt(of: song))) {
+                installedAll = false
+            }
         }
         return installedAll
     }

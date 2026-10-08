@@ -173,13 +173,16 @@ final class LibraryStore {
     }
 
     /// 譜面 ZIP（`Downloads/<hash>.zip`）を置き終えた曲を一覧に足す。同じ譜面がすでにあれば置き換え、取り込んだ日時の順に並べる
-    func add(_ entry: LibraryEntry) {
-        guard entry.isValid else { return }
+    ///
+    /// - Returns: 一覧のファイルに保存できたら true
+    @discardableResult
+    func add(_ entry: LibraryEntry) -> Bool {
+        guard entry.isValid else { return false }
         entries.removeAll { $0.hash == entry.hash }
         let position = entries.firstIndex { $0.importedAt < entry.importedAt } ?? entries.endIndex
         entries.insert(entry, at: position)
         sizes[entry.hash] = size(ofHash: entry.hash)
-        save()
+        return save()
     }
 
     /// 曲を消す。取得した ZIP・展開したフォルダ・一覧の行をまとめて消し、消せたら true を返す
@@ -278,15 +281,19 @@ final class LibraryStore {
         refreshSizes()
     }
 
-    private func save() {
-        guard !isReadOnly else { return }
+    /// 保存できたら true
+    @discardableResult
+    private func save() -> Bool {
+        guard !isReadOnly else { return false }
         do {
             try FileManager.default.createDirectory(at: indexURL.deletingLastPathComponent(), withIntermediateDirectories: true)
             let file = LibraryFile(version: Self.fileVersion, entries: entries, favorites: favorites.sorted())
             let data = try Self.encoder.encode(file)
             try data.write(to: indexURL, options: .atomic)
+            return true
         } catch {
             logger.error("ライブラリを保存できなかった: \(error.localizedDescription, privacy: .public)")
+            return false
         }
     }
 
