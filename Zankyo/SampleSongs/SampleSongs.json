@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "songs": [
     {
       "id": "ode-to-joy",
@@ -7,7 +7,8 @@
       "hash": "ad522b6a9cd523efb02a07d2c1c7c968610ef228",
       "songName": "歓喜の歌",
       "songAuthorName": "ベートーヴェン",
-      "mapperName": "斬響"
+      "mapperName": "斬響",
+      "since": 1
     },
     {
       "id": "fur-elise",
@@ -15,7 +16,8 @@
       "hash": "f388098020708b439171f600ef8f6c51a1518c35",
       "songName": "エリーゼのために",
       "songAuthorName": "ベートーヴェン",
-      "mapperName": "斬響"
+      "mapperName": "斬響",
+      "since": 1
     },
     {
       "id": "mountain-king",
@@ -23,7 +25,8 @@
       "hash": "c6ac66324a67d1ad65d83d6f9d17acbe0279dd16",
       "songName": "山の魔王の宮殿にて",
       "songAuthorName": "グリーグ",
-      "mapperName": "斬響"
+      "mapperName": "斬響",
+      "since": 1
     },
     {
       "id": "canon",
@@ -31,7 +34,8 @@
       "hash": "022679d6715ca7a7a0ab0063a7e933e9e7667fa7",
       "songName": "カノン",
       "songAuthorName": "パッヘルベル",
-      "mapperName": "斬響"
+      "mapperName": "斬響",
+      "since": 1
     },
     {
       "id": "minuet",
@@ -39,7 +43,8 @@
       "hash": "c4ed7d979faa592330ebf84ea3d5c3e35d00f26d",
       "songName": "メヌエット ト長調",
       "songAuthorName": "ペツォールト",
-      "mapperName": "斬響"
+      "mapperName": "斬響",
+      "since": 1
     },
     {
       "id": "twinkle",
@@ -47,7 +52,8 @@
       "hash": "da09edb5f04b2f74d839a4d36c3841c60f62299f",
       "songName": "きらきら星",
       "songAuthorName": "フランス民謡",
-      "mapperName": "斬響"
+      "mapperName": "斬響",
+      "since": 1
     },
     {
       "id": "neon-drive",
@@ -55,7 +61,8 @@
       "hash": "78386b0adc6cc5dda35038e36cddf8513cdd03ad",
       "songName": "ネオン・ドライブ",
       "songAuthorName": "斬響",
-      "mapperName": "斬響"
+      "mapperName": "斬響",
+      "since": 1
     },
     {
       "id": "zankyo-rush",
@@ -63,7 +70,62 @@
       "hash": "17723bc3907de5e84eeaf04626ccc750c240961e",
       "songName": "斬響ラッシュ",
       "songAuthorName": "斬響",
-      "mapperName": "斬響"
+      "mapperName": "斬響",
+      "since": 1
+    },
+    {
+      "id": "going-home",
+      "resource": "sample-going-home",
+      "hash": "635dd2c5253861f3fce9f0c89e80776565e2e171",
+      "songName": "家路",
+      "songAuthorName": "ドヴォルザーク",
+      "mapperName": "斬響",
+      "since": 2
+    },
+    {
+      "id": "jingle-bells",
+      "resource": "sample-jingle-bells",
+      "hash": "729d1c516b4d13bdd82e6962ad097b1dea4865bf",
+      "songName": "ジングルベル",
+      "songAuthorName": "ピアポント",
+      "mapperName": "斬響",
+      "since": 2
+    },
+    {
+      "id": "greensleeves",
+      "resource": "sample-greensleeves",
+      "hash": "8caeda134721385b15d871ba93971237d9754b6d",
+      "songName": "グリーンスリーブス",
+      "songAuthorName": "イングランド民謡",
+      "mapperName": "斬響",
+      "since": 2
+    },
+    {
+      "id": "sakura",
+      "resource": "sample-sakura",
+      "hash": "d7e2f4b0b7ca0dac534e56642a49652f3ded8d1b",
+      "songName": "さくらさくら",
+      "songAuthorName": "日本古謡",
+      "mapperName": "斬響",
+      "since": 2
+    },
+    {
+      "id": "night-train",
+      "resource": "sample-night-train",
+      "hash": "340eff52a58fd60a8fac8d41d69b7ba234e35077",
+      "songName": "夜行列車",
+      "songAuthorName": "斬響",
+      "mapperName": "斬響",
+      "since": 2
+    },
+    {
+      "id": "comet-dash",
+      "resource": "sample-comet-dash",
+      "hash": "54330b9d68db38fbbbc9b11027581132a919d794",
+      "songName": "流星ダッシュ",
+      "songAuthorName": "斬響",
+      "mapperName": "斬響",
+      "since": 2
     }
   ]
 }

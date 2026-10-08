@@ -1,7 +1,7 @@
-"""サンプル楽曲 8 曲の楽譜と編曲。
+"""サンプル楽曲 14 曲の楽譜と編曲。
 
-クラシックは作曲者の没後 70 年を過ぎた曲（旋律そのもの）だけを使い、既存の演奏・録音や現代の編曲は使わない。
-伴奏・変奏・後半の展開は、このスクリプトのための編曲（Claude による AI 生成）。オリジナルの 2 曲も Claude が作った。
+クラシックは作曲者の没後 70 年を過ぎた曲、民謡は作者の分からない古い曲（旋律そのもの）だけを使い、既存の演奏・録音や現代の編曲は使わない。
+伴奏・変奏・後半の展開は、このスクリプトのための編曲（Claude による AI 生成）。オリジナルの 4 曲も Claude が作った。
 """
 from __future__ import annotations
 
@@ -16,6 +16,12 @@ NEON_VIOLET = ((30, 8, 60), (6, 2, 18), (255, 160, 255), (140, 60, 255), (90, 25
 NEON_GOLD = ((40, 26, 4), (10, 6, 2), (255, 240, 170), (255, 150, 30), (120, 210, 255))
 NEON_TEAL = ((0, 34, 52), (0, 6, 14), (255, 120, 200), (0, 200, 220), (255, 230, 90))
 NEON_FIRE = ((44, 0, 30), (10, 0, 8), (255, 250, 120), (255, 60, 30), (110, 160, 255))
+NEON_DUSK = ((48, 18, 6), (10, 4, 2), (255, 220, 160), (255, 120, 40), (140, 120, 255))
+NEON_SNOW = ((10, 26, 48), (2, 6, 14), (255, 255, 255), (150, 220, 255), (255, 80, 110))
+NEON_MOSS = ((14, 34, 10), (2, 8, 2), (240, 255, 170), (120, 200, 60), (255, 200, 90))
+NEON_SAKURA = ((44, 10, 34), (8, 2, 8), (255, 235, 245), (255, 130, 190), (130, 240, 220))
+NEON_NIGHT = ((4, 6, 34), (0, 0, 8), (200, 210, 255), (90, 80, 255), (255, 210, 80))
+NEON_COMET = ((0, 30, 40), (0, 4, 8), (255, 255, 200), (255, 200, 40), (90, 230, 255))
 
 
 def ode_to_joy() -> Song:
@@ -248,4 +254,183 @@ def zankyo_rush() -> Song:
     )
 
 
-SONGS = [ode_to_joy, fur_elise, mountain_king, canon, minuet, twinkle, neon_drive, zankyo_rush]
+def going_home() -> Song:
+    """家路（ドヴォルザーク 交響曲第 9 番『新世界より』第 2 楽章の主題）。ニ長調で、ゆったりしたビートに乗せる"""
+    a = (
+        "E4/1.5 G4/0.5 G4/2 | E4/1.5 D4/0.5 C4/2 | D4/1 E4/1 G4/1 E4/1 | D4/4 | "
+        "E4/1.5 G4/0.5 G4/2 | E4/1.5 D4/0.5 C4/2 | D4/1 E4/1 D4/1 C4/1 | C4/4"
+    )
+    ca = "C/4 | C/4 | G/4 | G/4 | C/4 | Am/4 | G/4 | C/4"
+    b = "A4/1.5 C5/0.5 C5/2 | A4/1.5 G4/0.5 E4/2 | G4/1 A4/1 C5/1 A4/1 | G4/4"
+    cb = "F/4 | C/4 | F/4 | G/4"
+    bar = 4
+    up = 2  # ニ長調に移す
+    return Song(
+        slug="going-home", title="家路", author="ドヴォルザーク", bpm=100, beats_per_bar=bar,
+        palette=NEON_DUSK, seed=9, preview_start=22, since=2,
+        sections=[
+            section("", "C/4 | G/4", bar, transpose=up, lead=None, bass="long", chart=False),
+            section(a, ca, bar, transpose=up, lead="strings", octave=1, bass="root", drums="light"),
+            section(b, cb, bar, transpose=up, lead="strings", octave=1, double="bell", bass="root", drums="half"),
+            section(a, ca, bar, transpose=up, lead="lead", octave=1, double="bell", bass="eighths", drums="basic",
+                    arp="8th", crash=True),
+            section("D5/4", "D/4", bar, lead="strings", bass="long", crash=True, chart=False),
+        ],
+    )
+
+
+def jingle_bells() -> Song:
+    """ジングルベル（ピアポント）。ハ長調。前半が歌い出し、後半がおなじみのサビ"""
+    verse = (
+        "G4/1 E5/1 D5/1 C5/1 | G4/3 G4/0.5 G4/0.5 | G4/1 E5/1 D5/1 C5/1 | A4/4 | "
+        "A4/1 F5/1 E5/1 D5/1 | B4/4 | G5/1 G5/1 F5/1 D5/1 | E5/4 | "
+        "G4/1 E5/1 D5/1 C5/1 | G4/4 | G4/1 E5/1 D5/1 C5/1 | A4/3 A4/1 | "
+        "A4/1 F5/1 E5/1 D5/1 | G5/1 G5/1 G5/1 G5/1 | A5/1 G5/1 F5/1 D5/1 | C5/2 G5/2"
+    )
+    cverse = (
+        "C/4 | C/4 | C/4 | F/4 | F/4 | G/4 | G/4 | C/4 | "
+        "C/4 | C/4 | C/4 | F/4 | F/4 | G/4 | G/4 | C/4"
+    )
+    chorus = (
+        "E5/1 E5/1 E5/2 | E5/1 E5/1 E5/2 | E5/1 G5/1 C5/1.5 D5/0.5 | E5/4 | "
+        "F5/1 F5/1 F5/1.5 F5/0.5 | F5/1 E5/1 E5/1 E5/0.5 E5/0.5 | E5/1 D5/1 D5/1 E5/1 | D5/2 G5/2 | "
+        "E5/1 E5/1 E5/2 | E5/1 E5/1 E5/2 | E5/1 G5/1 C5/1.5 D5/0.5 | E5/4 | "
+        "F5/1 F5/1 F5/1 F5/1 | F5/1 E5/1 E5/1 E5/0.5 E5/0.5 | G5/1 G5/1 F5/1 D5/1 | C5/4"
+    )
+    cchorus = (
+        "C/4 | C/4 | C/4 | C/4 | F/4 | C/4 | G/4 | G/4 | "
+        "C/4 | C/4 | C/4 | C/4 | F/4 | C/4 | G/4 | C/4"
+    )
+    bar = 4
+    return Song(
+        slug="jingle-bells", title="ジングルベル", author="ピアポント", bpm=144, beats_per_bar=bar,
+        palette=NEON_SNOW, seed=10, preview_start=29, since=2,
+        sections=[
+            section("", "C/4 | G/4", bar, lead=None, bass="root", drums="light", chart=False),
+            section(verse, cverse, bar, lead="pluck", bass="root", drums="basic"),
+            section(chorus, cchorus, bar, lead="lead", double="bell", bass="eighths", drums="four", arp="16th",
+                    crash=True),
+            section("C5/4", "C/4", bar, lead="bell", bass="long", crash=True, chart=False),
+        ],
+    )
+
+
+def greensleeves() -> Song:
+    """グリーンスリーブス（イングランド民謡）。イ短調・8 分の 6 拍子。1 拍を 8 分音符にとる"""
+    head = (
+        "C5/2 D5/1 E5/1.5 F5/0.5 E5/1 | D5/2 B4/1 G4/1.5 A4/0.5 B4/1 | "
+        "C5/2 A4/1 A4/1.5 G#4/0.5 A4/1 | B4/2 G#4/1 E4/2 A4/1 | "
+        "C5/2 D5/1 E5/1.5 F5/0.5 E5/1 | D5/2 B4/1 G4/1.5 A4/0.5 B4/1 | "
+        "C5/1.5 B4/0.5 A4/1 G#4/1.5 F#4/0.5 G#4/1 | A4/6"
+    )
+    refrain = (
+        "G5/3 G5/1.5 F#5/0.5 E5/1 | D5/2 B4/1 G4/1.5 A4/0.5 B4/1 | "
+        "C5/2 A4/1 A4/1.5 G#4/0.5 A4/1 | B4/2 G#4/1 E4/3 | "
+        "G5/3 G5/1.5 F#5/0.5 E5/1 | D5/2 B4/1 G4/1.5 A4/0.5 B4/1 | "
+        "C5/1.5 B4/0.5 A4/1 G#4/1.5 F#4/0.5 G#4/1"
+    )
+    chead = "Am/6 | G/6 | Am/6 | E/6 | Am/6 | G/6 | Am/3 E/3 | Am/6"
+    crefrain = "C/6 | G/6 | Am/6 | E/6 | C/6 | G/6 | Am/3 E/3"
+    bar = 6
+    soft = {"lead": "pluck", "bass": "waltz", "pad": False}
+    full = {"lead": "strings", "double": "bell", "bass": "waltz", "drums": "waltz"}
+    return Song(
+        slug="greensleeves", title="グリーンスリーブス", author="イングランド民謡", bpm=190, beats_per_bar=bar,
+        palette=NEON_MOSS, seed=11, preview_start=18, since=2,
+        sections=[
+            section("r/5 A4/1", "Am/6", bar, **soft, chart=False),
+            section(head, chead, bar, **soft),
+            section(refrain + " | A4/5 A4/1", crefrain + " | Am/6", bar, **soft),
+            section(head, chead, bar, **full, crash=True),
+            section(refrain + " | A4/6", crefrain + " | Am/6", bar, **full, arp="8th"),
+            section("", "Am/6", bar, lead=None, bass="long", crash=True, chart=False),
+        ],
+    )
+
+
+def sakura() -> Song:
+    """さくらさくら（日本古謡）。都節の音階（ラ・シ・ド・ミ・ファ）の旋律を、琴に見立てた弦と太鼓のビートで"""
+    melody = (
+        "A4/1 A4/1 B4/2 | A4/1 A4/1 B4/2 | A4/1 B4/1 C5/1 B4/1 | A4/1 B4/0.5 A4/0.5 F4/2 | "
+        "E4/1 C4/1 E4/1 F4/1 | E4/1 E4/0.5 C4/0.5 B3/2 | A4/1 B4/1 C5/1 B4/1 | A4/1 B4/0.5 A4/0.5 F4/2 | "
+        "E4/1 C4/1 E4/1 F4/1 | E4/1 E4/0.5 C4/0.5 B3/2 | A4/1 A4/1 B4/2 | A4/1 A4/1 B4/2 | "
+        "E4/1 F4/1 B4/0.5 A4/0.5 F4/1 | E4/4"
+    )
+    chords = (
+        "Am/4 | Am/4 | Am/4 | F/4 | "
+        "Am/4 | E/4 | Am/4 | F/4 | "
+        "Am/4 | E/4 | Am/4 | Am/4 | "
+        "F/4 | E/4"
+    )
+    bar = 4
+    return Song(
+        slug="sakura", title="さくらさくら", author="日本古謡", bpm=120, beats_per_bar=bar,
+        palette=NEON_SAKURA, seed=12, preview_start=30, since=2,
+        sections=[
+            section("", "Am/4 | E/4", bar, lead=None, bass="long", drums="half", chart=False),
+            section(melody, chords, bar, lead="pluck", octave=1, bass="root", pad=False, drums="half"),
+            section(melody, chords, bar, lead="lead", octave=1, double="pluck", bass="eighths", drums="four",
+                    arp="16th", crash=True),
+            section("A4/4", "Am/4", bar, lead="pluck", octave=1, bass="long", crash=True, chart=False),
+        ],
+    )
+
+
+def night_train() -> Song:
+    """夜行列車（オリジナル）。ホ短調のシンセウェイブ"""
+    a = (
+        "B4/1 E5/1 G5/1 F#5/0.5 E5/0.5 | D5/1.5 B4/0.5 G4/2 | A4/1 C5/1 E5/1 D5/0.5 C5/0.5 | B4/3 r/1 | "
+        "B4/1 E5/1 G5/1 B5/1 | A5/1.5 G5/0.5 F#5/2 | E5/1 D5/1 C5/1 D5/0.5 B4/0.5 | E5/4"
+    )
+    ca = "Em/4 | G/4 | C/4 | D/4 | Em/4 | D/4 | C/4 | Em/4"
+    b = (
+        "G5/2 F#5/2 | E5/2 D5/2 | C5/1 E5/1 G5/1 C6/1 | B5/4 | "
+        "A5/2 G5/2 | F#5/2 E5/2 | D#5/1 F#5/1 A5/1 B5/1 | B5/4"
+    )
+    cb = "C/4 | G/4 | Am/4 | Em/4 | Am/4 | Em/4 | B/4 | B/4"
+    bar = 4
+    return Song(
+        slug="night-train", title="夜行列車", author="斬響", bpm=124, beats_per_bar=bar,
+        palette=NEON_NIGHT, seed=13, preview_start=17, since=2,
+        sections=[
+            section("", "Em/4 | C/4 | G/4 | D/4", bar, lead=None, bass="eighths", drums="basic", arp="16th", chart=False),
+            section(a, ca, bar, lead="lead", bass="eighths", drums="basic", arp="16th"),
+            section(b, cb, bar, lead="lead", double="bell", bass="eighths", drums="four", crash=True),
+            section(a, ca, bar, lead="lead", double="lead", bass="eighths", drums="four", arp="16th", crash=True),
+            section("E5/4 | r/4", "Em/4 | Em/4", bar, lead="lead", bass="long", crash=True, chart=False),
+        ],
+    )
+
+
+def comet_dash() -> Song:
+    """流星ダッシュ（オリジナル）。ヘ長調の明るい速いダンス曲"""
+    hook = (
+        "F5/0.5 A5/0.5 C6/0.5 A5/0.5 G5/1 F5/1 | E5/0.5 G5/0.5 C6/0.5 G5/0.5 E5/1 C5/1 | "
+        "D5/0.5 F5/0.5 A5/0.5 F5/0.5 E5/1 D5/1 | Bb4/1 D5/1 F5/1 G5/1 | "
+        "F5/0.5 A5/0.5 C6/0.5 A5/0.5 G5/1 F5/1 | E5/0.5 G5/0.5 C6/0.5 E6/0.5 D6/1 C6/1 | "
+        "Bb5/1 A5/1 G5/1 E5/1 | F5/4"
+    )
+    ch = "F/4 | C/4 | Dm/4 | Bb/4 | F/4 | C/4 | Bb/2 C/2 | F/4"
+    brk = "A5/4 | G5/4 | F5/2 D5/2 | E5/4"
+    cbrk = "Dm/4 | C/4 | Bb/4 | C/4"
+    bar = 4
+    return Song(
+        slug="comet-dash", title="流星ダッシュ", author="斬響", bpm=144, beats_per_bar=bar,
+        palette=NEON_COMET, seed=14, preview_start=7, since=2,
+        sections=[
+            section("", "F/4 | C/4 | Dm/4 | Bb/4", bar, lead=None, bass=None, drums="four", arp="16th", chart=False),
+            section(hook, ch, bar, lead="lead", bass="eighths", drums="four", arp="16th", crash=True),
+            section(brk, cbrk, bar, lead="bell", bass="long", drums="half"),
+            section(hook, ch, bar, lead="lead", double="lead", bass="eighths", drums="four", arp="16th", crash=True),
+            section(brk, cbrk, bar, lead="strings", double="bell", bass="long", drums="half"),
+            section(hook, ch, bar, lead="lead", double="bell", bass="eighths", drums="four", arp="16th", crash=True),
+            section("F5/4 | r/4", "F/4 | F/4", bar, lead="lead", bass="long", crash=True, chart=False),
+        ],
+    )
+
+
+SONGS = [
+    ode_to_joy, fur_elise, mountain_king, canon, minuet, twinkle, neon_drive, zankyo_rush,
+    # 版 2 で足した曲
+    going_home, jingle_bells, greensleeves, sakura, night_train, comet_dash,
+]

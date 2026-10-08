@@ -9,7 +9,10 @@ struct SampleSongCatalogTests {
         let catalog = SampleSongCatalog()
 
         #expect(catalog.version >= 1)
-        #expect(catalog.songs.count == 8)
+        #expect(catalog.songs.count == 14)
+        // 版 2 で 6 曲を足した
+        #expect(catalog.version == 2)
+        #expect(catalog.songs.filter { $0.since == 2 }.count == 6)
         #expect(Set(catalog.songs.map(\.id)).count == catalog.songs.count)
         #expect(Set(catalog.songs.map(\.hash)).count == catalog.songs.count)
     }
