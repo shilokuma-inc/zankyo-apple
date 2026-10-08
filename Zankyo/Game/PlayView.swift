@@ -13,6 +13,8 @@ struct PlayView: View {
     var cover: CGImage?
     /// 譜面 ZIP に画像が無いときに取りに行く beatsaver の画像
     var coverURL: URL?
+    /// 結果画面に出す曲の情報（nil なら出さない）
+    var song: PlayedSong?
     /// 最初からやり直す・もう一度遊ぶ（nil ならボタンを出さない）
     var onRetry: (() -> Void)?
     let onExit: () -> Void
@@ -44,11 +46,16 @@ struct PlayView: View {
 
     var body: some View {
         Group {
-            if isShowingResult, session.phase == .finished, let result = session.result {
+            if isShowingResult, session.phase == .finished, let result = session.result, let breakdown = session.breakdown {
                 ResultView(
                     result: result,
+                    breakdown: breakdown,
                     previousBest: session.previousBest,
                     isNewRecord: session.isNewRecord,
+                    song: song,
+                    cover: cover,
+                    coverURL: coverURL,
+                    style: session.style,
                     onRetry: onRetry,
                     onClose: onExit
                 )

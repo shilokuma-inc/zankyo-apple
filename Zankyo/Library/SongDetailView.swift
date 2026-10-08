@@ -248,6 +248,11 @@ struct PlayScreen: View {
                     motion: motion,
                     cover: setup.cover,
                     coverURL: setup.entry.coverURL,
+                    song: PlayedSong(
+                        title: setup.entry.title,
+                        artist: setup.entry.songAuthorName,
+                        difficulty: setup.difficulty.difficulty.displayName
+                    ),
                     onRetry: restart,
                     onExit: onExit
                 )
