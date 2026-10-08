@@ -65,8 +65,10 @@ nonisolated extension AppDirectories {
 /// 保存形式（`Library/Library.json`。形式を変えるときは `fileVersion` を上げ、古い形式を読めるようにする）:
 /// ```json
 /// { "version": 1, "entries": [ { "hash": "…", "mapID": "1f33", "name": "…", "songName": "…", "songSubName": "",
-///   "songAuthorName": "…", "mapperName": "…", "coverURL": "https://…", "importedAt": "2026-10-07T12:00:00Z" } ] }
+///   "songAuthorName": "…", "mapperName": "…", "coverURL": "https://…", "importedAt": "2026-10-07T12:00:00Z" } ],
+///   "favorites": ["…"] }
 /// ```
+/// - `favorites` はお気に入り（ハートを付けた曲）の譜面ハッシュ。後から足したキーなので、無いファイルはお気に入りなしとして読む
 /// - 曲の容量は、取得した ZIP（`Downloads/<hash>.zip`）と展開したフォルダ（`Maps/<hash>/`）の合計
 /// - 読めないファイルは `.broken-<時刻>` を付けて退避し、空から始める。新しいアプリが書いた未知の版は読むだけで上書きしない
 @Observable
@@ -77,6 +79,8 @@ final class LibraryStore {
     private(set) var entries: [LibraryEntry] = []
     /// 曲ごとの容量（バイト）
     private(set) var sizes: [String: Int64] = [:]
+    /// お気に入り（ハートを付けた曲）の譜面ハッシュ
+    private(set) var favorites: Set<String> = []
     private(set) var isReadOnly = false
 
     @ObservationIgnored private let indexURL: URL
@@ -101,6 +105,30 @@ final class LibraryStore {
 
     func contains(hash: String) -> Bool {
         entries.contains { $0.hash == hash.lowercased() }
+    }
+
+    /// お気に入りの曲（一覧と同じ並び）
+    var favoriteEntries: [LibraryEntry] {
+        entries.filter { favorites.contains($0.hash) }
+    }
+
+    func isFavorite(_ entry: LibraryEntry) -> Bool {
+        favorites.contains(entry.hash)
+    }
+
+    /// ハートを付け外しする。一覧に無い曲・読み取り専用のときは何もしない
+    func setFavorite(_ isFavorite: Bool, for entry: LibraryEntry) {
+        guard !isReadOnly, contains(hash: entry.hash), isFavorite != self.isFavorite(entry) else { return }
+        if isFavorite {
+            favorites.insert(entry.hash)
+        } else {
+            favorites.remove(entry.hash)
+        }
+        save()
+    }
+
+    func toggleFavorite(_ entry: LibraryEntry) {
+        setFavorite(!isFavorite(entry), for: entry)
     }
 
     /// 取得し終えた曲を一覧に足す。同じ譜面がすでにあれば、新しい情報で置き換えて先頭に出す
@@ -137,6 +165,7 @@ final class LibraryStore {
         }
         entries.removeAll { $0.hash == entry.hash }
         sizes[entry.hash] = nil
+        favorites.remove(entry.hash)
         save()
         return true
     }
@@ -180,11 +209,13 @@ final class LibraryStore {
         // 版を先に読む。新しいアプリが書いた形式は中身の形が違うことがあるので、全体を読めなくても退避・上書きしない
         if let probe = try? Self.decoder.decode(LibraryFileVersion.self, from: data), probe.version > Self.fileVersion {
             isReadOnly = true
-            apply((try? Self.decoder.decode(LibraryFile.self, from: data))?.entries ?? [])
+            let file = try? Self.decoder.decode(LibraryFile.self, from: data)
+            apply(file?.entries ?? [], favorites: file?.favorites ?? [])
             return
         }
         do {
-            apply(try Self.decoder.decode(LibraryFile.self, from: data).entries)
+            let file = try Self.decoder.decode(LibraryFile.self, from: data)
+            apply(file.entries, favorites: file.favorites ?? [])
         } catch {
             logger.error("ライブラリのファイルを読めないので退避する: \(error.localizedDescription, privacy: .public)")
             let broken = indexURL.appendingPathExtension("broken-\(Int(Date().timeIntervalSince1970))")
@@ -192,8 +223,8 @@ final class LibraryStore {
         }
     }
 
-    /// 読んだ行のうち、値が使えて、ファイルが残っているものだけを出す
-    private func apply(_ loaded: [LibraryEntry]) {
+    /// 読んだ行のうち、値が使えて、ファイルが残っているものだけを出す。お気に入りは一覧に残った曲のものだけを使う
+    private func apply(_ loaded: [LibraryEntry], favorites loadedFavorites: [String]) {
         var seen: Set<String> = []
         entries = loaded
             .filter { $0.isValid && seen.insert($0.hash).inserted }
@@ -201,6 +232,8 @@ final class LibraryStore {
                 files(ofHash: entry.hash).contains { FileManager.default.fileExists(atPath: $0.path(percentEncoded: false)) }
             }
             .sorted { $0.importedAt > $1.importedAt }
+        let hashes = Set(entries.map(\.hash))
+        favorites = Set(loadedFavorites.map { $0.lowercased() }).intersection(hashes)
         refreshSizes()
     }
 
@@ -208,7 +241,8 @@ final class LibraryStore {
         guard !isReadOnly else { return }
         do {
             try FileManager.default.createDirectory(at: indexURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-            let data = try Self.encoder.encode(LibraryFile(version: Self.fileVersion, entries: entries))
+            let file = LibraryFile(version: Self.fileVersion, entries: entries, favorites: favorites.sorted())
+            let data = try Self.encoder.encode(file)
             try data.write(to: indexURL, options: .atomic)
         } catch {
             logger.error("ライブラリを保存できなかった: \(error.localizedDescription, privacy: .public)")
@@ -236,4 +270,6 @@ nonisolated private struct LibraryFileVersion: Decodable {
 nonisolated private struct LibraryFile: Codable {
     let version: Int
     let entries: [LibraryEntry]
+    /// お気に入りの譜面ハッシュ。このキーを足す前に書いたファイルには無い
+    let favorites: [String]?
 }
