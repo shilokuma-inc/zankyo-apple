@@ -11,6 +11,8 @@ struct PlaySetup: Identifiable {
     let song: DecodedSong
     /// 譜面 ZIP のジャケット画像。無ければ nil
     let cover: CGImage?
+    /// 曲の聞きどころ（試聴と同じ区間）。結果画面の間に流す
+    let previewRange: Range<TimeInterval>
     /// 背景の光の演出（譜面の照明か、拍に合わせた光）
     let lights: LightShow
 
@@ -101,12 +103,18 @@ final class SongDetailModel {
             let chart = try await maps.loadChart(hash: entry.hash, info: info, difficulty: difficulty)
             let song = try await loadedSong(info: info)
             guard !Task.isCancelled else { return }
+            let previewRange = SongPreview.range(
+                startTime: info.previewStartTime,
+                duration: info.previewDuration,
+                songDuration: song.duration
+            )
             play = PlaySetup(
                 entry: entry,
                 difficulty: difficulty,
                 notes: chart.notes,
                 song: song,
                 cover: cover,
+                previewRange: previewRange,
                 lights: LightShow(lighting: chart.lighting, timeline: chart.timeline, duration: song.duration)
             )
         } catch {

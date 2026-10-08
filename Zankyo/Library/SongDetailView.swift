@@ -248,6 +248,11 @@ struct PlayScreen: View {
                     motion: motion,
                     cover: setup.cover,
                     coverURL: setup.entry.coverURL,
+                    song: PlayedSong(
+                        title: setup.entry.title,
+                        artist: setup.entry.songAuthorName,
+                        difficulty: setup.difficulty.difficulty.displayName
+                    ),
                     lights: setup.lights,
                     onRetry: restart,
                     onExit: onExit
@@ -268,12 +273,14 @@ struct PlayScreen: View {
                 session?.clock.stop()
                 session?.input.stop()
             }
+            session?.stopFinishSound()
         }
     }
 
-    /// 最初からやり直す。前の回の音を止めてから、同じノーツと音源で作り直す（入力は新しい回が取り直す）
+    /// 最初からやり直す。前の回の音（終えていれば結果画面の音）を止めてから、同じノーツと音源で作り直す（入力は新しい回が取り直す）
     private func restart() {
         session?.clock.stop()
+        session?.stopFinishSound()
         session = makeSession()
     }
 
@@ -285,7 +292,8 @@ struct PlayScreen: View {
             detection: motion.detection,
             offset: CalibrationStore().offset,
             scoreKey: setup.scoreKey,
-            highScores: highScores
+            highScores: highScores,
+            finishSound: FinishSoundPlayer(song: setup.song, loopRange: setup.previewRange)
         )
     }
 }
