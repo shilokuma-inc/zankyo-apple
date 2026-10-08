@@ -126,6 +126,8 @@ struct LibraryView: View {
                 library.toggleFavorite(entry)
             }
             .tint(.pink)
+            // 新しいアプリが書いた一覧を読んでいるときは保存できないので、付け外しさせない
+            .disabled(library.isReadOnly)
         }
         .swipeActions {
             Button("消す", role: .destructive) { pendingDeletion = entry }
@@ -134,6 +136,7 @@ struct LibraryView: View {
             Button(isFavorite ? "お気に入りから外す" : "お気に入りに追加", systemImage: isFavorite ? "heart.slash" : "heart") {
                 library.toggleFavorite(entry)
             }
+            .disabled(library.isReadOnly)
             Button("消す", systemImage: "trash", role: .destructive) { pendingDeletion = entry }
         }
     }
