@@ -2,7 +2,7 @@ import SwiftUI
 
 /// プレイ画面。縦持ち・片手が前提で、手で触るのは画面下 1/3 の一時停止だけ（Discussion #3）
 ///
-/// ノーツは上から判定の線へ降りてきて、線に重なる時刻に向きの矢印の方へ首を振る。
+/// ノーツは上から判定の線へ降りてきて、線の上のターゲット枠に収まる時刻に向きの矢印の方へ首を振る。
 /// 画面を開くとカウントダウンのあと自動で曲が始まる。一時停止すると、再開・最初から・終了を選べる
 struct PlayView: View {
     let session: GameSession
@@ -33,6 +33,8 @@ struct PlayView: View {
 
     /// 判定の表示の文字の高さ（文字の大きさの設定に合わせる）
     @ScaledMetric(relativeTo: .title2) private var judgementLabelHeight: CGFloat = 36
+
+    @Environment(\.palette) private var palette
 
     var body: some View {
         Group {
@@ -66,7 +68,7 @@ struct PlayView: View {
         }
     }
 
-    /// Beat Saber にならい、暗い空間の奥から光るノーツが飛んでくる見た目にする。レーンは画面の端まで広げる
+    /// Beat Saber にならい、空間の奥から光るノーツが飛んでくる見た目にする（色はテーマに従う）。レーンは画面の端まで広げる
     private var playContent: some View {
         VStack(spacing: 0) {
             header
@@ -84,7 +86,7 @@ struct PlayView: View {
                 } else if session.phase == .ready, !session.canStart {
                     MotionRequirementView(status: session.input.status)
                         .padding()
-                        .background(.black.opacity(0.6), in: .rect(cornerRadius: 24))
+                        .background(palette.panel.opacity(0.6), in: .rect(cornerRadius: 24))
                         .padding()
                 }
             }
@@ -96,7 +98,7 @@ struct PlayView: View {
         .overlay(alignment: .bottom) {
             if isMenuShown {
                 ZStack(alignment: .bottom) {
-                    Color.black.opacity(0.45)
+                    palette.panel.opacity(0.45)
                         .ignoresSafeArea()
                     PauseMenu(
                         notice: session.pausedByDisconnection ? "イヤホンが外れたので止めました。つなぎ直すと再開できます。" : nil,
@@ -112,7 +114,7 @@ struct PlayView: View {
         }
         .animation(.easeOut(duration: 0.2), value: isMenuShown)
         .background { PlayfieldBackdrop() }
-        .preferredColorScheme(.dark)
+        .preferredColorScheme(palette.colorScheme)
     }
 
     /// 一時停止のメニューを出している（再開のカウントダウン中は隠す）
@@ -141,6 +143,14 @@ struct PlayView: View {
             ZStack {
                 PlayfieldLane(geometry: geometry)
                 PlayfieldGrid(geometry: geometry, currentTime: session.currentTime)
+                HitTarget(
+                    notes: visibleNotes.map { item in
+                        HitTarget.Note(index: item.index, remaining: item.note.time - session.currentTime, direction: item.note.direction)
+                    },
+                    judgedRemaining: session.lastJudgement.map { $0.note.time - session.currentTime },
+                    noteSize: Self.noteSize
+                )
+                .position(x: geometry.centerX, y: geometry.hitY)
                 ForEach(visibleNotes, id: \.index) { item in
                     let remaining = item.note.time - session.currentTime
                     let y = geometry.y(remaining: remaining)
@@ -151,6 +161,7 @@ struct PlayView: View {
                 if let judgement = session.lastJudgement {
                     JudgementEffect(
                         judgement: judgement,
+                        rules: session.judge.rules,
                         noteSize: Self.noteSize,
                         labelOffset: geometry.judgementLabelOffset(noteSize: Self.noteSize, labelHeight: judgementLabelHeight)
                     )
@@ -177,7 +188,7 @@ struct PlayView: View {
             // 結果があれば body がリザルト画面に切り替わる。ここに来るのは始められずに終えたとき
             VStack(spacing: 12) {
                 Text("曲を再生できませんでした。")
-                    .foregroundStyle(.white)
+                    .foregroundStyle(palette.ink)
                 Button("閉じる", action: onExit)
                     .buttonStyle(NeonButtonStyle(prominent: true))
             }

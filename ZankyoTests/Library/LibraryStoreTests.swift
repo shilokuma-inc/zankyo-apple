@@ -148,6 +148,100 @@ struct LibraryStoreTests {
         #expect(FileManager.default.fileExists(atPath: Self.zip(root: root).path(percentEncoded: false)))
     }
 
+    // MARK: - お気に入り
+
+    @Test
+    func favoritesPersistAndFilter() throws {
+        let root = try Self.makeRoot()
+        defer { try? FileManager.default.removeItem(at: root) }
+        try Self.writeFiles(root: root, zipBytes: 10, mapFileBytes: nil)
+        let store = Self.store(root: root)
+        try store.add(map: Self.map(id: "1f33"), version: Self.version())
+        let entry = try #require(store.entries.first)
+        #expect(!store.isFavorite(entry))
+        #expect(store.favoriteEntries.isEmpty)
+
+        store.toggleFavorite(entry)
+
+        #expect(store.isFavorite(entry))
+        #expect(store.favoriteEntries == [entry])
+        // 保存すると取り込み日時の秒未満が落ちるので、曲はハッシュで比べる
+        let reloaded = Self.store(root: root)
+        #expect(reloaded.favoriteEntries.map(\.hash) == [entry.hash])
+
+        reloaded.toggleFavorite(entry)
+        #expect(Self.store(root: root).favoriteEntries.isEmpty)
+    }
+
+    @Test
+    func keepsFavoriteWhenSameMapIsAddedAgain() throws {
+        let root = try Self.makeRoot()
+        defer { try? FileManager.default.removeItem(at: root) }
+        try Self.writeFiles(root: root, zipBytes: 10, mapFileBytes: nil)
+        let store = Self.store(root: root)
+        try store.add(map: Self.map(id: "1f33"), version: Self.version())
+        store.setFavorite(true, for: try #require(store.entries.first))
+
+        try store.add(map: Self.map(id: "1f33"), version: Self.version(), importedAt: Date(timeIntervalSince1970: 2))
+
+        #expect(store.favoriteEntries.count == 1)
+    }
+
+    @Test
+    func deletingEntryRemovesFavorite() throws {
+        let root = try Self.makeRoot()
+        defer { try? FileManager.default.removeItem(at: root) }
+        try Self.writeFiles(root: root, zipBytes: 10, mapFileBytes: nil)
+        let store = Self.store(root: root)
+        try store.add(map: Self.map(id: "1f33"), version: Self.version())
+        let entry = try #require(store.entries.first)
+        store.setFavorite(true, for: entry)
+
+        store.delete(entry)
+
+        #expect(store.favorites.isEmpty)
+        // 同じ曲を取り込み直しても、ハートは付いていない
+        try Self.writeFiles(root: root, zipBytes: 10, mapFileBytes: nil)
+        try store.add(map: Self.map(id: "1f33"), version: Self.version())
+        #expect(store.favoriteEntries.isEmpty)
+    }
+
+    @Test
+    func readsIndexWithoutFavoritesAndIgnoresUnknownHashes() throws {
+        let root = try Self.makeRoot()
+        defer { try? FileManager.default.removeItem(at: root) }
+        try Self.writeFiles(root: root, zipBytes: 10, mapFileBytes: nil)
+        let entry = Self.entryJSON(hash: Self.hash, mapID: "1f33", cover: nil)
+
+        // お気に入りを足す前の形式
+        try Data(#"{ "version": 1, "entries": [\#(entry)] }"#.utf8).write(to: Self.index(root: root))
+        let old = Self.store(root: root)
+        #expect(old.entries.count == 1)
+        #expect(old.favorites.isEmpty)
+
+        // 一覧に無い曲・不正な値のハッシュは使わない。大文字で書かれていても小文字で読む
+        let unknown = String(repeating: "c", count: 40)
+        let favorites = #"["\#(Self.hash.uppercased())", "\#(unknown)", "../../etc"]"#
+        try Data(#"{ "version": 1, "entries": [\#(entry)], "favorites": \#(favorites) }"#.utf8).write(to: Self.index(root: root))
+        #expect(Self.store(root: root).favorites == [Self.hash])
+    }
+
+    @Test
+    func cannotChangeFavoritesWhenReadOnly() throws {
+        let root = try Self.makeRoot()
+        defer { try? FileManager.default.removeItem(at: root) }
+        try Self.writeFiles(root: root, zipBytes: 10, mapFileBytes: nil)
+        let entry = Self.entryJSON(hash: Self.hash, mapID: "1f33", cover: nil)
+        let newer = Data(#"{ "version": 2, "entries": [\#(entry)], "favorites": [] }"#.utf8)
+        try newer.write(to: Self.index(root: root))
+        let store = Self.store(root: root)
+
+        store.toggleFavorite(try #require(store.entries.first))
+
+        #expect(store.favorites.isEmpty)
+        #expect(try Data(contentsOf: Self.index(root: root)) == newer)
+    }
+
     // MARK: - 補助
 
     private static func store(root: URL) -> LibraryStore {

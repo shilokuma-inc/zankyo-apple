@@ -32,6 +32,17 @@ struct CutScoreTests {
     }
 }
 
+struct HitTimingTests {
+    @Test(arguments: zip(
+        [-0.1, -0.05, 0, 0.05, 0.08] as [TimeInterval],
+        [HitTiming.early, .perfect, .perfect, .perfect, .late]
+    ))
+    func classifiesTimingErrorAroundPerfectWindow(timingError: TimeInterval, expected: HitTiming) {
+        // ぴったりは前後 0.05 秒。負のずれは早い
+        #expect(HitTiming(timingError: timingError, rules: ScoringRules()) == expected)
+    }
+}
+
 struct ScoreKeeperTests {
     private static let perfect = CutScore(peakRate: 4, timingError: 0, rules: ScoringRules())
 

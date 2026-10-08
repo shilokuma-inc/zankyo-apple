@@ -6,6 +6,8 @@ struct CalibrationView: View {
     /// 頭の動きの見える化に使う
     let motion: MotionMonitor
 
+    @Environment(\.palette) private var palette
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 16) {
@@ -38,7 +40,7 @@ struct CalibrationView: View {
         })
     }
 
-    /// 測っている間の画面。プレイ画面と同じネオンの空間に、振るタイミングの手がかりと中止だけを置く。
+    /// 測っている間の画面。プレイ画面と同じ空間に、振るタイミングの手がかりと中止だけを置く。
     /// 頭の動きはプレイ中と同じく小さく出す
     private var measuringContent: some View {
         VStack(spacing: 16) {
@@ -52,7 +54,7 @@ struct CalibrationView: View {
         }
         .padding(.top)
         .background { PlayfieldBackdrop() }
-        .preferredColorScheme(.dark)
+        .preferredColorScheme(palette.colorScheme)
     }
 
     private var explanation: some View {

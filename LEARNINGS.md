@@ -25,6 +25,8 @@
 - サンプル楽曲の音源（Ogg Vorbis）は、SPM で取得済みの vorbis-swift の `examples/encoder_example.c` をビルドして作れる（`scripts/sample-songs/build-encoder.sh`）。libogg の `config_types.h` は configure で作られるので、固定幅の型で書いて足す（2026-10-08）
 - 検索画面の PR 用スクリーンショットは、Simulator に日本語キーボードが入っていると、外から送った文字がかな変換されて検索語を打てない。コミットしない一時パッチで `RootView` に起動引数（`-ScreenshotQuery camellia` など）を読む `.task` を足し、検索タブを開いて `SearchModel.submit()` まで呼ぶと、Before / After を同じ条件で撮れる。取り込んだ曲はアプリを入れ直しても残るので、ライブラリ画面は一度取り込めば Before / After のビルドを入れ替えて撮れる（2026-10-08）
 - `contentShape(.contextMenuPreview, …)` は macOS では使えない（コンパイルエラー。macOS のメニューにはプレビューが無い）。iOS / visionOS で通っても macOS で落ちるので、`#if !os(macOS)` で外す（2026-10-08）
+- Debug ビルドを `-ZankyoDemoMotion` 付きで起動すれば、Simulator でもライブラリから曲を選んでプレイ画面を普通に動かせる。`simctl io <udid> recordVideo` で録画し、`AVAssetImageGenerator` で切り出したコマを ImageIO で GIF にすると、Before / After を同じ曲・同じ区間で比べられる。デモの首振りはノーツに合わせないのでほぼミスになり、ヒットの表示は出ない。ヒットの表示は、コミットしない一時テストで `ImageRenderer` に描かせて確かめる（2026-10-08）
+- 判定の表示（点数など）は、iPhone 17 Pro では判定の線の下にちょうど 1 行分しか収まらない。`PlayView.judgementLabelHeight` を増やすと線の上（ノーツの通り道）に出てしまうので、表示を足すときは行を増やさず横に並べる（2026-10-08）
 
 ## beatsaver / 譜面
 
@@ -46,3 +48,7 @@
 - `CMHeadphoneMotionManager` の更新ハンドラと delegate は CoreMotion のキューで呼ばれる。MainActor 既定のメソッドの中でクロージャを書くと MainActor に隔離され、別スレッドで呼ばれた時点で実行時に落ちうるので、`nonisolated static func` で作って渡す。ハンドラの型は Swift では `CMHeadphoneMotionManager.DeviceMotionHandler`（`CMHeadphoneDeviceMotionHandler` は改名済みでエラー）。Simulator では `isDeviceMotionAvailable` が false（2026-10-07）
 - モーション入力の `AsyncStream` は受け取る側が 1 つなので、画面の見える化は入力を包む `MotionMonitor` でサンプルを中継して作る。判定には同じサンプルをそのまま渡す（2026-10-08）
 - モーションの取れない Simulator で頭の動きの表示を確かめるときは、Debug ビルドの起動引数 `-ZankyoDemoMotion` で決まった首振りを繰り返す入力に切り替えられる（2026-10-08）
+
+## 画面・テーマ
+
+- プレイ画面・キャリブレーション中の画面の色は `@Environment(\.palette)`（`ThemePalette`）から取る。明るいテーマ（モノクロ・ポップ・キュート）があるので、`.white` / `.black` を直に書くと文字や線が背景に溶ける。文字は `ink`、板は `panel`、光（`shadow`）は `glow(_:_:)` を使う。`NeonTheme` は並行ブランチのために残した deprecated の互換用で、選んだテーマに追従しない（2026-10-08）

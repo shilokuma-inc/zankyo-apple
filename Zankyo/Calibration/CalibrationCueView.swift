@@ -4,7 +4,7 @@ import SwiftUI
 ///
 /// 前打ち（高い音・聞くだけ）の印は点線の枠に耳と何回目か、振る拍（低い音）の印はプレイ画面の方向不問のノーツ（`NoteBlock`）。
 /// 下の点の並びは全拍の進み具合と、振りを数えた拍。早い・遅いは出さない（`CalibrationCue.caughtBeats(cutTimes:)`）。
-/// 暗い背景（`PlayfieldBackdrop`）の上に置く前提
+/// プレイ画面と同じ空間（`PlayfieldBackdrop`）の上に置く前提
 struct CalibrationCueView: View {
     let cue: CalibrationCue
     let cutTimes: [TimeInterval]
@@ -18,8 +18,11 @@ struct CalibrationCueView: View {
     private static let noteSize = PlayView.noteSize
     /// クリックが聞こえた後、線と印を光らせる秒
     private static let flashDuration: TimeInterval = 0.25
+
+    @Environment(\.palette) private var palette
+
     /// 振る拍の色。プレイ画面の方向不問のノーツと同じ
-    private static let swingColor = NeonTheme.noteColor(for: nil).color
+    private var swingColor: Color { palette.noteColor(for: nil).color }
 
     var body: some View {
         TimelineView(.animation) { _ in
@@ -42,16 +45,16 @@ struct CalibrationCueView: View {
     private func prompt(passed: Int, flash: Double) -> some View {
         let countIn = cue.configuration.countIn
         let isSwinging = passed > countIn
-        let glow = isSwinging ? Self.swingColor : NeonTheme.laser
+        let glow = isSwinging ? swingColor : palette.laser
         return VStack(spacing: 4) {
             Text(isSwinging ? "振る" : passed == 0 ? "聞く" : "\(passed)")
                 .font(.system(size: 56, weight: .heavy, design: .rounded).monospacedDigit())
-                .foregroundStyle(isSwinging ? Self.swingColor : .white)
-                .shadow(color: glow.opacity(0.8), radius: 6 + 14 * flash)
+                .foregroundStyle(isSwinging ? palette.textColor(for: palette.noteColor(for: nil)) : palette.ink)
+                .shadow(color: palette.glow(glow, 0.8), radius: 6 + 14 * flash)
                 .scaleEffect(1 + 0.2 * flash)
             Text(isSwinging ? "低い音に合わせて振ってください" : passed < countIn ? "高い音は聞くだけ" : "次の低い音から振ります")
                 .font(.headline)
-                .foregroundStyle(NeonTheme.laser)
+                .foregroundStyle(palette.laser)
         }
         .accessibilityElement(children: .combine)
     }
@@ -84,10 +87,10 @@ struct CalibrationCueView: View {
     private func hitLineFlash(geometry: PlayfieldGeometry, flash: Double) -> some View {
         let edges = geometry.laneEdges(atY: geometry.hitY)
         return Capsule()
-            .fill(.white)
+            .fill(palette.core)
             .frame(width: edges.right - edges.left, height: 2 + 4 * flash)
-            .shadow(color: NeonTheme.laser, radius: 4 + 16 * flash)
-            .shadow(color: NeonTheme.laser, radius: 12 * flash)
+            .shadow(color: palette.glow(palette.laser), radius: 4 + 16 * flash)
+            .shadow(color: palette.glow(palette.laser), radius: 12 * flash)
             .opacity(flash)
             .position(x: geometry.centerX, y: geometry.hitY)
     }
@@ -98,13 +101,13 @@ struct CalibrationCueView: View {
         let y = geometry.y(remaining: max(click.remaining, 0))
         let size = Self.noteSize * geometry.scale(atY: y)
         let fade = click.remaining < 0 ? -click.remaining / Self.flashDuration : 0
-        let color = isCountIn ? NeonTheme.laser : Self.swingColor
+        let color = isCountIn ? palette.laser : swingColor
         return ZStack {
             if fade > 0 {
                 Circle()
                     .stroke(color, lineWidth: 1 + 3 * (1 - fade))
                     .frame(width: size * (0.8 + 1.4 * fade), height: size * (0.8 + 1.4 * fade))
-                    .shadow(color: color, radius: 8)
+                    .shadow(color: palette.glow(color), radius: 8)
                     .opacity(1 - fade)
             }
             Group {
@@ -150,9 +153,11 @@ private struct CountInMark: View {
     /// 枠の一辺
     let size: CGFloat
 
+    @Environment(\.palette) private var palette
+
     var body: some View {
         RoundedRectangle(cornerRadius: size * 0.2, style: .continuous)
-            .strokeBorder(NeonTheme.laser, style: StrokeStyle(lineWidth: max(size * 0.04, 1), dash: [size * 0.12, size * 0.08]))
+            .strokeBorder(palette.laser, style: StrokeStyle(lineWidth: max(size * 0.04, 1), dash: [size * 0.12, size * 0.08]))
             .overlay {
                 VStack(spacing: 0) {
                     Image(systemName: "ear")
@@ -160,10 +165,10 @@ private struct CountInMark: View {
                     Text("\(number)")
                         .font(.system(size: size * 0.26, weight: .heavy, design: .rounded).monospacedDigit())
                 }
-                .foregroundStyle(.white)
+                .foregroundStyle(palette.ink)
             }
             .frame(width: size, height: size)
-            .shadow(color: NeonTheme.laser.opacity(0.7), radius: size * 0.15)
+            .shadow(color: palette.glow(palette.laser, 0.7), radius: size * 0.15)
     }
 }
 
@@ -173,22 +178,24 @@ private struct BeatDot: View {
     let isPassed: Bool
     let isCaught: Bool
 
+    @Environment(\.palette) private var palette
+
     var body: some View {
         let size: CGFloat = isCountIn ? 6 : 10
         Circle()
             .fill(fill)
             .overlay {
                 if !isPassed, !isCaught {
-                    Circle().strokeBorder(.white.opacity(0.4), lineWidth: 1)
+                    Circle().strokeBorder(palette.ink.opacity(0.4), lineWidth: 1)
                 }
             }
             .frame(width: size, height: size)
-            .shadow(color: isCaught ? NeonTheme.noteColor(for: nil).color : .clear, radius: 4)
+            .shadow(color: isCaught ? palette.glow(palette.noteColor(for: nil).color) : .clear, radius: 4)
     }
 
     private var fill: Color {
-        if isCaught { return NeonTheme.noteColor(for: nil).color }
-        if isPassed { return isCountIn ? NeonTheme.laser : .white.opacity(0.3) }
+        if isCaught { return palette.noteColor(for: nil).color }
+        if isPassed { return isCountIn ? palette.laser : palette.ink.opacity(0.3) }
         return .clear
     }
 }
@@ -203,5 +210,5 @@ private struct BeatDot: View {
     )
     .padding()
     .background { PlayfieldBackdrop() }
-    .preferredColorScheme(.dark)
+    .appTheme(.cyberpunk)
 }
