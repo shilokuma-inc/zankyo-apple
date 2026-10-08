@@ -7,6 +7,8 @@ import SwiftUI
 /// ハートを付けた曲（お気に入り）だけに絞り込める。ハートは右へのスワイプ・長押しのメニュー・曲の詳細で付け外しする
 ///
 /// 付属のサンプル楽曲も同じように並び、消せる。消したサンプル楽曲は「サンプル楽曲を戻す」で入れ直せる
+///
+/// ジャケットを押すと試聴でき、試聴している曲の行は縁を光らせる。試聴は一覧と曲の詳細を行き来しても鳴り続ける
 struct LibraryView: View {
     enum Filter: String, CaseIterable, Identifiable {
         case all
@@ -24,6 +26,8 @@ struct LibraryView: View {
 
     let library: LibraryStore
     let downloads: DownloadModel
+    /// 曲の試聴。各行のジャケットを押すと試聴し、試聴している行の縁を光らせる
+    let preview: SongPreviewCenter
     let motion: MotionMonitor
     let highScores: HighScoreStore
     let onSearch: () -> Void
@@ -62,12 +66,20 @@ struct LibraryView: View {
                     }
                 } else {
                     list
+                        .alert(
+                            "試聴できません",
+                            isPresented: Binding(get: { preview.error != nil }, set: { if !$0 { preview.error = nil } })
+                        ) {
+                            Button("OK", role: .cancel) {}
+                        } message: {
+                            Text(preview.error ?? "")
+                        }
                 }
             }
             .navigationTitle("ライブラリ")
             .toolbar { selectionToolbar }
             .navigationDestination(for: LibraryEntry.self) { entry in
-                SongDetailView(entry: entry, library: library, motion: motion, highScores: highScores)
+                SongDetailView(entry: entry, library: library, preview: preview, motion: motion, highScores: highScores)
             }
             .onAppear { library.refreshSizes() }
             .onChange(of: library.entries) {
@@ -235,8 +247,12 @@ struct LibraryView: View {
                 entry: entry,
                 size: library.sizes[entry.hash] ?? 0,
                 isFavorite: isFavorite,
-                isSelected: isSelecting ? isSelected : nil
-            )
+                isSelected: isSelecting ? isSelected : nil,
+                isPreviewing: preview.isPlaying(entry.hash),
+                isLoadingPreview: preview.isLoading(entry.hash)
+            ) {
+                preview.toggle(entry)
+            }
         }
         // 文字をボタンの色にしない
         .buttonStyle(.plain)
@@ -273,6 +289,10 @@ struct LibraryView: View {
     /// 曲を消す。消せなかった曲は知らせ、選んでいる間なら選んだまま残して（もう一度消せるように）、消せたら選ぶのを終える
     private func delete(_ targets: [LibraryEntry]) {
         pendingDeletion = nil
+        // 消す曲の試聴は、ファイルを消す前に止める
+        if targets.contains(where: { preview.isPlaying($0.hash) || preview.isLoading($0.hash) }) {
+            preview.stop()
+        }
         let failed = library.delete(targets)
         let failedHashes = Set(failed.map(\.hash))
         for entry in targets where !failedHashes.contains(entry.hash) {
@@ -313,112 +333,11 @@ struct LibraryView: View {
     }
 }
 
-/// 一覧の 1 曲。マッパー名を必ず出す（Discussion #3 Q9。譜面ページへのリンクは曲の詳細画面に出す）。
-/// 背景にジャケット画像をぼかして敷き、曲ごとの色が行全体で分かるようにする
-private struct LibraryRow: View {
-    let entry: LibraryEntry
-    let size: Int64
-    let isFavorite: Bool
-    /// まとめて消す曲を選んでいる間は、選んだかどうか。ふつうの一覧では nil
-    let isSelected: Bool?
-
-    /// ジャケット画像。サムネイルと背景の両方に使う
-    @State private var cover: CGImage?
-
-    var body: some View {
-        content(cover: cover.map { Image(decorative: $0, scale: 1) })
-            .task(id: entry.hash) {
-                // 取り込んだ譜面 ZIP の画像を先に使う（オフラインの電車の中でも出せる）。無ければ取り込んだときの beatsaver の画像を取りに行く
-                if let local = await LocalMapStore().loadListCover(hash: entry.hash) {
-                    cover = local
-                } else if let url = entry.coverURL {
-                    cover = await CoverImageLoader().load(url)
-                }
-            }
-    }
-
-    /// 1 曲分のカード。`cover` は読み込んだジャケット画像（読み込み中・失敗時は nil）で、サムネイルと背景の両方に使う
-    private func content(cover: Image?) -> some View {
-        HStack(spacing: 12) {
-            HStack(alignment: .top, spacing: 12) {
-                thumbnail(cover)
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(alignment: .firstTextBaseline, spacing: 6) {
-                        Text(entry.title)
-                            .font(.headline)
-                            .lineLimit(2)
-                        if isFavorite {
-                            Image(systemName: "heart.fill")
-                                .font(.subheadline)
-                                .foregroundStyle(.pink)
-                                .accessibilityLabel("お気に入り")
-                        }
-                    }
-                    if !entry.songAuthorName.isEmpty {
-                        Text(entry.songAuthorName)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
-                    // 行全体が曲の詳細へのリンクなので、譜面ページへのリンクは詳細画面に置く（行の中に置くと、行をタップしたつもりで開いてしまう）
-                    Text("マッパー: \(entry.mapperName)")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                    Text(LibraryView.format(size))
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(.secondary)
-                }
-            }
-            Spacer(minLength: 0)
-            trailingMark
-        }
-        .coverCard(cover)
-        .overlay {
-            if isSelected == true {
-                RoundedRectangle(cornerRadius: 20)
-                    .strokeBorder(.tint, lineWidth: 3)
-            }
-        }
-    }
-
-    /// 右端の印。ふつうは開けることを示す矢印、選んでいる間は選んだかどうかの丸
-    @ViewBuilder private var trailingMark: some View {
-        if let isSelected {
-            Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                .font(.title2)
-                .foregroundStyle(isSelected ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
-                .accessibilityHidden(true)
-        } else {
-            Image(systemName: "chevron.right")
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(.tertiary)
-                .accessibilityHidden(true)
-        }
-    }
-
-    /// 左に出すジャケット画像のサムネイル。画像が無いあいだは音符を出す
-    private func thumbnail(_ cover: Image?) -> some View {
-        Group {
-            if let cover {
-                cover.resizable().scaledToFill()
-            } else {
-                Image(systemName: "music.note")
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(.quaternary)
-            }
-        }
-        .frame(width: 56, height: 56)
-        .clipShape(.rect(cornerRadius: 8))
-        .accessibilityHidden(true)
-    }
-}
-
 #Preview {
     LibraryView(
         library: LibraryStore(),
         downloads: DownloadModel(downloader: MapDownloader()),
+        preview: SongPreviewCenter(),
         motion: MotionMonitor(base: RecordedMotionInput(samples: [])),
         highScores: HighScoreStore(),
         onSearch: {}

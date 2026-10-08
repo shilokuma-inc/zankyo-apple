@@ -1,25 +1,27 @@
 import SwiftUI
 
 /// 取り込んだ曲の詳細。難易度を選んで「スタート」を押すと、ノーツと音源を用意してプレイ画面を出す（曲は自動で始まる）。
-/// 遊ぶ前に曲を試聴できる
+/// 遊ぶ前に曲を試聴できる。試聴はアプリ全体で 1 つなので、一覧に戻っても鳴り続ける
 struct SongDetailView: View {
     let library: LibraryStore
+    let preview: SongPreviewCenter
     let motion: MotionMonitor
     let highScores: HighScoreStore
 
     @State private var model: SongDetailModel
     /// 難易度を選んでからの準備。画面を離れたら取り消す
     @State private var preparation: Task<Void, Never>?
-    /// 試聴の準備（音源のデコード）。画面を離れたら取り消し、鳴らしていれば止める
+    /// 試聴の準備（音源のデコード）。画面を離れたら取り消す（鳴らし始めた試聴は止めない）
     @State private var previewTask: Task<Void, Never>?
     /// 選んでいる難易度。未選択なら最初の難易度を使う
     @State private var selection: DifficultyInfo?
 
-    init(entry: LibraryEntry, library: LibraryStore, motion: MotionMonitor, highScores: HighScoreStore) {
+    init(entry: LibraryEntry, library: LibraryStore, preview: SongPreviewCenter, motion: MotionMonitor, highScores: HighScoreStore) {
         self.library = library
+        self.preview = preview
         self.motion = motion
         self.highScores = highScores
-        _model = State(initialValue: SongDetailModel(entry: entry))
+        _model = State(initialValue: SongDetailModel(entry: entry, preview: preview))
     }
 
     var body: some View {
@@ -42,7 +44,6 @@ struct SongDetailView: View {
                 preparation = nil
                 previewTask?.cancel()
                 previewTask = nil
-                model.stopPreview()
             }
             .alert(
                 "遊べません",
@@ -70,7 +71,11 @@ struct SongDetailView: View {
             List {
                 Section {
                     SongHeader(entry: model.entry, info: info, cover: model.cover) {
-                        PreviewButton(isPlaying: model.isPreviewing, isLoading: model.isLoadingPreview) {
+                        PreviewButton(
+                            isPlaying: model.isPreviewing,
+                            // 一覧で読み始めた試聴も、読んでいる途中と分かるようにする
+                            isLoading: model.isLoadingPreview || preview.isLoading(model.entry.hash)
+                        ) {
                             previewTask?.cancel()
                             previewTask = Task { await model.togglePreview() }
                         }

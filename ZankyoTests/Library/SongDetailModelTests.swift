@@ -121,6 +121,9 @@ private struct Fixture {
         """
 
     let model: SongDetailModel
+    let entry: LibraryEntry
+    /// アプリ全体の試聴（画面を移っても鳴り続ける）
+    let preview: SongPreviewCenter
     let previewer = RecordingPreviewer()
     private let root: URL
 
@@ -146,7 +149,9 @@ private struct Fixture {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         let entry = try decoder.decode(LibraryEntry.self, from: Data(json.utf8))
-        model = SongDetailModel(entry: entry, maps: store, previewer: previewer)
+        preview = SongPreviewCenter(previewer: previewer, maps: store)
+        self.entry = entry
+        model = SongDetailModel(entry: entry, maps: store, preview: preview)
     }
 
     func remove() {
