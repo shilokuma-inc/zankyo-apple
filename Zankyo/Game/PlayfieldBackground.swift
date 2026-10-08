@@ -1,7 +1,11 @@
 import SwiftUI
 
 /// プレイ画面の奥の空間。空の色に、レーンの奥（上）のあたりを地平の光で照らす。画面の端まで敷く
+///
+/// 背景の光の演出の「奥の光」（`back`）があれば、地平をその色で照らす（レーンの枠で切れないよう、画面全体の背景に描く）
 struct PlayfieldBackdrop: View {
+    var back: LightState.Light?
+
     @Environment(\.palette) private var palette
 
     var body: some View {
@@ -13,8 +17,29 @@ struct PlayfieldBackdrop: View {
                 startRadius: 0,
                 endRadius: 360
             )
+            if let back, back.intensity > 0.01 {
+                let color = PlayfieldLights.color(of: back, palette: palette)
+                RadialGradient(
+                    colors: [color.opacity(0.35 * min(back.intensity, 1.4)), color.opacity(0)],
+                    center: UnitPoint(x: 0.5, y: 0.2),
+                    startRadius: 0,
+                    endRadius: 420
+                )
+            }
         }
         .ignoresSafeArea()
+    }
+}
+
+/// 背景の光の演出に合わせて照らす `PlayfieldBackdrop`。曲の時刻が変わるたびに、ここだけを描き直す
+struct LitPlayfieldBackdrop: View {
+    let lights: LightShow?
+    let session: GameSession
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        PlayfieldBackdrop(back: lights.map { reduceMotion ? LightState.calm.back : $0.state(at: session.currentTime).back })
     }
 }
 
