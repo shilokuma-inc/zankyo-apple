@@ -164,6 +164,63 @@ struct GameSessionTests {
         #expect(clock.currentTime == 10)
     }
 
+    @Test
+    func headbangIgnoresNoteDirections() async {
+        // ヘドバンでは、ノーツの向きと違う向きに振っても切れる。ノーツの向きは外して判定する
+        let samples = MotionRecording.make(swings: [
+            .init(direction: .down, peakTime: 1, peakRate: 4),
+            .init(direction: .left, peakTime: 2, peakRate: 4),
+            .init(direction: .up, peakTime: 3, peakRate: 4)
+        ])
+        let headbang = GameSession(
+            notes: Self.notes,
+            clock: ManualSongClock(duration: 4),
+            input: RecordedMotionInput(samples: samples),
+            detection: SwingDetection(style: .headbang)
+        )
+        let directional = GameSession(
+            notes: Self.notes,
+            clock: ManualSongClock(duration: 4),
+            input: RecordedMotionInput(samples: samples),
+            detection: SwingDetection(style: .directional)
+        )
+
+        await headbang.play()
+        await directional.play()
+
+        #expect(headbang.judge.keeper.hitCount == 3)
+        #expect(headbang.judge.remainingNotes.isEmpty)
+        #expect(headbang.judge.judgements.allSatisfy { $0.note.direction == nil })
+        // 向きを合わせて切る遊び方では、右と上のノーツは向き違い
+        #expect(directional.judge.keeper.hitCount == 1)
+        #expect(directional.judge.judgements.filter { if case .badCut = $0 { true } else { false } }.count == 2)
+    }
+
+    @Test(arguments: [true, false])
+    func headbangHitsEveryBeatOfContinuousNodding(startsWithUpStroke: Bool) async {
+        // 120 BPM で 1 拍に 1 回うなずき続ける。振り下ろしを拍に合わせていれば、首を戻す動きから振り始めても全部のノーツを切れる
+        let period = 0.5
+        let sign = startsWithUpStroke ? 1.0 : -1.0
+        let samples = (0...Int(5 * 50)).map { index in
+            let time = Double(index) / 50
+            return MotionSample(timestamp: time, yawRate: 0, pitchRate: time <= 4 ? sign * 4 * sin(2 * .pi * time / period) : 0)
+        }
+        // 振り下ろしの速さのピーク（上下の角速度が負の山）の時刻にノーツを置く
+        let firstDownPeak = startsWithUpStroke ? 0.375 : 0.125
+        let notes = (0..<8).map { FaceNote(beat: Double($0), time: firstDownPeak + Double($0) * period, direction: .left) }
+        let session = GameSession(
+            notes: notes,
+            clock: ManualSongClock(duration: 5),
+            input: RecordedMotionInput(samples: samples),
+            detection: SwingDetection(style: .headbang)
+        )
+
+        await session.play()
+
+        #expect(session.judge.keeper.hitCount == 8)
+        #expect(session.judge.keeper.missCount == 0)
+    }
+
     private func waitUntil(_ condition: () -> Bool) async {
         for _ in 0..<100 where !condition() {
             await Task.yield()

@@ -168,6 +168,33 @@ struct CalibrationModelTests {
     }
 
     @Test
+    func measuresHeadbangInAnyDirection() async {
+        // ヘドバンでは、拍ごとに違う向きへ振っても振りとして数える（向きを合わせて切る遊び方の検出では、
+        // 直前と逆向きの振りを首を戻す動きとして数えない）
+        let clicks = (0..<CalibrationModel.beats).map { 1 + Double($0) * 0.6 }
+        let directions: [SwingDirection] = [.down, .up, .left, .right]
+        let swings = clicks.enumerated().dropFirst(4).map { index, click in
+            MotionRecording.Swing(direction: directions[index % directions.count], peakTime: click + 0.08, peakRate: 2.5)
+        }
+        let model = CalibrationModel(
+            input: RecordedMotionInput(samples: MotionRecording.make(swings: swings)),
+            metronome: FakeMetronome(clicks: clicks),
+            store: CalibrationStore(suiteName: "ZankyoTests.Calibration.\(UUID().uuidString)"),
+            detection: { SwingDetection(style: .headbang) },
+            now: { 1_000 }
+        )
+
+        await model.measure()
+
+        guard case .finished(let result) = model.phase else {
+            Issue.record("向きを問わず数えるはず: \(model.phase)")
+            return
+        }
+        #expect(result.matchedCount == 16)
+        #expect(abs(result.offset - 0.08) < 0.011)
+    }
+
+    @Test
     func failsWithoutSwings() async {
         let model = CalibrationModel(
             input: RecordedMotionInput(samples: MotionRecording.make(swings: [], duration: 2)),

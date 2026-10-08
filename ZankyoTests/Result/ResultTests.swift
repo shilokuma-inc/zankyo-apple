@@ -148,6 +148,22 @@ struct HighScoreStoreTests {
         #expect(names == ["HighScores.json"])
     }
 
+    @Test
+    func separatesRecordsByPlayStyle() throws {
+        let file = try Self.temporaryFile()
+        defer { try? FileManager.default.removeItem(at: file.deletingLastPathComponent()) }
+        let store = HighScoreStore(fileURL: file)
+        let headbang = Self.key.playing(.headbang)
+
+        #expect(store.record(PlayResultTests.result(score: 300), for: headbang))
+        #expect(store.best(for: headbang)?.score == 300)
+        #expect(store.best(for: Self.key) == nil)
+        // 遊び方を選べるようになる前の記録（向きを合わせて切る）と同じキーを使い、ヘドバンには遊び方を付ける
+        #expect(Self.key.playStyle == .directional)
+        #expect(Self.key.storageKey(scoringVersion: 1) == "s1/\(Self.key.mapHash)/Standard/Expert")
+        #expect(headbang.storageKey(scoringVersion: 1) == "s1/\(Self.key.mapHash)/Standard/Expert/headbang")
+    }
+
     private static func temporaryFile() throws -> URL {
         let directory = FileManager.default.temporaryDirectory
             .appending(path: "ZankyoTests-\(UUID().uuidString)", directoryHint: .isDirectory)
