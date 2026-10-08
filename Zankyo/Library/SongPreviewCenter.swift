@@ -15,7 +15,10 @@ final class SongPreviewCenter {
 
     @ObservationIgnored private let previewer: any SongPreviewing
     @ObservationIgnored private let maps: LocalMapStore
+    /// 鳴らすつもりで読んでいる試聴。止めたら取り消して nil にする
     @ObservationIgnored private var loading: Task<Void, Never>?
+    /// 最後に始めた読み込み。止めてもデコードは途中で止まらないので、終わるまで次の読み込みを待たせるために持ち続ける
+    @ObservationIgnored private var lastLoading: Task<Void, Never>?
     /// 試聴を求めた回数。止めた・別の曲にしたときも増やし、読み終えるのを待っている間に変わった試聴を鳴らさない
     @ObservationIgnored private var request = 0
 
@@ -39,11 +42,11 @@ final class SongPreviewCenter {
             return
         }
         // 止めても、始まったデコードは途中で止まらない。続けて押したときにデコードを重ねない（長い曲は数百 MB になる）よう、前の読み込みが終わるのを待つ
-        let previous = loading
+        let previous = lastLoading
         stop()
         let current = request
         loadingHash = entry.hash
-        loading = Task {
+        let task = Task {
             await previous?.value
             guard !Task.isCancelled, request == current else { return }
             do throws(MapLoadError) {
@@ -58,6 +61,8 @@ final class SongPreviewCenter {
                 self.error = error.message
             }
         }
+        loading = task
+        lastLoading = task
     }
 
     /// 読み終えた音源で鳴らす（曲の詳細から。デコードした音源を使い回す）。鳴らしていた曲は止める。鳴らせたら true
