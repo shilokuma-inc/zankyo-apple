@@ -61,6 +61,27 @@ struct ScoreBreakdownTests {
     }
 
     @Test
+    func advisesMatchingDirectionWhenBadCutsDominate() {
+        let judgements = Array(repeating: Self.hit(swing: 1, timingError: 0), count: 8)
+            + [.badCut(Self.note, .up), .badCut(Self.note, .down), .miss(Self.note)]
+
+        #expect(ScoreBreakdown(judgements: judgements, rules: Self.rules).advice == .matchDirection)
+    }
+
+    @Test
+    func doesNotClaimDeviationWhenAllHitsArePerfect() {
+        // ぴったりの範囲の端（±50 ミリ秒）ばかりだと、タイミングの点は 10/15 ほどにとどまる
+        let edge = Self.rules.perfectWindow
+        let judgements = Array(repeating: Self.hit(swing: 1, timingError: edge), count: 5)
+            + Array(repeating: Self.hit(swing: 1, timingError: -edge), count: 5)
+        let breakdown = ScoreBreakdown(judgements: judgements, rules: Self.rules)
+
+        #expect(breakdown.earlyCount == 0)
+        #expect(breakdown.lateCount == 0)
+        #expect(breakdown.advice == .tightenTiming)
+    }
+
+    @Test
     func advisesKeepingComboWhenNearlyPerfect() {
         let judgements = Array(repeating: Self.hit(swing: 1, timingError: 0.01), count: 10)
 

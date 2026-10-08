@@ -5,8 +5,10 @@ import Foundation
 nonisolated struct ScoreBreakdown: Sendable, Hashable {
     /// 点を伸ばすために、次に気をつけるとよいこと
     nonisolated enum Advice: Sendable, Hashable {
-        /// ミス・向き違いが多い。倍率が下がるので、まず切り逃さない
+        /// 切り逃し（ミス）が多い。倍率が下がるので、まず切り逃さない
         case avoidMisses
+        /// 向き違いが多い。矢印の向きに首を振る
+        case matchDirection
         /// 振りが遅い。もっと速く振る
         case swingFaster
         /// 早く振りがち。少し待つ
@@ -15,6 +17,8 @@ nonisolated struct ScoreBreakdown: Sendable, Hashable {
         case swingSooner
         /// ずれが早い・遅いの両方にある。線に重なる瞬間を狙う
         case aimForLine
+        /// どれも「ぴったり」の範囲には入っているが、タイミングの点はまだ伸ばせる
+        case tightenTiming
         /// どちらもほぼ満点。コンボを切らずに倍率を保つ
         case keepCombo
     }
@@ -71,7 +75,8 @@ nonisolated struct ScoreBreakdown: Sendable, Hashable {
         let total = hitCount + missCount + badCutCount
         guard total > 0 else { return nil }
         if hitCount == 0 || Double(missCount + badCutCount) / Double(total) >= Self.missRatioForAdvice {
-            return .avoidMisses
+            // 向き違いのほうが多ければ、向きを合わせるよう勧める
+            return badCutCount > missCount ? .matchDirection : .avoidMisses
         }
         // 取り逃した点の多いほうを先に直す
         let swingLoss = Double(CutScore.maxSwing) - averageSwing
@@ -83,6 +88,10 @@ nonisolated struct ScoreBreakdown: Sendable, Hashable {
         }
         if swingLoss >= accuracyLoss, !swingIsNearlyFull {
             return .swingFaster
+        }
+        // どれも「ぴったり」の範囲なら、早い・遅いとは言わずに、さらに線に近づけるよう勧める
+        if earlyCount == 0, lateCount == 0 {
+            return .tightenTiming
         }
         // 早い・遅いの片方に 2 倍以上偏っていれば、その向きを直す
         if earlyCount >= max(lateCount * 2, 1) {
@@ -107,7 +116,9 @@ extension ScoreBreakdown.Advice {
     var message: String {
         switch self {
         case .avoidMisses:
-            "ミスすると倍率が 1 段下がります。まずは切り逃さないことを優先すると点が伸びます。"
+            "切り逃すと倍率が 1 段下がります。まずは切り逃さないことを優先すると点が伸びます。"
+        case .matchDirection:
+            "向き違いが多いです。向き違いもミスと同じく倍率が下がるので、ノーツの矢印の向きに首を振りましょう。"
         case .swingFaster:
             "振りの強さで点を落としています。大きくゆっくりより、短く素早く首を振ると満点に近づきます。"
         case .waitLonger:
@@ -116,6 +127,8 @@ extension ScoreBreakdown.Advice {
             "遅めに振りがちです。ノーツが線に重なる少し前から振り始めましょう。ずれが続くときはキャリブレーションで測り直してください。"
         case .aimForLine:
             "タイミングが早い・遅いの両方にずれています。ノーツが線に重なる瞬間を狙いましょう。"
+        case .tightenTiming:
+            "タイミングはぴったりの範囲に入っています。ノーツが線に重なるちょうどその瞬間に振ると、タイミングの点がさらに上がります。"
         case .keepCombo:
             "振りの強さもタイミングもほぼ満点です。コンボを切らずに ×\(ScoreKeeper.maxMultiplier) を保てば、さらに伸びます。"
         }
