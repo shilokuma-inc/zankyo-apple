@@ -20,6 +20,8 @@
 - テスト用の Ogg Vorbis は、libvorbis の `examples/encoder_example.c`（44.1kHz・ステレオの WAV を標準入力で受ける）を clang でビルドして作れる。afconvert は Vorbis でエンコードできない。テストバンドルの素材は `ZankyoTests/Fixtures/` に置けばフォルダ同期で入る（2026-10-08）
 - `List` の行全体を `NavigationLink` にすると、行の中の `Link` は `.borderless` を付けていても行のタップと重なり、行の中央をタップしただけで Safari が開くことがある。行の中にはリンクを置かない（2026-10-08）
 - Simulator ではモーション入力が使えずプレイを始められないので、PR 用のプレイ画面のスクリーンショットは、コミットしない一時的なユニットテストで撮る。テストからホストアプリのウィンドウの `rootViewController` に `PlayView` を載せ、`SilentSongClock` の `now` を差し替えて時刻を止め、`GameSession.handle` に `CutEvent` を渡せば判定の表示まで出せる。静止画は待っている間に `simctl io screenshot`、GIF は `drawHierarchy` で取ったフレームを ImageIO で書き出す（ffmpeg が無くてよい）（2026-10-08）
+- Debug ビルドを `-ZankyoDemoMotion` 付きで起動すれば、Simulator でもライブラリから曲を選んでプレイ画面を普通に動かせる。`simctl io <udid> recordVideo` で録画し、`AVAssetImageGenerator` で切り出したコマを ImageIO で GIF にすると、Before / After を同じ曲・同じ区間で比べられる。デモの首振りはノーツに合わせないのでほぼミスになり、ヒットの表示は出ない。ヒットの表示は、コミットしない一時テストで `ImageRenderer` に描かせて確かめる（2026-10-08）
+- 判定の表示（点数など）は、iPhone 17 Pro では判定の線の下にちょうど 1 行分しか収まらない。`PlayView.judgementLabelHeight` を増やすと線の上（ノーツの通り道）に出てしまうので、表示を足すときは行を増やさず横に並べる（2026-10-08）
 
 ## beatsaver / 譜面
 
