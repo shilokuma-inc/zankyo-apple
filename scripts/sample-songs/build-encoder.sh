@@ -39,6 +39,9 @@ HEADER
 sed -e 's/ret=vorbis_encode_init_vbr(&vi,2,44100,0.1);/ret=vorbis_encode_init_vbr(\&vi,2,44100,0.3);/' \
     -e 's/srand(time(NULL));/srand(0);/' \
     "$VORBIS/examples/encoder_example.c" > "$WORK/encoder.c"
+# 依存先の更新で encoder_example.c の書き方が変わると、置換が効かないまま進んでしまうので確かめる
+grep -Fq 'vorbis_encode_init_vbr(&vi,2,44100,0.3);' "$WORK/encoder.c" || { echo "品質の置換に失敗しました" >&2; exit 1; }
+grep -Fq 'srand(0);' "$WORK/encoder.c" || { echo "乱数の種の置換に失敗しました" >&2; exit 1; }
 
 SOURCES=()
 for file in "$VORBIS"/lib/*.c; do
