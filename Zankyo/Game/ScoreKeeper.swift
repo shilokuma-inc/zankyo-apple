@@ -29,8 +29,28 @@ nonisolated struct CutScore: Sendable, Hashable {
 nonisolated struct ScoringRules: Sendable, Hashable {
     /// ノーツの時刻の前後この秒の中の振りを、そのノーツへの振りとみなす
     var hitWindow: TimeInterval = 0.15
+    /// ずれがこの秒以内の振りを「ぴったり」と表示する（時間窓の内側 1/3。イヤホンのセンサーの更新間隔より広くとる）
+    var perfectWindow: TimeInterval = 0.05
     /// 振りの点が満点になる角速度（ラジアン毎秒）
     var fullSwingRate: Double = 4.0
+}
+
+/// 切ったタイミングの早い・遅い。判定の表示で、ぴったりのタイミングからどちらにずれたかを伝える
+nonisolated enum HitTiming: Sendable, Hashable {
+    case early
+    case perfect
+    case late
+
+    /// - Parameter timingError: ノーツの時刻からのずれ（秒。負なら早い）
+    init(timingError: TimeInterval, rules: ScoringRules) {
+        if abs(timingError) <= rules.perfectWindow {
+            self = .perfect
+        } else if timingError < 0 {
+            self = .early
+        } else {
+            self = .late
+        }
+    }
 }
 
 /// コンボと倍率を数え、点数を積む。倍率は Beat Saber と同じく 1・2・4・8 倍で、

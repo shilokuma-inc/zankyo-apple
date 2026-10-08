@@ -22,6 +22,8 @@
 - Simulator ではモーション入力が使えずプレイを始められないので、PR 用のプレイ画面のスクリーンショットは、コミットしない一時的なユニットテストで撮る。テストからホストアプリのウィンドウの `rootViewController` に `PlayView` を載せ、`SilentSongClock` の `now` を差し替えて時刻を止め、`GameSession.handle` に `CutEvent` を渡せば判定の表示まで出せる。静止画は待っている間に `simctl io screenshot`、GIF は `drawHierarchy` で取ったフレームを ImageIO で書き出す（ffmpeg が無くてよい）（2026-10-08）
 - 検索画面の PR 用スクリーンショットは、Simulator に日本語キーボードが入っていると、外から送った文字がかな変換されて検索語を打てない。コミットしない一時パッチで `RootView` に起動引数（`-ScreenshotQuery camellia` など）を読む `.task` を足し、検索タブを開いて `SearchModel.submit()` まで呼ぶと、Before / After を同じ条件で撮れる。取り込んだ曲はアプリを入れ直しても残るので、ライブラリ画面は一度取り込めば Before / After のビルドを入れ替えて撮れる（2026-10-08）
 - `contentShape(.contextMenuPreview, …)` は macOS では使えない（コンパイルエラー。macOS のメニューにはプレビューが無い）。iOS / visionOS で通っても macOS で落ちるので、`#if !os(macOS)` で外す（2026-10-08）
+- Debug ビルドを `-ZankyoDemoMotion` 付きで起動すれば、Simulator でもライブラリから曲を選んでプレイ画面を普通に動かせる。`simctl io <udid> recordVideo` で録画し、`AVAssetImageGenerator` で切り出したコマを ImageIO で GIF にすると、Before / After を同じ曲・同じ区間で比べられる。デモの首振りはノーツに合わせないのでほぼミスになり、ヒットの表示は出ない。ヒットの表示は、コミットしない一時テストで `ImageRenderer` に描かせて確かめる（2026-10-08）
+- 判定の表示（点数など）は、iPhone 17 Pro では判定の線の下にちょうど 1 行分しか収まらない。`PlayView.judgementLabelHeight` を増やすと線の上（ノーツの通り道）に出てしまうので、表示を足すときは行を増やさず横に並べる（2026-10-08）
 - 一時的なユニットテストでホストアプリに載せた画面は、テストが `Task.sleep` で待っている間（XCTest が run loop を独自のモードで回す）はタップが届かないことがある。ボタンを押して確かめるときは、テストで取り込みのファイル（`Downloads/<hash>.zip`）を置いたうえで `Library/Library.json` を Simulator のアプリのデータ領域（`simctl get_app_container … data`）に書き、アプリを普通に起動して操作する（2026-10-08）
 
 ## beatsaver / 譜面

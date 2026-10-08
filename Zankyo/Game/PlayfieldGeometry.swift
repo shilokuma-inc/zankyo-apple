@@ -12,6 +12,14 @@ nonisolated struct PlayfieldGeometry: Sendable, Hashable {
     static let fadeInProgress: Double = 0.15
     /// 判定の線を過ぎてから消えるまでの秒
     static let fadeOutDelay: TimeInterval = 0.2
+    /// ターゲット枠の大きさ（判定の線の上でのノーツに対する倍率）。ぴったりの瞬間にノーツが枠の内側に収まって見えるよう、少し大きくする
+    static let targetScale: CGFloat = 1.15
+    /// ノーツの合図の枠を出し始める、判定の線に届くまでの残り秒
+    static let cueLeadTime: TimeInterval = 0.6
+    /// 合図の枠の、出し始めでの大きさ（ターゲット枠に対する倍率）
+    static let cueStartScale: CGFloat = 2.2
+    /// ぴったりの瞬間からターゲット枠を光らせる秒
+    static let flashDuration: TimeInterval = 0.15
 
     let size: CGSize
     /// ノーツが上端から判定の線に届くまでの秒
@@ -71,6 +79,25 @@ nonisolated struct PlayfieldGeometry: Sendable, Hashable {
         guard approachTime > 0, remaining >= -Self.fadeOutDelay else { return 0 }
         let progress = 1 - remaining / approachTime
         return min(max(progress / Self.fadeInProgress, 0), 1)
+    }
+
+    /// ノーツの合図の枠の大きさ（ターゲット枠に対する倍率）。残り `cueLeadTime` 秒で `cueStartScale` から縮み始め、
+    /// ぴったりの瞬間（残り 0 秒）にターゲット枠と同じ 1 になる。合図を出さない時刻なら nil
+    static func cueScale(remaining: TimeInterval) -> CGFloat? {
+        guard remaining > 0, remaining <= cueLeadTime else { return nil }
+        return 1 + (cueStartScale - 1) * CGFloat(remaining / cueLeadTime)
+    }
+
+    /// ノーツの合図の枠の不透明度。出し始めの 0 から、残り半分の時点で 1 になる
+    static func cueOpacity(remaining: TimeInterval) -> Double {
+        guard remaining > 0, remaining <= cueLeadTime else { return 0 }
+        return min(2 * (1 - remaining / cueLeadTime), 1)
+    }
+
+    /// ターゲット枠を光らせる強さ。ぴったりの瞬間（残り 0 秒）に 1 で、`flashDuration` 秒かけて 0 に戻る
+    static func targetFlash(remaining: TimeInterval) -> Double {
+        guard remaining <= 0, remaining > -flashDuration else { return 0 }
+        return 1 + remaining / flashDuration
     }
 
     /// 床のグリッドの線を引く曲の時刻。`interval` 秒ごとの線のうち、上端から下端までに見えるもの

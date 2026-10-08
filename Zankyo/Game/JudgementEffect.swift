@@ -1,9 +1,11 @@
 import SwiftUI
 
-/// 直近の判定の表示。切ったときはノーツの色の斬撃と光の輪を走らせ、判定の線の近くに点数を出す。
+/// 直近の判定の表示。切ったときはノーツの色の斬撃と光の輪を走らせ、判定の線の近くに点数と「早い / ぴったり / 遅い」を出す。
 /// 判定ごとに作り直す（`.id(judgement)`）前提で、現れたときに 1 度だけ動く
 struct JudgementEffect: View {
     let judgement: Judgement
+    /// 「早い / ぴったり / 遅い」を決める判定の係数
+    let rules: ScoringRules
     /// 判定の線の上でのノーツの大きさ
     let noteSize: CGFloat
     /// 点数などの文字を判定の線からずらす量（`PlayfieldGeometry.judgementLabelOffset`）
@@ -48,10 +50,25 @@ struct JudgementEffect: View {
     }
 
     private var label: some View {
-        Text(text)
-            .font(.system(.title2, design: .rounded, weight: .heavy).monospacedDigit())
-            .foregroundStyle(textColor)
-            .shadow(color: glowColor, radius: 8)
+        // 文字の高さを増やすと判定の線の下に収まらず、ノーツの降りてくる線の上に出てしまうので、横に並べる
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Text(text)
+                .font(.system(.title2, design: .rounded, weight: .heavy).monospacedDigit())
+                .foregroundStyle(textColor)
+                .shadow(color: glowColor, radius: 8)
+            // ぴったりのタイミングからどちらにずれたかを出し、次の振りで直せるようにする
+            if let timing {
+                Text(timing.label)
+                    .font(.system(.headline, design: .rounded, weight: .heavy))
+                    .foregroundStyle(timing == .perfect ? NeonTheme.laser : .white.opacity(0.8))
+                    .shadow(color: timing == .perfect ? NeonTheme.laser : .clear, radius: 6)
+            }
+        }
+    }
+
+    private var timing: HitTiming? {
+        guard case .hit(_, _, let timingError) = judgement else { return nil }
+        return HitTiming(timingError: timingError, rules: rules)
     }
 
     private var text: String {
@@ -82,6 +99,16 @@ struct JudgementEffect: View {
         case .left, .right: .zero
         case .up, .down: .degrees(90)
         case nil: .degrees(-35)
+        }
+    }
+}
+
+private extension HitTiming {
+    var label: String {
+        switch self {
+        case .early: "早い"
+        case .perfect: "ぴったり"
+        case .late: "遅い"
         }
     }
 }
