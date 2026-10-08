@@ -17,7 +17,7 @@ struct Zankyo: App {
     init() {
         let input = MotionInputFactory.makeDefault()
         _motionInput = State(initialValue: input)
-        _motion = State(initialValue: MotionMonitor(base: input))
+        _motion = State(initialValue: MotionMonitor(base: input, detection: SwingSensitivityStore().configuration))
     }
 
     var body: some Scene {

@@ -26,6 +26,8 @@ final class CalibrationModel {
     let input: any MotionInput
     @ObservationIgnored private let metronome: any Metronome
     @ObservationIgnored private let store: CalibrationStore
+    /// 測り始めるときの「切る」検出の閾値（キャリブレーションの画面で変えられるので、測るたびに読む）
+    @ObservationIgnored private let detection: () -> CutDetector.Configuration
     @ObservationIgnored private let now: () -> TimeInterval
     @ObservationIgnored private var task: Task<Void, Never>?
     /// 測る回ごとの番号。前の回の締め切りが、新しい回の入力を止めないようにする
@@ -35,11 +37,13 @@ final class CalibrationModel {
         input: any MotionInput,
         metronome: any Metronome,
         store: CalibrationStore = CalibrationStore(),
+        detection: @escaping () -> CutDetector.Configuration = { CutDetector.Configuration() },
         now: @escaping () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }
     ) {
         self.input = input
         self.metronome = metronome
         self.store = store
+        self.detection = detection
         self.now = now
         savedOffset = store.hasOffset ? store.offset : nil
     }
@@ -144,7 +148,7 @@ final class CalibrationModel {
         until deadline: TimeInterval,
         generation currentGeneration: Int
     ) async -> [TimeInterval] {
-        var detector = CutDetector()
+        var detector = CutDetector(configuration: detection())
         var cuts: [TimeInterval] = []
         for await sample in stream {
             if let cut = detector.process(sample) {

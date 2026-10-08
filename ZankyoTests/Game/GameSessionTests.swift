@@ -36,6 +36,26 @@ struct GameSessionTests {
     }
 
     @Test
+    func judgesNodsWithGivenThreshold() async {
+        // 上下のノーツへの軽いうなずき（1.7 rad/s）。上下の閾値が 2.0 なら振りにならず、既定の 1.5 なら切れる
+        let notes = [FaceNote(beat: 2, time: 1, direction: .up)]
+        let samples = MotionRecording.make(swings: [.init(direction: .up, peakTime: 1, peakRate: 1.7)])
+        let strict = GameSession(
+            notes: notes,
+            clock: ManualSongClock(duration: 2),
+            input: RecordedMotionInput(samples: samples),
+            detection: .init(pitchThreshold: 2.0)
+        )
+        let gentle = GameSession(notes: notes, clock: ManualSongClock(duration: 2), input: RecordedMotionInput(samples: samples))
+
+        await strict.play()
+        await gentle.play()
+
+        #expect(strict.judge.keeper.hitCount == 0)
+        #expect(gentle.judge.keeper.hitCount == 1)
+    }
+
+    @Test
     func unplayedNotesBecomeMissesAtSongEnd() async {
         let clock = ManualSongClock(duration: 4)
         let session = GameSession(notes: Self.notes, clock: clock, input: RecordedMotionInput(samples: []))
