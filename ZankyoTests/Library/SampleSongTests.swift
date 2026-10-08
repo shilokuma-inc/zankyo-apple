@@ -131,6 +131,34 @@ struct SampleSongInstallerTests {
     }
 
     @Test
+    func retriesWhenLibraryCannotBeSaved() throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: "SampleSongInstallerTests-\(UUID().uuidString)")
+        let suite = "ZankyoTests.SampleSongs.\(UUID().uuidString)"
+        defer {
+            try? FileManager.default.removeItem(at: root)
+            UserDefaults().removePersistentDomain(forName: suite)
+        }
+        let downloads = root.appending(path: "Downloads")
+        let libraryDirectory = root.appending(path: "Library")
+        func makeLibrary() -> LibraryStore {
+            LibraryStore(directory: libraryDirectory, downloadsDirectory: downloads, mapsDirectory: root.appending(path: "Maps"))
+        }
+        let installer = SampleSongInstaller(downloadsDirectory: downloads, suiteName: suite)
+        // 一覧の置き場所にファイルがあって、一覧を保存できない状態
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        try Data([1]).write(to: libraryDirectory)
+
+        installer.installIfNeeded(into: makeLibrary())
+        #expect(UserDefaults(suiteName: suite)?.integer(forKey: SampleSongInstaller.installedVersionKey) == 0)
+
+        // 保存できるようになったら、次の起動で入れ直し、一覧のファイルに残る
+        try FileManager.default.removeItem(at: libraryDirectory)
+        installer.installIfNeeded(into: makeLibrary())
+        #expect(makeLibrary().entries.count == installer.catalog.songs.count)
+        #expect(UserDefaults(suiteName: suite)?.integer(forKey: SampleSongInstaller.installedVersionKey) == installer.catalog.version)
+    }
+
+    @Test
     func samplesStayBelowImportedSongs() throws {
         let root = FileManager.default.temporaryDirectory.appending(path: "SampleSongInstallerTests-\(UUID().uuidString)")
         let suite = "ZankyoTests.SampleSongs.\(UUID().uuidString)"
