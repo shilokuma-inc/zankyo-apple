@@ -105,6 +105,40 @@ struct SampleSongInstallerTests {
     }
 
     @Test
+    func newVersionInstallsOnlyAddedSongs() throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: "SampleSongInstallerTests-\(UUID().uuidString)")
+        let suite = "ZankyoTests.SampleSongs.\(UUID().uuidString)"
+        defer {
+            try? FileManager.default.removeItem(at: root)
+            UserDefaults().removePersistentDomain(forName: suite)
+        }
+        let downloads = root.appending(path: "Downloads")
+        let library = LibraryStore(
+            directory: root.appending(path: "Library"),
+            downloadsDirectory: downloads,
+            mapsDirectory: root.appending(path: "Maps")
+        )
+        let catalog = SampleSongCatalog()
+        let firstSongs = catalog.songs.filter { $0.since == 1 }
+        let added = catalog.songs.filter { $0.since == 2 }
+        // 版 1 の一覧で入れ、1 曲を消した端末
+        SampleSongInstaller(catalog: SampleSongCatalog(version: 1, songs: firstSongs), downloadsDirectory: downloads, suiteName: suite)
+            .installIfNeeded(into: library)
+        let deleted = try #require(library.entries.first { $0.hash == firstSongs.first?.hash })
+        #expect(library.delete(deleted))
+
+        SampleSongInstaller(catalog: catalog, downloadsDirectory: downloads, suiteName: suite).installIfNeeded(into: library)
+
+        // 版 2 で足した曲だけが入り、消した曲は戻らない
+        let hashes = Set(library.entries.map(\.hash))
+        #expect(added.allSatisfy { hashes.contains($0.hash) })
+        #expect(!hashes.contains(deleted.hash))
+        #expect(library.entries.count == catalog.songs.count - 1)
+        // 一覧の順に並ぶ（版 2 の曲は版 1 の曲の後ろ）
+        #expect(library.entries.map(\.hash) == catalog.songs.map(\.hash).filter { $0 != deleted.hash })
+    }
+
+    @Test
     func retriesWhenSongsCannotBePlaced() throws {
         let root = FileManager.default.temporaryDirectory.appending(path: "SampleSongInstallerTests-\(UUID().uuidString)")
         let suite = "ZankyoTests.SampleSongs.\(UUID().uuidString)"
