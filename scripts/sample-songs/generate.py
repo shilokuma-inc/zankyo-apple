@@ -82,6 +82,7 @@ def build(song_factory, encoder: Path, output: Path) -> dict:
         "songName": song.title,
         "songAuthorName": song.author,
         "mapperName": MAPPER,
+        "since": song.since,
     }
 
 
@@ -101,7 +102,8 @@ def main() -> None:
     songs = [build(factory, arguments.encoder, arguments.output) for factory in factories]
     if arguments.only:
         return
-    manifest = {"version": 1, "songs": songs}
+    # 版は、いちばん新しく足した曲の版
+    manifest = {"version": max(song["since"] for song in songs), "songs": songs}
     (arguments.output / "SampleSongs.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n")
 
 

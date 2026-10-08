@@ -28,6 +28,8 @@
 - Debug ビルドを `-ZankyoDemoMotion` 付きで起動すれば、Simulator でもライブラリから曲を選んでプレイ画面を普通に動かせる。`simctl io <udid> recordVideo` で録画し、`AVAssetImageGenerator` で切り出したコマを ImageIO で GIF にすると、Before / After を同じ曲・同じ区間で比べられる。デモの首振りはノーツに合わせないのでほぼミスになり、ヒットの表示は出ない。ヒットの表示は、コミットしない一時テストで `ImageRenderer` に描かせて確かめる（2026-10-08）
 - 判定の表示（点数など）は、iPhone 17 Pro では判定の線の下にちょうど 1 行分しか収まらない。`PlayView.judgementLabelHeight` を増やすと線の上（ノーツの通り道）に出てしまうので、表示を足すときは行を増やさず横に並べる（2026-10-08）
 - 一時的なユニットテストでホストアプリに載せた画面は、テストが `Task.sleep` で待っている間（XCTest が run loop を独自のモードで回す）はタップが届かないことがある。ボタンを押して確かめるときは、テストで取り込みのファイル（`Downloads/<hash>.zip`）を置いたうえで `Library/Library.json` を Simulator のアプリのデータ領域（`simctl get_app_container … data`）に書き、アプリを普通に起動して操作する（2026-10-08）
+- サンプル楽曲を足すときは、テンポによって Easy と Normal のノーツ数が同じになり、`bundledSongIsPlayable`（易しいほどノーツが少ない）が落ちる。Easy は 1.3 秒以上空けて拾うので、4/4 で半小節が 1.3 秒以上になる BPM（92 以下）だと半小節ごとに拾い、Normal と同じになる。テンポを上げるか、旋律の音の優先度を変える（2026-10-09）
+- 一覧をスクロールした先の PR 用スクリーンショットは、コミットしない一時的な UI テストで `swipeUp` してから `XCUIScreen.main.screenshot().pngRepresentation` を書き出せば、Simulator を操作する許可が無くても撮れる。書き出し先は `TEST_RUNNER_SHOT_DIR=…` のように `TEST_RUNNER_` を付けた環境変数で `xcodebuild test` から渡す（2026-10-09）
 
 ## beatsaver / 譜面
 
