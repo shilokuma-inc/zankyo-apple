@@ -1,12 +1,15 @@
 import SwiftUI
 
 /// 取り込み済みの曲の一覧。曲ごとの容量と合計を出し、スワイプか長押しで消せる。曲を選ぶと難易度を選んで遊べる
+///
+/// 付属のサンプル楽曲も同じように並び、消せる。消したサンプル楽曲は「サンプル楽曲を戻す」で入れ直せる
 struct LibraryView: View {
     let library: LibraryStore
     let downloads: DownloadModel
     let motion: MotionMonitor
     let highScores: HighScoreStore
     let onSearch: () -> Void
+    var samples = SampleSongInstaller()
 
     @State private var pendingDeletion: LibraryEntry?
     @State private var failedDeletion: LibraryEntry?
@@ -22,6 +25,10 @@ struct LibraryView: View {
                     } actions: {
                         Button("曲を検索する", action: onSearch)
                             .buttonStyle(.borderedProminent)
+                        if !samples.missingSongs(in: library).isEmpty {
+                            Button("サンプル楽曲を戻す") { samples.restore(into: library) }
+                                .buttonStyle(.bordered)
+                        }
                     }
                 } else {
                     list
@@ -40,7 +47,11 @@ struct LibraryView: View {
             ) { entry in
                 Button("消す", role: .destructive) { delete(entry) }
             } message: { entry in
-                Text("「\(entry.title)」の譜面と音源を端末から消します。もう一度遊ぶには取り込み直してください。")
+                if entry.isSample {
+                    Text("「\(entry.title)」を端末から消します。ライブラリの「サンプル楽曲を戻す」で元に戻せます。")
+                } else {
+                    Text("「\(entry.title)」の譜面と音源を端末から消します。もう一度遊ぶには取り込み直してください。")
+                }
             }
             .alert(
                 "消せませんでした",
@@ -72,6 +83,14 @@ struct LibraryView: View {
                 // 合計は一覧の下（親指の近く）に出す
                 Text("\(library.entries.count) 曲・合計 \(Self.format(library.totalSize))")
                     .monospacedDigit()
+            }
+            let missing = samples.missingSongs(in: library)
+            if !missing.isEmpty {
+                Section {
+                    Button("サンプル楽曲を戻す（\(missing.count) 曲）", systemImage: "arrow.uturn.backward") {
+                        samples.restore(into: library)
+                    }
+                }
             }
         }
     }
