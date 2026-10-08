@@ -85,6 +85,30 @@ nonisolated struct LocalMapStoreTests {
     }
 
     @Test
+    func readsLightshowForV4Map() async throws {
+        let info = InfoFixtures.v4.replacingOccurrences(of: "song.ogg", with: "song.egg")
+        let beatmap = #"{ "version": "4.1.0", "colorNotes": [{ "b": 2 }], "colorNotesData": [{ "d": 3 }] }"#
+        let lightshow = #"{ "version": "4.0.0", "basicEvents": [{ "b": 1, "i": 0 }], "basicEventsData": [{ "t": 2, "i": 6 }] }"#
+        let store = try Self.makeStore(files: [
+            (name: "Info.dat", data: Data(info.utf8)),
+            (name: "NormalStandard.dat", data: Data(beatmap.utf8)),
+            (name: "Lightshow.dat", data: Data(lightshow.utf8)),
+            (name: "song.egg", data: try Data(contentsOf: try TestFixtures.sineSong))
+        ])
+        defer { try? FileManager.default.removeItem(at: store.downloadsDirectory.deletingLastPathComponent()) }
+        let loaded = try await store.loadInfo(hash: Self.hash)
+        let normal = try #require(loaded.difficulties.first { $0.difficulty == .normal })
+        #expect(normal.lightshowFilename == "Lightshow.dat")
+
+        let chart = try await store.loadChart(hash: Self.hash, info: loaded, difficulty: normal)
+
+        // 140 BPM なので拍 1 は 60 / 140 秒
+        #expect(chart.notes.count == 1)
+        #expect(chart.lighting.events.map(\.group) == [.leftLasers])
+        #expect(abs((chart.lighting.events.first?.time ?? 0) - 60.0 / 140) < 0.0001)
+    }
+
+    @Test
     func decodesSong() async throws {
         let store = try Self.makeStore()
         defer { try? FileManager.default.removeItem(at: store.downloadsDirectory.deletingLastPathComponent()) }
