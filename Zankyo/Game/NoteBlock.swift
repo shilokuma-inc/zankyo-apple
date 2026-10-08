@@ -1,14 +1,16 @@
 import SwiftUI
 
-/// Beat Saber のブロックにならった 1 つのノーツ。角丸の箱に振る向きの白い矢印（方向不問は白い点）を描き、ネオンの光をまとわせる
+/// Beat Saber のブロックにならった 1 つのノーツ。角丸の箱に振る向きの白い矢印（方向不問は白い点）を描き、テーマの光をまとわせる
 struct NoteBlock: View {
     /// 振る向き。nil は方向不問
     let direction: SwingDirection?
     /// 箱の一辺
     let size: CGFloat
 
+    @Environment(\.palette) private var palette
+
     var body: some View {
-        let neon = NeonTheme.noteColor(for: direction)
+        let neon = palette.noteColor(for: direction)
         let corner = size * 0.2
         ZStack {
             RoundedRectangle(cornerRadius: corner, style: .continuous)
@@ -18,14 +20,14 @@ struct NoteBlock: View {
                 .fill(neon.deep.opacity(0.6))
                 .padding(size * 0.1)
             RoundedRectangle(cornerRadius: corner, style: .continuous)
-                .strokeBorder(.white.opacity(0.5), lineWidth: max(size * 0.03, 1))
+                .strokeBorder(palette.noteOutline, lineWidth: max(size * 0.03, 1))
             marker
                 .foregroundStyle(.white)
                 .shadow(color: .white, radius: size * 0.05)
         }
         .frame(width: size, height: size)
-        .shadow(color: neon.color.opacity(0.9), radius: size * 0.15)
-        .shadow(color: neon.color.opacity(0.5), radius: size * 0.4)
+        .shadow(color: palette.glow(neon.color, 0.9), radius: size * 0.15)
+        .shadow(color: palette.glow(neon.color, 0.5), radius: size * 0.4)
     }
 
     @ViewBuilder private var marker: some View {
@@ -64,12 +66,17 @@ private struct ArrowMark: Shape {
 }
 
 #Preview {
-    HStack(spacing: 24) {
-        ForEach([SwingDirection.left, .right, .up, .down], id: \.self) { direction in
-            NoteBlock(direction: direction, size: 64)
+    VStack(spacing: 0) {
+        ForEach(AppTheme.allCases) { theme in
+            HStack(spacing: 24) {
+                ForEach([SwingDirection.left, .right, .up, .down], id: \.self) { direction in
+                    NoteBlock(direction: direction, size: 64)
+                }
+                NoteBlock(direction: nil, size: 64)
+            }
+            .padding(24)
+            .background(theme.palette.spaceBottom)
+            .environment(\.palette, theme.palette)
         }
-        NoteBlock(direction: nil, size: 64)
     }
-    .padding(40)
-    .background(NeonTheme.spaceBottom)
 }

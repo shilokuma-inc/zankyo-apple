@@ -34,6 +34,8 @@ struct PlayView: View {
     /// 判定の表示の文字の高さ（文字の大きさの設定に合わせる）
     @ScaledMetric(relativeTo: .title2) private var judgementLabelHeight: CGFloat = 36
 
+    @Environment(\.palette) private var palette
+
     var body: some View {
         Group {
             if session.phase == .finished, let result = session.result {
@@ -66,7 +68,7 @@ struct PlayView: View {
         }
     }
 
-    /// Beat Saber にならい、暗い空間の奥から光るノーツが飛んでくる見た目にする。レーンは画面の端まで広げる
+    /// Beat Saber にならい、空間の奥から光るノーツが飛んでくる見た目にする（色はテーマに従う）。レーンは画面の端まで広げる
     private var playContent: some View {
         VStack(spacing: 0) {
             header
@@ -84,7 +86,7 @@ struct PlayView: View {
                 } else if session.phase == .ready, !session.canStart {
                     MotionRequirementView(status: session.input.status)
                         .padding()
-                        .background(.black.opacity(0.6), in: .rect(cornerRadius: 24))
+                        .background(palette.panel.opacity(0.6), in: .rect(cornerRadius: 24))
                         .padding()
                 }
             }
@@ -96,7 +98,7 @@ struct PlayView: View {
         .overlay(alignment: .bottom) {
             if isMenuShown {
                 ZStack(alignment: .bottom) {
-                    Color.black.opacity(0.45)
+                    palette.panel.opacity(0.45)
                         .ignoresSafeArea()
                     PauseMenu(
                         notice: session.pausedByDisconnection ? "イヤホンが外れたので止めました。つなぎ直すと再開できます。" : nil,
@@ -112,7 +114,7 @@ struct PlayView: View {
         }
         .animation(.easeOut(duration: 0.2), value: isMenuShown)
         .background { PlayfieldBackdrop() }
-        .preferredColorScheme(.dark)
+        .preferredColorScheme(palette.colorScheme)
     }
 
     /// 一時停止のメニューを出している（再開のカウントダウン中は隠す）
@@ -186,7 +188,7 @@ struct PlayView: View {
             // 結果があれば body がリザルト画面に切り替わる。ここに来るのは始められずに終えたとき
             VStack(spacing: 12) {
                 Text("曲を再生できませんでした。")
-                    .foregroundStyle(.white)
+                    .foregroundStyle(palette.ink)
                 Button("閉じる", action: onExit)
                     .buttonStyle(NeonButtonStyle(prominent: true))
             }
