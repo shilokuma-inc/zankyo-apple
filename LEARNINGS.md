@@ -20,6 +20,9 @@
 - テスト用の Ogg Vorbis は、libvorbis の `examples/encoder_example.c`（44.1kHz・ステレオの WAV を標準入力で受ける）を clang でビルドして作れる。afconvert は Vorbis でエンコードできない。テストバンドルの素材は `ZankyoTests/Fixtures/` に置けばフォルダ同期で入る（2026-10-08）
 - `List` の行全体を `NavigationLink` にすると、行の中の `Link` は `.borderless` を付けていても行のタップと重なり、行の中央をタップしただけで Safari が開くことがある。行の中にはリンクを置かない（2026-10-08）
 - Simulator ではモーション入力が使えずプレイを始められないので、PR 用のプレイ画面のスクリーンショットは、コミットしない一時的なユニットテストで撮る。テストからホストアプリのウィンドウの `rootViewController` に `PlayView` を載せ、`SilentSongClock` の `now` を差し替えて時刻を止め、`GameSession.handle` に `CutEvent` を渡せば判定の表示まで出せる。静止画は待っている間に `simctl io screenshot`、GIF は `drawHierarchy` で取ったフレームを ImageIO で書き出す（ffmpeg が無くてよい）（2026-10-08）
+- `Zankyo/` の下に置いたリソースは、フォルダ同期グループでもサブフォルダを保たずにバンドルの直下へ平らに入る。同じ名前のファイルを別のフォルダに置くと衝突するので、`sample-<slug>.zip` のように名前で分ける（`Zankyo/SampleSongs/`）（2026-10-08）
+- Swift Testing の `#expect` の中で `allSatisfy(\.isSample)` のようにキーパスを渡すと、マクロの展開先で「call can throw」のコンパイルエラーになる。クロージャ（`allSatisfy { $0.isSample }`）で書く（2026-10-08）
+- サンプル楽曲の音源（Ogg Vorbis）は、SPM で取得済みの vorbis-swift の `examples/encoder_example.c` をビルドして作れる（`scripts/sample-songs/build-encoder.sh`）。libogg の `config_types.h` は configure で作られるので、固定幅の型で書いて足す（2026-10-08）
 
 ## beatsaver / 譜面
 
