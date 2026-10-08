@@ -61,3 +61,4 @@
 ## 画面・テーマ
 
 - プレイ画面・キャリブレーション中の画面の色は `@Environment(\.palette)`（`ThemePalette`）から取る。明るいテーマ（モノクロ・ポップ・キュート）があるので、`.white` / `.black` を直に書くと文字や線が背景に溶ける。文字は `ink`、板は `panel`、光（`shadow`）は `glow(_:_:)` を使う。`NeonTheme` は並行ブランチのために残した deprecated の互換用で、選んだテーマに追従しない（2026-10-08）
+- 外側の `.padding()` を外して ScrollView を SafeArea の上端に接するようにすると、iOS ではスクロールした内容がステータスバーの裏まで描かれる。ScrollView に `.mask` を掛けると、マスクは ScrollView のレイアウト上の枠（SafeArea の内側）で切るので、裏には描かれず上端のフェードも SafeArea の上端に揃う（`VerticalEdgeFade`）。`.scrollIndicators(.hidden)` は iOS / macOS / visionOS のどれでもビルドが通る（2026-10-09）
