@@ -92,6 +92,40 @@ struct PlayfieldGeometryTests {
         }
     }
 
+    @Test
+    func cueShrinksOntoTargetAtHitTime() {
+        let lead = PlayfieldGeometry.cueLeadTime
+
+        #expect(PlayfieldGeometry.cueScale(remaining: lead) == PlayfieldGeometry.cueStartScale)
+        #expect(isClose(PlayfieldGeometry.cueScale(remaining: lead / 2) ?? 0, (1 + PlayfieldGeometry.cueStartScale) / 2))
+        // ぴったりの瞬間の直前でターゲット枠と同じ大きさになり、その後は出さない
+        #expect(isClose(PlayfieldGeometry.cueScale(remaining: 1e-9) ?? 0, 1))
+        #expect(PlayfieldGeometry.cueScale(remaining: 0) == nil)
+        #expect(PlayfieldGeometry.cueScale(remaining: -0.1) == nil)
+        #expect(PlayfieldGeometry.cueScale(remaining: lead + 0.1) == nil)
+    }
+
+    @Test
+    func cueFadesInUntilHalfway() {
+        let lead = PlayfieldGeometry.cueLeadTime
+
+        #expect(PlayfieldGeometry.cueOpacity(remaining: lead) == 0)
+        #expect(isClose(PlayfieldGeometry.cueOpacity(remaining: lead * 0.75), 0.5))
+        #expect(PlayfieldGeometry.cueOpacity(remaining: lead / 2) == 1)
+        #expect(PlayfieldGeometry.cueOpacity(remaining: 0.01) == 1)
+        #expect(PlayfieldGeometry.cueOpacity(remaining: 0) == 0)
+    }
+
+    @Test
+    func targetFlashesRightAfterHitTime() {
+        let duration = PlayfieldGeometry.flashDuration
+
+        #expect(PlayfieldGeometry.targetFlash(remaining: 0.01) == 0)
+        #expect(PlayfieldGeometry.targetFlash(remaining: 0) == 1)
+        #expect(isClose(PlayfieldGeometry.targetFlash(remaining: -duration / 2), 0.5))
+        #expect(PlayfieldGeometry.targetFlash(remaining: -duration) == 0)
+    }
+
     private func isClose(_ lhs: CGFloat, _ rhs: CGFloat) -> Bool {
         abs(lhs - rhs) < 0.0001
     }
