@@ -11,6 +11,8 @@ struct PlaySetup: Identifiable {
     let song: DecodedSong
     /// 譜面 ZIP のジャケット画像。無ければ nil
     let cover: CGImage?
+    /// 曲の聞きどころ（試聴と同じ区間）。結果画面の間に流す
+    let previewRange: Range<TimeInterval>
 
     var scoreKey: ScoreKey {
         ScoreKey(mapHash: entry.hash, characteristic: difficulty.characteristic, difficulty: difficulty.difficulty)
@@ -99,7 +101,12 @@ final class SongDetailModel {
             let notes = try await maps.loadNotes(hash: entry.hash, info: info, difficulty: difficulty)
             let song = try await loadedSong(info: info)
             guard !Task.isCancelled else { return }
-            play = PlaySetup(entry: entry, difficulty: difficulty, notes: notes, song: song, cover: cover)
+            let previewRange = SongPreview.range(
+                startTime: info.previewStartTime,
+                duration: info.previewDuration,
+                songDuration: song.duration
+            )
+            play = PlaySetup(entry: entry, difficulty: difficulty, notes: notes, song: song, cover: cover, previewRange: previewRange)
         } catch {
             guard !Task.isCancelled else { return }
             playError = error.message
