@@ -42,6 +42,8 @@ nonisolated struct DifficultyInfo: Sendable, Hashable {
     /// ノーツの飛んでくる速さ（Note Jump Speed）。0 のときは既定値を使う
     let noteJumpSpeed: Double
     let noteJumpStartBeatOffset: Double
+    /// v4 の背景の照明（ライトショー）のファイル名（`lightshowDataFilename`）。v2 は譜面の中に照明があるので nil
+    var lightshowFilename: String?
 }
 
 /// ノーツのある characteristic。Lightshow（ノーツが無い）や未知のものは読み込まない
