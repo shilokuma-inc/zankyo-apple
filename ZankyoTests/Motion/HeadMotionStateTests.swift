@@ -57,6 +57,27 @@ struct HeadMotionStateTests {
     }
 
     @Test
+    func strengthUsesThresholdOfEachAxis() {
+        var state = HeadMotionState(configuration: .init(yawThreshold: 2.0, pitchThreshold: 1.0))
+        state.update(with: MotionSample(timestamp: 1, yawRate: 1, pitchRate: 1.5))
+
+        // 上下は 1.5 / 1.0、左右は 1 / 2.0。大きい方を強さにする
+        #expect(state.strength == 1.5)
+    }
+
+    @Test
+    func reconfigureKeepsOrientation() {
+        var state = HeadMotionState()
+        state.update(with: MotionSample(timestamp: 1, yawRate: 0, pitchRate: 0, orientation: HeadOrientation(yaw: 0.1, pitch: 0)))
+        state.update(with: MotionSample(timestamp: 1.1, yawRate: 0, pitchRate: 0, orientation: HeadOrientation(yaw: 0.4, pitch: 0)))
+
+        state.reconfigure(.init(pitchThreshold: 2.4))
+
+        #expect(state.configuration.pitchThreshold == 2.4)
+        #expect(abs(state.orientation.yaw - 0.3) < 1e-9)
+    }
+
+    @Test
     func highlightsDetectedSwingForAWhile() {
         var state = HeadMotionState()
         // 右へ強く振って止める

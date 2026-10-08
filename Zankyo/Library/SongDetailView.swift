@@ -227,6 +227,7 @@ struct PlayScreen: View {
             notes: setup.notes,
             clock: AudioSongClock(song: setup.song),
             input: motion,
+            detection: motion.detection,
             offset: CalibrationStore().offset,
             scoreKey: setup.scoreKey,
             highScores: highScores

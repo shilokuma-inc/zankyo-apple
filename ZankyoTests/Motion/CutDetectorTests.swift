@@ -91,6 +91,65 @@ struct CutDetectorTests {
     }
 
     @Test
+    func detectsGentleNodBelowYawThreshold() {
+        // 上下の閾値（既定 1.5）は左右（2.0）より低い。同じ 1.7 rad/s でも、うなずきだけが振りになる
+        var detector = CutDetector()
+        let samples = MotionRecording.make(swings: [
+            .init(direction: .up, peakTime: 0.5, peakRate: 1.7),
+            .init(direction: .right, peakTime: 1.5, peakRate: 1.7)
+        ])
+
+        #expect(detector.process(samples).map(\.direction) == [.up])
+    }
+
+    @Test
+    func usesConfiguredPitchThreshold() {
+        let nod = MotionRecording.make(swings: [.init(direction: .down, peakTime: 0.5, peakRate: 1.2)])
+        var strict = CutDetector(configuration: .init(pitchThreshold: 2.0))
+        var gentle = CutDetector(configuration: .init(pitchThreshold: 1.0))
+
+        #expect(strict.process(nod).isEmpty)
+        #expect(gentle.process(nod).map(\.direction) == [.down])
+    }
+
+    @Test
+    func comparesAxesRelativeToTheirThresholds() {
+        // 角速度は左右（2.2）の方が大きいが、閾値に対する割合は上下（1.8 / 1.5 = 1.2）の方が大きい
+        let samples = (0...20).map { index in
+            let time = Double(index) / 50
+            let shape = sin(Double.pi * time / 0.4)
+            return MotionSample(timestamp: time, yawRate: shape * 2.2, pitchRate: shape * 1.8)
+        }
+        var detector = CutDetector()
+
+        #expect(detector.process(samples).map(\.direction) == [.up])
+    }
+
+    @Test
+    func countsCurvedSwingOnce() {
+        // 先に上下、少し遅れて左右が強くなる 1 回の振り（弧を描く動き）。強い軸が入れ替わっても 1 回に数える
+        var detector = CutDetector()
+        let samples = MotionRecording.make(swings: [
+            .init(direction: .up, peakTime: 1.0, peakRate: 3, width: 0.4),
+            .init(direction: .right, peakTime: 1.15, peakRate: 4, width: 0.4)
+        ])
+
+        #expect(detector.process(samples).count == 1)
+    }
+
+    @Test
+    func detectsSwingOnAnotherAxisAfterFirstEnds() {
+        // 右に振り終えてからのうなずきは、別の振りとして数える
+        var detector = CutDetector()
+        let samples = MotionRecording.make(swings: [
+            .init(direction: .right, peakTime: 1.0, peakRate: 4),
+            .init(direction: .down, peakTime: 1.3, peakRate: 3)
+        ])
+
+        #expect(detector.process(samples).map(\.direction) == [.right, .down])
+    }
+
+    @Test
     func worksAtLowSampleRate() {
         // AirPods のサンプルは毎秒 25 回ほどのことがある
         let samples = MotionRecording.make(

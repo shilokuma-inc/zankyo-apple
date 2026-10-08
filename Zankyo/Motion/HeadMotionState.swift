@@ -11,7 +11,7 @@ nonisolated struct HeadMotionState: Sendable {
 
     /// 正面からの向き（ラジアン。右・上が正）
     private(set) var orientation = HeadOrientation(yaw: 0, pitch: 0)
-    /// 振りの強さ。角速度の大きい方の軸を、振りとみなす閾値で割ったもの（1 以上で振りになる）。すぐ消えないよう、ゆっくり下げる
+    /// 振りの強さ。各軸の角速度をその軸の閾値で割った大きい方（1 以上で振りになる）。すぐ消えないよう、ゆっくり下げる
     private(set) var strength: Double = 0
     /// 最後に検出した振り
     private(set) var lastCut: CutEvent?
@@ -28,7 +28,7 @@ nonisolated struct HeadMotionState: Sendable {
         detector = CutDetector(configuration: configuration)
     }
 
-    var threshold: Double { detector.configuration.threshold }
+    var configuration: CutDetector.Configuration { detector.configuration }
 
     /// `time`（サンプルと同じ物差しの秒）の時点で、光らせている振りの向き
     func highlightedDirection(at time: TimeInterval) -> SwingDirection? {
@@ -56,7 +56,7 @@ nonisolated struct HeadMotionState: Sendable {
         self.neutral = neutral
         orientation = HeadOrientation(yaw: Self.wrap(raw.yaw - neutral.yaw), pitch: Self.wrap(raw.pitch - neutral.pitch))
 
-        let current = max(abs(sample.yawRate), abs(sample.pitchRate)) / threshold
+        let current = max(abs(sample.yawRate) / configuration.yawThreshold, abs(sample.pitchRate) / configuration.pitchThreshold)
         strength = max(current, strength - Self.strengthDecayPerSecond * elapsed, 0)
 
         if let cut = detector.process(sample) {
@@ -69,6 +69,11 @@ nonisolated struct HeadMotionState: Sendable {
         neutral = nil
         integrated = HeadOrientation(yaw: 0, pitch: 0)
         orientation = HeadOrientation(yaw: 0, pitch: 0)
+    }
+
+    /// 閾値を変える。向きと正面はそのままにし、検出の途中の振りは捨てる
+    mutating func reconfigure(_ configuration: CutDetector.Configuration) {
+        detector = CutDetector(configuration: configuration)
     }
 
     /// 取得し直すときに、前の回の状態を消す（正面も決め直す）

@@ -25,6 +25,16 @@ struct MotionMonitorTests {
     }
 
     @Test
+    func changingDetectionUpdatesState() {
+        let monitor = MotionMonitor(base: ManualMotionInput(), detection: .init(pitchThreshold: 1.2))
+        #expect(monitor.state.configuration.pitchThreshold == 1.2)
+
+        monitor.detection.pitchThreshold = 2.0
+
+        #expect(monitor.state.configuration.pitchThreshold == 2.0)
+    }
+
+    @Test
     func stopFinishesStreamAndStopsBase() async {
         let base = ManualMotionInput()
         let monitor = MotionMonitor(base: base)

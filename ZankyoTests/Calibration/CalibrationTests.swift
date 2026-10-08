@@ -136,6 +136,38 @@ struct CalibrationModelTests {
     }
 
     @Test
+    func readsDetectionThresholdWhenMeasuring() async {
+        // 前打ちの後、各クリックの 0.1 秒後に軽くうなずく（1.8 rad/s）。上下の閾値で振りになるかが変わる
+        let clicks = (0..<CalibrationModel.beats).map { 1 + Double($0) * 0.6 }
+        let nods = clicks.enumerated().dropFirst(4).map { index, click in
+            MotionRecording.Swing(direction: index.isMultiple(of: 2) ? .up : .down, peakTime: click + 0.1, peakRate: 1.8)
+        }
+        var detection = CutDetector.Configuration(pitchThreshold: 2.0)
+        let model = CalibrationModel(
+            input: RecordedMotionInput(samples: MotionRecording.make(swings: nods)),
+            metronome: FakeMetronome(clicks: clicks),
+            store: CalibrationStore(suiteName: "ZankyoTests.Calibration.\(UUID().uuidString)"),
+            detection: { detection },
+            now: { 1_000 }
+        )
+
+        await model.measure()
+        guard case .failed = model.phase else {
+            Issue.record("閾値 2.0 ではうなずきを数えないはず: \(model.phase)")
+            return
+        }
+
+        // 画面で閾値を下げたら、次に測るときから使う
+        detection.pitchThreshold = 1.5
+        await model.measure()
+        guard case .finished(let result) = model.phase else {
+            Issue.record("閾値 1.5 ならうなずきを数えるはず: \(model.phase)")
+            return
+        }
+        #expect(result.matchedCount == 16)
+    }
+
+    @Test
     func failsWithoutSwings() async {
         let model = CalibrationModel(
             input: RecordedMotionInput(samples: MotionRecording.make(swings: [], duration: 2)),
