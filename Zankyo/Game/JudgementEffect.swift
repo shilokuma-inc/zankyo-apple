@@ -54,7 +54,7 @@ struct JudgementEffect: View {
         // 文字の高さを増やすと判定の線の下に収まらず、ノーツの降りてくる線の上に出てしまうので、横に並べる
         HStack(alignment: .firstTextBaseline, spacing: 6) {
             Text(text)
-                .font(.system(.title2, design: .rounded, weight: .heavy).monospacedDigit())
+                .displayFont(.display(.title2, weight: .black).monospacedDigit())
                 .foregroundStyle(textColor)
                 .shadow(color: glowColor, radius: 8)
             // ぴったりのタイミングからどちらにずれたかを出し、次の振りで直せるようにする

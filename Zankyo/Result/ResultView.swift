@@ -100,7 +100,7 @@ struct ResultView: View {
     private var scoreBlock: some View {
         VStack(spacing: 4) {
             CountingNumber(value: countedScore)
-                .font(.system(size: 46, weight: .heavy, design: .rounded).monospacedDigit())
+                .displayFont(.display(size: 46, weight: .black).monospacedDigit())
                 .foregroundStyle(palette.ink)
                 .shadow(color: palette.glow(palette.laser, 0.8), radius: 10)
                 .accessibilityLabel("スコア \(result.score)")

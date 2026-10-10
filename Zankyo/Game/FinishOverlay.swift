@@ -14,7 +14,7 @@ struct FinishOverlay: View {
         VStack(spacing: 14) {
             line(color)
             Text(isFullCombo ? "FULL COMBO" : "FINISH")
-                .font(.system(size: 56, weight: .black, design: .rounded))
+                .displayFont(.display(size: 56, weight: .black))
                 .tracking(6)
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)

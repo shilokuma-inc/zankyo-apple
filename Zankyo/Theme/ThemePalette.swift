@@ -9,7 +9,7 @@ nonisolated struct ThemePalette: Sendable, Hashable {
     let colorScheme: ColorScheme
     /// ボタン・選択中のタブなどの色（`.tint`）。白い文字を載せても、画面の背景の上でも読める濃さにする
     let accent: Color
-    /// アプリ全体の書体（`.fontDesign`）。プレイ画面の数字は読みやすさを優先して丸ゴシックのまま
+    /// アプリ全体の書体（`.fontDesign`）。プレイ画面・結果画面の数字と欧文の見出しは、テーマによらず同梱の欧文フォント（`Font.display`）で描く
     let fontDesign: Font.Design
 
     /// 空間の色（上が奥）

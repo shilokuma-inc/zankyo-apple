@@ -163,7 +163,7 @@ private struct CountInMark: View {
                     Image(systemName: "ear")
                         .font(.system(size: size * 0.36, weight: .semibold))
                     Text("\(number)")
-                        .font(.system(size: size * 0.26, weight: .heavy, design: .rounded).monospacedDigit())
+                        .displayFont(.display(size: size * 0.26, weight: .black).monospacedDigit())
                 }
                 .foregroundStyle(palette.ink)
             }

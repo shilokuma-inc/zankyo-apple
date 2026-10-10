@@ -13,7 +13,7 @@ struct ScoreReadout: View {
         VStack(alignment: .leading, spacing: 2) {
             // ヘッダーにはジャケット・頭の動き・倍率も並ぶので、桁が増えたら縮めて 1 行に収める
             Text(score, format: .number)
-                .font(.system(.largeTitle, design: .rounded, weight: .heavy).monospacedDigit())
+                .displayFont(.display(.largeTitle, weight: .black).monospacedDigit())
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)
                 .foregroundStyle(palette.ink)
@@ -56,7 +56,7 @@ struct MultiplierRing: View {
                 .rotationEffect(.degrees(-90))
                 .shadow(color: palette.glow(palette.laser), radius: 6)
             Text("×\(multiplier)")
-                .font(.system(.title3, design: .rounded, weight: .heavy).monospacedDigit())
+                .displayFont(.display(.title3, weight: .bold).monospacedDigit())
                 .foregroundStyle(palette.ink)
         }
         .frame(width: 60, height: 60)
