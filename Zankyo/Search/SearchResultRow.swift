@@ -1,19 +1,18 @@
 import SwiftUI
 
 /// 検索結果の 1 曲。マッパー名と beatsaver の譜面ページへのリンクを必ず出す（Discussion #3 Q9）。行の下に取り込みボタンを置く。
-/// 背景にジャケット画像をぼかして敷き、曲ごとの色が行全体で分かるようにする
+/// `List` の標準の行に、ジャケットのサムネイルと曲の情報を並べる
 struct SearchResultRow: View {
     let map: BeatsaverMap
     let downloads: DownloadModel
 
     var body: some View {
-        // ジャケット画像は 1 回だけ取りに行き、サムネイルと背景の両方に使う
         AsyncImage(url: map.latestVersion?.coverURL) { phase in
             content(cover: phase.image)
         }
     }
 
-    /// 1 曲分のカード。`cover` は読み込んだジャケット画像（読み込み中・失敗時は nil）で、サムネイルと背景の両方に使う
+    /// 1 曲分の行。`cover` は読み込んだジャケット画像（読み込み中・失敗時は nil）
     private func content(cover: Image?) -> some View {
         HStack(alignment: .top, spacing: 12) {
             thumbnail(cover)
@@ -50,7 +49,6 @@ struct SearchResultRow: View {
                 .padding(.top, 4)
             }
         }
-        .coverCard(cover)
     }
 
     /// 左に出すジャケット画像のサムネイル。画像が無いあいだは音符を出す
