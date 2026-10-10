@@ -43,13 +43,11 @@ struct SongBanner: View {
     }
 }
 
-/// 大きく光るランク。現れるときは大きく光ってから縮んで収まり、その後はゆっくり光を明滅させる（「視差効果を減らす」では明滅させない）
+/// 大きく出すランク。動かさず、明滅もさせない
 struct RankEmblem: View {
     let rank: Rank
-    let isShown: Bool
 
     @Environment(\.palette) private var palette
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         let color = rankColor
@@ -57,15 +55,6 @@ struct RankEmblem: View {
             .displayFont(.display(size: 96, weight: .black))
             .foregroundStyle(palette.ink)
             .shadow(color: palette.glow(color), radius: 6)
-            .phaseAnimator(reduceMotion || !isShown ? [1.0] : [1.0, 0.55]) { content, phase in
-                content
-                    .shadow(color: palette.glow(color, phase), radius: 24)
-                    .shadow(color: palette.glow(color, 0.6 * phase), radius: 48)
-            } animation: { _ in
-                .easeInOut(duration: 1.4)
-            }
-            .scaleEffect(isShown || reduceMotion ? 1 : 2.2)
-            .opacity(isShown ? 1 : 0)
             .accessibilityLabel("ランク \(rank.rawValue)")
     }
 
@@ -105,28 +94,12 @@ struct ResultBadge: View {
     }
 }
 
-/// 数え上がる点数。`value` を動かしたアニメーションの途中の値を、整数にして出す
-struct CountingNumber: View, Animatable {
-    var value: Double
-
-    var animatableData: Double {
-        get { value }
-        set { value = newValue }
-    }
-
-    var body: some View {
-        Text(Int(value.rounded()), format: .number)
-    }
-}
-
 /// 判定の内訳。ぴったり・早い・遅い・向き違い・ミスの数を、ノーツの数に対する棒で見せ、タイミングの傾向を目盛りで見せる
 struct BreakdownPanel: View {
     let breakdown: ScoreBreakdown
     let style: PlayStyle
     let rules: ScoringRules
     let maxCombo: Int
-    /// 棒の伸び具合（0〜1）。現れるときに伸ばす
-    let progress: CGFloat
 
     @Environment(\.palette) private var palette
 
@@ -156,7 +129,7 @@ struct BreakdownPanel: View {
                     .foregroundStyle(palette.ink.opacity(0.75))
             }
             if let mean = breakdown.meanTimingError {
-                TimingGauge(meanTimingError: mean, hitWindow: rules.hitWindow, progress: progress)
+                TimingGauge(meanTimingError: mean, hitWindow: rules.hitWindow)
             }
         }
         .padding(16)
@@ -183,7 +156,7 @@ struct BreakdownPanel: View {
                     GeometryReader { proxy in
                         Capsule()
                             .fill(color)
-                            .frame(width: proxy.size.width * fraction * progress)
+                            .frame(width: proxy.size.width * fraction)
                             .shadow(color: palette.glow(color, 0.8), radius: 4)
                     }
                 }
@@ -204,7 +177,6 @@ struct TimingGauge: View {
     let meanTimingError: TimeInterval
     /// 目盛りの端に当たるずれ（判定の時間窓）
     let hitWindow: TimeInterval
-    let progress: CGFloat
 
     @Environment(\.palette) private var palette
 
@@ -251,7 +223,7 @@ struct TimingGauge: View {
                     .fill(palette.laser)
                     .frame(width: 14, height: 14)
                     .shadow(color: palette.glow(palette.laser), radius: 6)
-                    .offset(x: (width / 2 - 7) * CGFloat(ratio) * progress)
+                    .offset(x: (width / 2 - 7) * CGFloat(ratio))
             }
             .frame(width: width, height: proxy.size.height)
         }
@@ -271,8 +243,6 @@ struct TimingGauge: View {
 /// 点の内訳。1 ノーツあたりの「振りの強さ」と「タイミング」の点の平均を光る棒で見せ、次に気をつけるとよいことと、スコアの仕組みへの入り口を置く
 struct PointsPanel: View {
     let breakdown: ScoreBreakdown
-    /// 棒の伸び具合（0〜1）。現れるときに伸ばす
-    let progress: CGFloat
     let onShowGuide: () -> Void
 
     @Environment(\.palette) private var palette
@@ -340,7 +310,7 @@ struct PointsPanel: View {
                     GeometryReader { proxy in
                         Capsule()
                             .fill(color)
-                            .frame(width: proxy.size.width * fraction * progress)
+                            .frame(width: proxy.size.width * fraction)
                             .shadow(color: palette.glow(color, 0.8), radius: 4)
                     }
                 }
