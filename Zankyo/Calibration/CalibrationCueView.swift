@@ -46,9 +46,13 @@ struct CalibrationCueView: View {
         let countIn = cue.configuration.countIn
         let isSwinging = passed > countIn
         let glow = isSwinging ? swingColor : palette.laser
+        // 拍の番号だけを同梱の欧文フォントにし、「聞く」「振る」はシステムの書体のままにする
+        let font: Font = !isSwinging && passed > 0
+            ? .display(size: 56, weight: .black).monospacedDigit()
+            : .system(size: 56, weight: .heavy, design: .rounded)
         return VStack(spacing: 4) {
             Text(isSwinging ? "振る" : passed == 0 ? "聞く" : "\(passed)")
-                .font(.system(size: 56, weight: .heavy, design: .rounded).monospacedDigit())
+                .displayFont(font)
                 .foregroundStyle(isSwinging ? palette.textColor(for: palette.noteColor(for: nil)) : palette.ink)
                 .shadow(color: palette.glow(glow, 0.8), radius: 6 + 14 * flash)
                 .scaleEffect(1 + 0.2 * flash)
