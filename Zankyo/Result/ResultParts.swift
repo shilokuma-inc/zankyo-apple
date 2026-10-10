@@ -38,39 +38,26 @@ struct SongBanner: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
             .overlay {
-                Capsule().stroke(palette.laser.opacity(0.7), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 2).stroke(palette.laser.opacity(0.7), lineWidth: 1)
             }
     }
 }
 
-/// 大きく出すランク。動かさず、明滅もさせない
+/// 大きく出すランク。動かさず、光らせず、文字の濃さだけで見せる
 struct RankEmblem: View {
     let rank: Rank
 
     @Environment(\.palette) private var palette
 
     var body: some View {
-        let color = rankColor
         Text(rank.rawValue)
-            .displayFont(.display(size: 96, weight: .black))
+            .displayFont(.display(size: 96, weight: .bold))
             .foregroundStyle(palette.ink)
-            .shadow(color: palette.glow(color), radius: 6)
             .accessibilityLabel("ランク \(rank.rawValue)")
-    }
-
-    /// ランクの光の色。上のランクほど目立つ色にする
-    private var rankColor: Color {
-        switch rank {
-        case .rankSS: palette.anyDirection.color
-        case .rankS: palette.laser
-        case .rankA: palette.right.color
-        case .rankB: palette.vertical.color
-        case .rankC, .rankD, .rankE: palette.warning
-        }
     }
 }
 
-/// 「ハイスコア更新」「フルコンボ」の光るバッジ
+/// 「ハイスコア更新」「フルコンボ」のバッジ。角の小さい枠で囲み、光らせない
 struct ResultBadge: View {
     let title: String
     let systemImage: String
@@ -80,17 +67,16 @@ struct ResultBadge: View {
 
     var body: some View {
         Label(title, systemImage: systemImage)
-            .font(.system(.subheadline, design: .rounded, weight: .heavy))
+            .font(.subheadline.weight(.semibold))
             .foregroundStyle(palette.textColor(for: color))
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
             .background {
-                Capsule().fill(color.color.opacity(0.15))
+                RoundedRectangle(cornerRadius: 2).fill(color.color.opacity(0.12))
             }
             .overlay {
-                Capsule().stroke(color.color, lineWidth: 1.5)
+                RoundedRectangle(cornerRadius: 2).stroke(color.color, lineWidth: 1)
             }
-            .shadow(color: palette.glow(color.color, 0.8), radius: 10)
     }
 }
 
@@ -107,7 +93,7 @@ struct BreakdownPanel: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("判定の内訳")
-                    .font(.system(.headline, design: .rounded, weight: .heavy))
+                    .font(.headline)
                     .foregroundStyle(palette.laser)
                 Spacer()
                 Text("最大コンボ \(maxCombo) / \(breakdown.noteCount)")
@@ -134,11 +120,11 @@ struct BreakdownPanel: View {
         }
         .padding(16)
         .background {
-            RoundedRectangle(cornerRadius: 20)
-                .fill(palette.panel.opacity(0.55))
+            RoundedRectangle(cornerRadius: 4)
+                .fill(palette.panel.opacity(0.85))
                 .overlay {
-                    RoundedRectangle(cornerRadius: 20)
-                        .stroke(palette.laser.opacity(0.45), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 4)
+                        .stroke(palette.ink.opacity(0.15), lineWidth: 1)
                 }
         }
     }
@@ -149,15 +135,14 @@ struct BreakdownPanel: View {
             Text(title)
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(palette.ink)
-            Capsule()
+            Rectangle()
                 .fill(color.opacity(0.15))
                 .frame(height: 8)
                 .overlay(alignment: .leading) {
                     GeometryReader { proxy in
-                        Capsule()
+                        Rectangle()
                             .fill(color)
                             .frame(width: proxy.size.width * fraction)
-                            .shadow(color: palette.glow(color, 0.8), radius: 4)
                     }
                 }
                 .gridColumnAlignment(.leading)
@@ -213,7 +198,7 @@ struct TimingGauge: View {
             let width = proxy.size.width
             let ratio = hitWindow > 0 ? min(max(meanTimingError / hitWindow, -1), 1) : 0
             ZStack {
-                Capsule()
+                Rectangle()
                     .fill(palette.ink.opacity(0.12))
                     .frame(height: 6)
                 Rectangle()
@@ -222,7 +207,6 @@ struct TimingGauge: View {
                 Circle()
                     .fill(palette.laser)
                     .frame(width: 14, height: 14)
-                    .shadow(color: palette.glow(palette.laser), radius: 6)
                     .offset(x: (width / 2 - 7) * CGFloat(ratio))
             }
             .frame(width: width, height: proxy.size.height)
@@ -240,7 +224,7 @@ struct TimingGauge: View {
     }
 }
 
-/// 点の内訳。1 ノーツあたりの「振りの強さ」と「タイミング」の点の平均を光る棒で見せ、次に気をつけるとよいことと、スコアの仕組みへの入り口を置く
+/// 点の内訳。1 ノーツあたりの「振りの強さ」と「タイミング」の点の平均を棒で見せ、次に気をつけるとよいことと、スコアの仕組みへの入り口を置く
 struct PointsPanel: View {
     let breakdown: ScoreBreakdown
     let onShowGuide: () -> Void
@@ -250,7 +234,7 @@ struct PointsPanel: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("点の内訳（1 ノーツの平均）")
-                .font(.system(.headline, design: .rounded, weight: .heavy))
+                .font(.headline)
                 .foregroundStyle(palette.laser)
             meter("振りの強さ", value: breakdown.averageSwing, max: CutScore.maxSwing, color: palette.right.color)
             meter("タイミング", value: breakdown.averageAccuracy, max: CutScore.maxAccuracy, color: palette.vertical.color)
@@ -258,7 +242,6 @@ struct PointsPanel: View {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Image(systemName: "lightbulb.fill")
                         .foregroundStyle(palette.textColor(for: palette.anyDirection))
-                        .shadow(color: palette.glow(palette.anyDirection.color, 0.8), radius: 6)
                     Text(advice.message)
                         .font(.subheadline)
                         .foregroundStyle(palette.ink)
@@ -273,20 +256,20 @@ struct PointsPanel: View {
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
                     .overlay {
-                        Capsule().stroke(palette.laser.opacity(0.7), lineWidth: 1)
+                        RoundedRectangle(cornerRadius: 4).stroke(palette.laser.opacity(0.7), lineWidth: 1)
                     }
-                    .contentShape(.capsule)
+                    .contentShape(.rect(cornerRadius: 4))
             }
             .buttonStyle(.plain)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
         .background {
-            RoundedRectangle(cornerRadius: 20)
-                .fill(palette.panel.opacity(0.55))
+            RoundedRectangle(cornerRadius: 4)
+                .fill(palette.panel.opacity(0.85))
                 .overlay {
-                    RoundedRectangle(cornerRadius: 20)
-                        .stroke(palette.laser.opacity(0.45), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 4)
+                        .stroke(palette.ink.opacity(0.15), lineWidth: 1)
                 }
         }
     }
@@ -303,15 +286,14 @@ struct PointsPanel: View {
                     .font(.subheadline.monospacedDigit().weight(.bold))
                     .foregroundStyle(palette.ink)
             }
-            Capsule()
+            Rectangle()
                 .fill(color.opacity(0.15))
                 .frame(height: 8)
                 .overlay(alignment: .leading) {
                     GeometryReader { proxy in
-                        Capsule()
+                        Rectangle()
                             .fill(color)
                             .frame(width: proxy.size.width * fraction)
-                            .shadow(color: palette.glow(color, 0.8), radius: 4)
                     }
                 }
                 .accessibilityHidden(true)

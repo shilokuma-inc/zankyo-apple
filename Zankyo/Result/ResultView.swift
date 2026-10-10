@@ -8,7 +8,7 @@ struct PlayedSong: Hashable {
     let difficulty: String
 }
 
-/// プレイを終えたときの結果。プレイ画面と同じ空間の上に、曲の情報・ランク・点数・判定の内訳・点の内訳とアドバイスを光らせて並べる。
+/// プレイを終えたときの結果。プレイ画面と同じ空間の上に、曲の情報・ランク・点数・判定の内訳・点の内訳とアドバイスを並べる（光らせない）。
 /// 操作（もう一度・閉じる）は片手の親指が届く画面下に横に並べ、よく使う「もう一度」を右に置く
 ///
 /// 順番に見せる演出や跳ねる動きは付けず、開いたときからすべてを出す
@@ -90,12 +90,11 @@ struct ResultView: View {
     private var scoreBlock: some View {
         VStack(spacing: 4) {
             Text(result.score, format: .number)
-                .displayFont(.display(size: 46, weight: .black).monospacedDigit())
+                .displayFont(.display(size: 46, weight: .bold).monospacedDigit())
                 .foregroundStyle(palette.ink)
-                .shadow(color: palette.glow(palette.laser, 0.8), radius: 10)
                 .accessibilityLabel("スコア \(result.score)")
             Text("達成率 \(result.accuracy.formatted(.percent.precision(.fractionLength(1))))")
-                .font(.system(.title3, design: .rounded, weight: .bold).monospacedDigit())
+                .font(.title3.weight(.semibold).monospacedDigit())
                 .foregroundStyle(palette.laser)
             if let bestLine {
                 Text(bestLine)
