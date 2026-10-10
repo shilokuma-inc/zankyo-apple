@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// プレイ中のスコアとコンボ。空間の上で読めるよう、文字の色の数字をレーザーの色で光らせる
+/// プレイ中のスコアとコンボ。光らせず、文字の色の数字だけで見せる
 struct ScoreReadout: View {
     let score: Int
     let combo: Int
@@ -17,7 +17,6 @@ struct ScoreReadout: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)
                 .foregroundStyle(palette.ink)
-                .shadow(color: palette.glow(palette.laser, 0.8), radius: 8)
             HStack(spacing: 8) {
                 Text("コンボ \(combo)")
                     .font(.subheadline.monospacedDigit().weight(.semibold))
@@ -49,12 +48,11 @@ struct MultiplierRing: View {
     var body: some View {
         ZStack {
             Circle()
-                .stroke(palette.ink.opacity(0.15), lineWidth: 4)
+                .stroke(palette.ink.opacity(0.15), lineWidth: 3)
             Circle()
                 .trim(from: 0, to: progress)
-                .stroke(palette.laser, style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                .stroke(palette.laser, style: StrokeStyle(lineWidth: 3, lineCap: .butt))
                 .rotationEffect(.degrees(-90))
-                .shadow(color: palette.glow(palette.laser), radius: 6)
             Text("×\(multiplier)")
                 .displayFont(.display(.title3, weight: .bold).monospacedDigit())
                 .foregroundStyle(palette.ink)
@@ -76,11 +74,10 @@ struct CoverThumbnail: View {
     var body: some View {
         CoverArtwork(image: image, url: url)
             .frame(width: 56, height: 56)
-            .clipShape(.rect(cornerRadius: 8))
+            .clipShape(.rect(cornerRadius: 2))
             .overlay {
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(palette.laser.opacity(0.8), lineWidth: 1.5)
+                RoundedRectangle(cornerRadius: 2)
+                    .stroke(palette.ink.opacity(0.25), lineWidth: 1)
             }
-            .shadow(color: palette.glow(palette.laser, 0.6), radius: 6)
     }
 }
