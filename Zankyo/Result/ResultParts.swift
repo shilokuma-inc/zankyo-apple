@@ -57,16 +57,23 @@ struct RankEmblem: View {
     }
 }
 
-/// 「ハイスコア更新」「フルコンボ」のバッジ。角の小さい枠で囲み、光らせない
-struct ResultBadge: View {
+/// 「ハイスコア更新」「フルコンボ」のバッジ。文字の前に自作の印を置き、角の小さい枠で囲む（光らせない）
+struct ResultBadge<Mark: Shape>: View {
     let title: String
-    let systemImage: String
+    /// 文字の前に置く印（`ResultMarks.swift`）
+    let mark: Mark
     let color: NeonColor
 
     @Environment(\.palette) private var palette
+    @ScaledMetric(relativeTo: .subheadline) private var markSize: CGFloat = 15
 
     var body: some View {
-        Label(title, systemImage: systemImage)
+        Label {
+            Text(title)
+        } icon: {
+            mark
+                .frame(width: markSize, height: markSize)
+        }
             .font(.subheadline.weight(.semibold))
             .foregroundStyle(palette.textColor(for: color))
             .padding(.horizontal, 14)
@@ -230,6 +237,8 @@ struct PointsPanel: View {
     let onShowGuide: () -> Void
 
     @Environment(\.palette) private var palette
+    /// アドバイスの前に置く墨の点の大きさ
+    @ScaledMetric(relativeTo: .subheadline) private var adviceMarkSize: CGFloat = 13
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -240,8 +249,11 @@ struct PointsPanel: View {
             meter("タイミング", value: breakdown.averageAccuracy, max: CutScore.maxAccuracy, color: palette.vertical.color)
             if let advice = breakdown.advice {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Image(systemName: "lightbulb.fill")
+                    InkDropMark()
                         .foregroundStyle(palette.textColor(for: palette.anyDirection))
+                        .frame(width: adviceMarkSize, height: adviceMarkSize)
+                        .alignmentGuide(.firstTextBaseline) { $0[.bottom] }
+                        .accessibilityHidden(true)
                     Text(advice.message)
                         .font(.subheadline)
                         .foregroundStyle(palette.ink)

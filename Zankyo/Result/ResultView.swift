@@ -119,10 +119,10 @@ struct ResultView: View {
         if isNewRecord || result.isFullCombo {
             HStack(spacing: 10) {
                 if isNewRecord {
-                    ResultBadge(title: "ハイスコア更新", systemImage: "crown.fill", color: palette.anyDirection)
+                    ResultBadge(title: "ハイスコア更新", mark: SealMark(), color: palette.anyDirection)
                 }
                 if result.isFullCombo {
-                    ResultBadge(title: "フルコンボ", systemImage: "sparkles", color: palette.right)
+                    ResultBadge(title: "フルコンボ", mark: EnsoMark(), color: palette.right)
                 }
             }
         }
