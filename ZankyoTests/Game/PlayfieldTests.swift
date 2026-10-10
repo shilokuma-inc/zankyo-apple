@@ -137,3 +137,23 @@ struct PlayfieldGeometryTests {
         #expect(PlayfieldGeometry(size: .zero, approachTime: 1.5).gridTimes(at: 1, interval: 0.25).isEmpty)
     }
 }
+
+struct PlayfieldBladeTests {
+    @Test
+    func bladeSpansFromStartToEndWithItsWidth() {
+        // 横に引いた刃の線は、始点から終点まで届き、太さは width に収まる
+        let blade = PlayfieldLights.blade(from: CGPoint(x: 10, y: 50), to: CGPoint(x: 110, y: 50), width: 4)
+        let bounds = blade.boundingRect
+        #expect(bounds.minX == 10)
+        #expect(bounds.maxX == 110)
+        #expect(bounds.height == 4)
+        // 両端は尖る（端の点では線の外に面を持たない）
+        #expect(!blade.contains(CGPoint(x: 10.5, y: 51.9)))
+        #expect(blade.contains(CGPoint(x: 50, y: 51.5)))
+    }
+
+    @Test
+    func bladeOfZeroLengthIsEmpty() {
+        #expect(PlayfieldLights.blade(from: CGPoint(x: 5, y: 5), to: CGPoint(x: 5, y: 5), width: 4).isEmpty)
+    }
+}

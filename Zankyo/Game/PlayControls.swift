@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// プレイ画面のボタン。空間の上に光る線で縁取ったカプセルにする（`prominent` は光で塗りつぶす）
-struct NeonButtonStyle: ButtonStyle {
+/// プレイ画面のボタン。角の小さい板に細い線で縁取る（`prominent` は色で塗りつぶす）。光らせず、押したときは薄くするだけにする
+struct PlayButtonStyle: ButtonStyle {
     var prominent = false
     /// 縁取りと塗りの色。nil ならテーマのレーザーの色
     var color: Color?
@@ -12,26 +12,23 @@ struct NeonButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         let color = color ?? palette.laser
         return configuration.label
-            .font(.system(.headline, design: .rounded, weight: .heavy))
+            .font(.headline)
             .foregroundStyle(prominent ? palette.onLaser : palette.ink)
             .frame(maxWidth: .infinity, minHeight: 56)
             .background {
-                Capsule()
-                    .fill(prominent ? AnyShapeStyle(color) : AnyShapeStyle(color.opacity(0.12)))
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(prominent ? AnyShapeStyle(color) : AnyShapeStyle(color.opacity(0.06)))
             }
             .overlay {
-                Capsule()
-                    .stroke(color, lineWidth: prominent ? 0 : 1.5)
+                RoundedRectangle(cornerRadius: 4)
+                    .stroke(color, lineWidth: prominent ? 0 : 1)
             }
-            .shadow(color: palette.glow(color, isEnabled ? 0.7 : 0), radius: configuration.isPressed ? 4 : 10)
-            .scaleEffect(configuration.isPressed ? 0.97 : 1)
-            .opacity(isEnabled ? 1 : 0.4)
-            .contentShape(.capsule)
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+            .opacity(isEnabled ? (configuration.isPressed ? 0.6 : 1) : 0.4)
+            .contentShape(.rect(cornerRadius: 4))
     }
 }
 
-/// 曲が始まる前と、再開する前のカウントダウン。光る数字を大きく出す
+/// 曲が始まる前と、再開する前のカウントダウン。数字を大きく出し、切り替わりは薄く入れ替えるだけにする
 struct CountdownOverlay: View {
     let value: Int
 
@@ -39,17 +36,15 @@ struct CountdownOverlay: View {
 
     var body: some View {
         Text("\(value)")
-            .font(.system(size: 120, weight: .black, design: .rounded).monospacedDigit())
+            .displayFont(.display(size: 120, weight: .black).monospacedDigit())
             .foregroundStyle(palette.ink)
-            .shadow(color: palette.glow(palette.laser), radius: 16)
-            .shadow(color: palette.glow(palette.laser, 0.6), radius: 32)
             .id(value)
-            .transition(.scale(scale: 1.6).combined(with: .opacity))
+            .transition(.opacity)
             .accessibilityLabel("\(value)")
     }
 }
 
-/// 一時停止中のメニュー。板の上に、再開・最初から・終了を並べる（片手の親指が届くよう画面下に置く）
+/// 一時停止中のメニュー。細い線で縁取った板の上に、再開・最初から・終了を並べる（片手の親指が届くよう画面下に置く）
 struct PauseMenu: View {
     /// イヤホンが外れて止まったときの案内（nil なら出さない）
     let notice: String?
@@ -64,9 +59,8 @@ struct PauseMenu: View {
     var body: some View {
         VStack(spacing: 12) {
             Text("一時停止中")
-                .font(.system(.title3, design: .rounded, weight: .heavy))
-                .foregroundStyle(palette.laser)
-                .shadow(color: palette.glow(palette.laser, 0.8), radius: 8)
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(palette.ink)
             if let notice {
                 Text(notice)
                     .font(.footnote)
@@ -76,26 +70,26 @@ struct PauseMenu: View {
             Button(action: onResume) {
                 Label("再開", systemImage: "play.fill")
             }
-            .buttonStyle(NeonButtonStyle(prominent: true))
+            .buttonStyle(PlayButtonStyle(prominent: true))
             .disabled(!canResume)
             if let onRestart {
                 Button(action: onRestart) {
                     Label("最初から", systemImage: "arrow.counterclockwise")
                 }
-                .buttonStyle(NeonButtonStyle())
+                .buttonStyle(PlayButtonStyle())
             }
             Button(action: onQuit) {
                 Label("終了", systemImage: "xmark")
             }
-            .buttonStyle(NeonButtonStyle(color: palette.warning))
+            .buttonStyle(PlayButtonStyle(color: palette.warning))
         }
         .padding(20)
         .background {
-            RoundedRectangle(cornerRadius: 24)
-                .fill(palette.panel.opacity(0.7))
+            RoundedRectangle(cornerRadius: 4)
+                .fill(palette.panel.opacity(0.9))
                 .overlay {
-                    RoundedRectangle(cornerRadius: 24)
-                        .stroke(palette.laser.opacity(0.5), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 4)
+                        .stroke(palette.ink.opacity(0.2), lineWidth: 1)
                 }
         }
     }
@@ -108,5 +102,5 @@ struct PauseMenu: View {
     }
     .padding()
     .background { PlayfieldBackdrop() }
-    .appTheme(.cyberpunk)
+    .appTheme(.zankyo)
 }
