@@ -34,7 +34,6 @@ struct SongDetailView: View {
                         library.toggleFavorite(model.entry)
                     }
                     .tint(.pink)
-                    .symbolEffect(.bounce, value: isFavorite)
                     .disabled(library.isReadOnly)
                 }
             }

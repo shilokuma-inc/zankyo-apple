@@ -149,8 +149,8 @@ private struct Arrow: View {
     var body: some View {
         Image(systemName: symbol)
             .font(.system(size: size, weight: .bold))
+            // 振った向きは色だけで示す（膨らませない）
             .foregroundStyle(isLit ? AnyShapeStyle(.orange) : AnyShapeStyle(.tertiary))
-            .scaleEffect(isLit ? 1.25 : 1)
             .animation(.easeOut(duration: 0.12), value: isLit)
     }
 
