@@ -6,8 +6,29 @@ struct AppThemeTests {
     @Test
     func storedNamesStayTheSame() {
         // 選んだテーマは rawValue で保存するので、名前が変わると既定のテーマに戻ってしまう
-        #expect(AppTheme.allCases.map(\.rawValue) == ["zankyo", "cyberpunk", "monochrome", "pop", "cute", "wa"])
+        #expect(AppTheme.allCases.map(\.rawValue) == ["zankyo", "wa"])
         #expect(AppTheme(rawValue: "unknown") == nil)
+    }
+
+    @Test(arguments: ["cyberpunk", "monochrome", "pop", "cute", "unknown"])
+    func removedThemeFallsBackToZankyo(stored: String) throws {
+        // 消したテーマを選んでいた人は、既定の斬響に戻る（RootView と同じ既定値で読む）
+        let suiteName = "AppThemeTests.\(stored)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        defaults.set(stored, forKey: AppTheme.storageKey)
+        let theme = AppStorage(wrappedValue: AppTheme.zankyo, AppTheme.storageKey, store: defaults)
+        #expect(theme.wrappedValue == .zankyo)
+    }
+
+    @Test
+    func waKeepsTheStoredChoice() throws {
+        let suiteName = "AppThemeTests.wa"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        defaults.set("wa", forKey: AppTheme.storageKey)
+        let theme = AppStorage(wrappedValue: AppTheme.zankyo, AppTheme.storageKey, store: defaults)
+        #expect(theme.wrappedValue == .wa)
     }
 
     @Test
@@ -24,22 +45,6 @@ struct AppThemeTests {
         #expect(palette.colorScheme == .light)
         #expect(palette.glowIntensity == 0)
         #expect(palette.fontDesign == .serif)
-    }
-
-    @Test
-    func cyberpunkKeepsThePreviousNeonColors() {
-        // サイバーパンクは、テーマを選べるようにする前のプレイ画面と同じ配色にする
-        let palette = AppTheme.cyberpunk.palette
-        #expect(palette.left == NeonColor(red: 1.0, green: 0.16, blue: 0.32))
-        #expect(palette.right == NeonColor(red: 0.05, green: 0.6, blue: 1.0))
-        #expect(palette.vertical == NeonColor(red: 0.75, green: 0.3, blue: 1.0))
-        #expect(palette.anyDirection == NeonColor(red: 1.0, green: 0.76, blue: 0.1))
-        #expect(palette.laser == Color(red: 0.35, green: 0.95, blue: 1.0))
-        #expect(palette.horizon == Color(red: 0.6, green: 0.12, blue: 0.9))
-        #expect(palette.spaceTop == Color(red: 0.07, green: 0.02, blue: 0.14))
-        #expect(palette.spaceBottom == Color(red: 0.01, green: 0.01, blue: 0.03))
-        #expect(palette.colorScheme == .dark)
-        #expect(palette.glowIntensity == 1)
     }
 }
 
@@ -93,8 +98,8 @@ struct ThemePaletteTests {
 
     @Test
     func glowFollowsIntensity() {
-        #expect(AppTheme.cyberpunk.palette.glow(.red, 0.5) == Color.red.opacity(0.5))
-        #expect(AppTheme.monochrome.palette.glow(.red, 0.5) == Color.red.opacity(0))
+        #expect(AppTheme.wa.palette.glow(.red, 0.5) == Color.red.opacity(0.5 * 0.6))
+        #expect(AppTheme.zankyo.palette.glow(.red, 0.5) == Color.red.opacity(0))
     }
 
     /// WCAG の相対輝度のコントラスト比（1〜21）
