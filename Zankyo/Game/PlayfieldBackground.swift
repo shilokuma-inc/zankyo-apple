@@ -41,7 +41,7 @@ struct LitPlayfieldBackdrop: View {
     }
 }
 
-/// 奥へすぼまるレーン。左右の縁は Beat Saber の左右のセイバーにならって左右のノーツの色で光らせ、判定の線はレーザーにする。
+/// 奥へすぼまるレーン。左右の縁は左右のノーツの色の細い線にし、判定の線はレーザーの色にする（どちらもにじませない）。
 /// 上端と下端は背景に溶かし、判定の線のあたりを最も明るくする。
 /// 曲の時刻では変わらないので、フレームごとに描き直す床のグリッド（`PlayfieldGrid`）と分けている
 struct PlayfieldLane: View {
@@ -97,27 +97,18 @@ struct PlayfieldLane: View {
             (line(from: CGPoint(x: top.right, y: 0), to: CGPoint(x: bottom.right, y: height)), palette.right.color)
         ]
         for (path, color) in rails {
-            context.drawLayer { layer in
-                layer.addFilter(.blur(radius: 6))
-                layer.stroke(path, with: glow(color, peak: palette.glowIntensity, height: height), lineWidth: 6)
-            }
             context.stroke(path, with: glow(color, peak: 1, height: height), lineWidth: 2)
         }
     }
 
-    /// 判定の線。芯のまわりをレーザーの色で光らせ、両端に印を付ける
+    /// 判定の線。にじませず、レーザーの色の線に芯を重ね、両端に角の立った印を付ける
     private static func drawHitLine(_ context: inout GraphicsContext, geometry: PlayfieldGeometry, palette: ThemePalette) {
         let y = geometry.hitY
         let edges = geometry.laneEdges(atY: y)
         let beam = line(from: CGPoint(x: edges.left, y: y), to: CGPoint(x: edges.right, y: y))
         var caps = Path()
         for x in [edges.left, edges.right] {
-            caps.addRoundedRect(in: CGRect(x: x - 2, y: y - 10, width: 4, height: 20), cornerSize: CGSize(width: 2, height: 2))
-        }
-        context.drawLayer { layer in
-            layer.addFilter(.blur(radius: 8))
-            layer.stroke(beam, with: .color(palette.glow(palette.laser)), lineWidth: 10)
-            layer.fill(caps, with: .color(palette.glow(palette.laser)))
+            caps.addRect(CGRect(x: x - 1.5, y: y - 10, width: 3, height: 20))
         }
         context.stroke(beam, with: .color(palette.laser), lineWidth: 3)
         context.stroke(beam, with: .color(palette.core), lineWidth: 1)
