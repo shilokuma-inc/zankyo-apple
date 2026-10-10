@@ -1,8 +1,9 @@
 import SwiftUI
 
-/// プレイ画面の奥の空間。空の色に、レーンの奥（上）のあたりを地平の光で照らす。画面の端まで敷く
+/// プレイ画面の奥の空間。空の色を上から下へ敷き、画面の端まで広げる。地平を光で照らすことはしない
 ///
-/// 背景の光の演出の「奥の光」（`back`）があれば、地平をその色で照らす（レーンの枠で切れないよう、画面全体の背景に描く）
+/// 背景の光の演出の「奥の光」（`back`）があれば、レーンの奥（上）に地平の線を 1 本、刃の形で引く
+/// （にじませず、線の濃さだけで光の強さを見せる。レーンの枠で切れないよう、画面全体の背景に描く）
 struct PlayfieldBackdrop: View {
     var back: LightState.Light?
 
@@ -11,20 +12,17 @@ struct PlayfieldBackdrop: View {
     var body: some View {
         ZStack {
             LinearGradient(colors: [palette.spaceTop, palette.spaceBottom], startPoint: .top, endPoint: .bottom)
-            RadialGradient(
-                colors: [palette.horizon.opacity(0.45), palette.horizon.opacity(0)],
-                center: UnitPoint(x: 0.5, y: 0.15),
-                startRadius: 0,
-                endRadius: 360
-            )
             if let back, back.intensity > 0.01 {
                 let color = PlayfieldLights.color(of: back, palette: palette)
-                RadialGradient(
-                    colors: [color.opacity(0.35 * min(back.intensity, 1.4)), color.opacity(0)],
-                    center: UnitPoint(x: 0.5, y: 0.2),
-                    startRadius: 0,
-                    endRadius: 420
-                )
+                Canvas { context, size in
+                    let y = size.height * 0.15
+                    let blade = PlayfieldLights.blade(
+                        from: CGPoint(x: size.width * 0.04, y: y),
+                        to: CGPoint(x: size.width * 0.96, y: y),
+                        width: 3
+                    )
+                    context.fill(blade, with: .color(color.opacity(0.6 * min(back.intensity, 1.4) / 1.4)))
+                }
             }
         }
         .ignoresSafeArea()
