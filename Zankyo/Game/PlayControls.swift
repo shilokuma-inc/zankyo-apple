@@ -108,5 +108,5 @@ struct PauseMenu: View {
     }
     .padding()
     .background { PlayfieldBackdrop() }
-    .appTheme(.cyberpunk)
+    .appTheme(.zankyo)
 }

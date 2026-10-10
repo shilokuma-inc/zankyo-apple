@@ -210,5 +210,5 @@ private struct BeatDot: View {
     )
     .padding()
     .background { PlayfieldBackdrop() }
-    .appTheme(.cyberpunk)
+    .appTheme(.zankyo)
 }

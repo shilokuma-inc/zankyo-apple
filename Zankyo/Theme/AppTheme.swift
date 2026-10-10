@@ -2,6 +2,7 @@ import SwiftUI
 
 /// 設定で選ぶアプリのテーマ。選んだテーマは `rawValue` で保存するので、case の名前を変えない（変えると既定のテーマに戻る）
 nonisolated enum AppTheme: String, CaseIterable, Identifiable, Sendable {
+    case zankyo
     case cyberpunk
     case monochrome
     case pop
@@ -15,6 +16,7 @@ nonisolated enum AppTheme: String, CaseIterable, Identifiable, Sendable {
 
     var title: String {
         switch self {
+        case .zankyo: "斬響"
         case .cyberpunk: "サイバーパンク"
         case .monochrome: "モノクロ"
         case .pop: "ポップ"
@@ -25,6 +27,7 @@ nonisolated enum AppTheme: String, CaseIterable, Identifiable, Sendable {
 
     var summary: String {
         switch self {
+        case .zankyo: "生成りの地に墨のノーツと朱の差し色"
         case .cyberpunk: "暗い空間に赤と青のネオンが光る"
         case .monochrome: "白い紙に墨の線。色に頼らず矢印で読む"
         case .pop: "レモン色の空間に原色のノーツと黒い縁取り"
@@ -35,6 +38,7 @@ nonisolated enum AppTheme: String, CaseIterable, Identifiable, Sendable {
 
     var palette: ThemePalette {
         switch self {
+        case .zankyo: .zankyo
         case .cyberpunk: .cyberpunk
         case .monochrome: .monochrome
         case .pop: .pop
@@ -56,6 +60,29 @@ extension View {
 }
 
 nonisolated extension ThemePalette {
+    /// 既定のテーマ。生成りの紙に墨で描き、差し色は朱の 1 色に絞る。ノーツは朱（左）・墨（右）・鈍色（上下）・黄土（方向不問）の濃淡で分け、
+    /// 赤と青のネオンにはしない。光はにじませず、線で形を立たせる
+    static let zankyo = ThemePalette(
+        colorScheme: .light,
+        accent: Color(red: 0.8, green: 0.24, blue: 0.14),
+        fontDesign: .serif,
+        spaceTop: Color(red: 0.95, green: 0.93, blue: 0.88),
+        spaceBottom: Color(red: 0.88, green: 0.85, blue: 0.78),
+        horizon: Color(red: 0.7, green: 0.66, blue: 0.6),
+        laser: Color(red: 0.13, green: 0.12, blue: 0.11),
+        onLaser: Color(red: 0.97, green: 0.95, blue: 0.9),
+        core: Color(red: 0.08, green: 0.07, blue: 0.06),
+        ink: Color(red: 0.1, green: 0.09, blue: 0.08),
+        panel: Color(red: 0.97, green: 0.95, blue: 0.9),
+        warning: Color(red: 0.75, green: 0.2, blue: 0.12),
+        left: NeonColor(red: 0.82, green: 0.25, blue: 0.15, shade: 0.55),
+        right: NeonColor(red: 0.22, green: 0.2, blue: 0.19, shade: 0.55),
+        vertical: NeonColor(red: 0.55, green: 0.53, blue: 0.5, shade: 0.55),
+        anyDirection: NeonColor(red: 0.78, green: 0.58, blue: 0.25, shade: 0.55),
+        noteOutline: Color(red: 0.1, green: 0.09, blue: 0.08).opacity(0.7),
+        glowIntensity: 0
+    )
+
     /// Beat Saber にならい、暗い空間に赤と青の光を置く。上下は紫、方向不問は黄にして、矢印を読む前に色でも向きの見当がつくようにする
     static let cyberpunk = ThemePalette(
         colorScheme: .dark,
