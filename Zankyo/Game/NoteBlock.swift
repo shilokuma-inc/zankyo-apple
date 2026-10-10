@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Beat Saber のブロックにならった 1 つのノーツ。角丸の箱に振る向きの白い矢印（方向不問は白い点）を描き、テーマの光をまとわせる
+/// 1 つのノーツ。角の小さい平らな板に、振る向きの楔形の矢印（方向不問は点）を描く。光らせず、板と矢印の濃淡で形を立たせる
 struct NoteBlock: View {
     /// 振る向き。nil は方向不問
     let direction: SwingDirection?
@@ -11,33 +11,29 @@ struct NoteBlock: View {
 
     var body: some View {
         let neon = palette.noteColor(for: direction)
-        let corner = size * 0.2
+        let shape = RoundedRectangle(cornerRadius: size * Self.cornerRatio)
         ZStack {
-            RoundedRectangle(cornerRadius: corner, style: .continuous)
-                .fill(LinearGradient(colors: [neon.color, neon.deep], startPoint: .top, endPoint: .bottom))
-            // 面の内側を一段暗くして、箱の縁が光って見えるようにする
-            RoundedRectangle(cornerRadius: corner * 0.6, style: .continuous)
-                .fill(neon.deep.opacity(0.6))
-                .padding(size * 0.1)
-            RoundedRectangle(cornerRadius: corner, style: .continuous)
+            shape
+                .fill(neon.color)
+            shape
                 .strokeBorder(palette.noteOutline, lineWidth: max(size * 0.03, 1))
             marker
-                .foregroundStyle(.white)
-                .shadow(color: .white, radius: size * 0.05)
+                .foregroundStyle(palette.markColor(for: neon))
         }
         .frame(width: size, height: size)
-        .shadow(color: palette.glow(neon.color, 0.9), radius: size * 0.15)
-        .shadow(color: palette.glow(neon.color, 0.5), radius: size * 0.4)
     }
+
+    /// 角の丸めの半径（一辺に対する割合）。ターゲット枠（`HitTarget`）も同じ値を使う
+    static let cornerRatio: CGFloat = 0.08
 
     @ViewBuilder private var marker: some View {
         if let direction {
             ArrowMark()
-                .frame(width: size * 0.64, height: size * 0.64)
+                .frame(width: size * 0.56, height: size * 0.64)
                 .rotationEffect(Self.rotation(for: direction))
         } else {
             Circle()
-                .frame(width: size * 0.28, height: size * 0.28)
+                .frame(width: size * 0.24, height: size * 0.24)
         }
     }
 
@@ -52,13 +48,13 @@ struct NoteBlock: View {
     }
 }
 
-/// Beat Saber の矢印（下向きの平たい三角）。枠の下半分に置く
+/// 下向きの楔形の矢印。先を尖らせ、根元を浅くえぐって刃先のように見せる
 private struct ArrowMark: Shape {
     func path(in rect: CGRect) -> Path {
-        let top = rect.midY + rect.height * 0.1
         var path = Path()
-        path.move(to: CGPoint(x: rect.minX, y: top))
-        path.addLine(to: CGPoint(x: rect.maxX, y: top))
+        path.move(to: CGPoint(x: rect.minX, y: rect.minY + rect.height * 0.2))
+        path.addLine(to: CGPoint(x: rect.midX, y: rect.minY + rect.height * 0.45))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY + rect.height * 0.2))
         path.addLine(to: CGPoint(x: rect.midX, y: rect.maxY))
         path.closeSubpath()
         return path

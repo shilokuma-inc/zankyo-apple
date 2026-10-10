@@ -80,10 +80,10 @@ struct ThemePaletteTests {
 
     @Test(arguments: AppTheme.allCases)
     func arrowsStandOutOnNotes(theme: AppTheme) {
-        // ノーツの矢印は白で、一段暗くした面（影の側の色）の上に描く
+        // ノーツの矢印は、ノーツの色の平らな面の上に、明るさで選んだ墨か生成りの色で描く
         let palette = theme.palette
         for neon in [palette.left, palette.right, palette.vertical, palette.anyDirection] {
-            #expect(Self.contrast(.white, neon.deep) >= 3)
+            #expect(Self.contrast(palette.markColor(for: neon), neon.color) >= 3)
         }
     }
 
