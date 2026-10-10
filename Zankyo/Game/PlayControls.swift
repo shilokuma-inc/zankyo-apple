@@ -39,7 +39,7 @@ struct CountdownOverlay: View {
 
     var body: some View {
         Text("\(value)")
-            .font(.system(size: 120, weight: .black, design: .rounded).monospacedDigit())
+            .displayFont(.display(size: 120, weight: .black).monospacedDigit())
             .foregroundStyle(palette.ink)
             .shadow(color: palette.glow(palette.laser), radius: 16)
             .shadow(color: palette.glow(palette.laser, 0.6), radius: 32)

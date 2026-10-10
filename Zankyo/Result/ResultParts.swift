@@ -54,7 +54,7 @@ struct RankEmblem: View {
     var body: some View {
         let color = rankColor
         Text(rank.rawValue)
-            .font(.system(size: 96, weight: .black, design: .rounded))
+            .displayFont(.display(size: 96, weight: .black))
             .foregroundStyle(palette.ink)
             .shadow(color: palette.glow(color), radius: 6)
             .phaseAnimator(reduceMotion || !isShown ? [1.0] : [1.0, 0.55]) { content, phase in
