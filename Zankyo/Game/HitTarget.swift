@@ -63,5 +63,5 @@ struct HitTarget: View {
         noteSize: 64
     )
     .padding(80)
-    .background(ThemePalette.cyberpunk.spaceBottom)
+    .background(ThemePalette.zankyo.spaceBottom)
 }

@@ -6,13 +6,29 @@ struct AppThemeTests {
     @Test
     func storedNamesStayTheSame() {
         // 選んだテーマは rawValue で保存するので、名前が変わると既定のテーマに戻ってしまう
-        #expect(AppTheme.allCases.map(\.rawValue) == ["cyberpunk", "monochrome", "pop", "cute", "wa"])
+        #expect(AppTheme.allCases.map(\.rawValue) == ["zankyo", "cyberpunk", "monochrome", "pop", "cute", "wa"])
         #expect(AppTheme(rawValue: "unknown") == nil)
     }
 
     @Test
+    func zankyoIsTheDefaultTheme() {
+        // 保存していないときは、プレイ画面もアプリ全体も斬響で描く
+        #expect(EnvironmentValues().palette == ThemePalette.zankyo)
+        #expect(AppTheme.zankyo.palette == ThemePalette.zankyo)
+    }
+
+    @Test
+    func zankyoUsesInkOnPaperWithoutGlow() {
+        // 生成りの地に墨で描き、光はにじませない（Beat Saber の暗い空間のネオンと分ける）
+        let palette = AppTheme.zankyo.palette
+        #expect(palette.colorScheme == .light)
+        #expect(palette.glowIntensity == 0)
+        #expect(palette.fontDesign == .serif)
+    }
+
+    @Test
     func cyberpunkKeepsThePreviousNeonColors() {
-        // 既定のテーマは、テーマを選べるようにする前のプレイ画面と同じ配色にする
+        // サイバーパンクは、テーマを選べるようにする前のプレイ画面と同じ配色にする
         let palette = AppTheme.cyberpunk.palette
         #expect(palette.left == NeonColor(red: 1.0, green: 0.16, blue: 0.32))
         #expect(palette.right == NeonColor(red: 0.05, green: 0.6, blue: 1.0))

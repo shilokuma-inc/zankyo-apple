@@ -53,5 +53,5 @@ struct FinishOverlay: View {
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .background { PlayfieldBackdrop() }
-    .appTheme(.cyberpunk)
+    .appTheme(.zankyo)
 }

@@ -83,5 +83,5 @@ nonisolated struct NeonColor: Sendable, Hashable {
 
 extension EnvironmentValues {
     /// 選んでいるテーマの配色
-    @Entry var palette: ThemePalette = .cyberpunk
+    @Entry var palette: ThemePalette = .zankyo
 }

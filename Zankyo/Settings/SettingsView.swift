@@ -196,7 +196,7 @@ private struct ThemeSwatch: View {
 }
 
 #Preview {
-    @Previewable @State var theme = AppTheme.cyberpunk
+    @Previewable @State var theme = AppTheme.zankyo
     SettingsView(
         theme: $theme,
         motion: MotionMonitor(base: RecordedMotionInput(samples: [])),

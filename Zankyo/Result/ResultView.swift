@@ -228,5 +228,5 @@ struct ResultView: View {
         onRetry: {},
         onClose: {}
     )
-    .appTheme(.cyberpunk)
+    .appTheme(.zankyo)
 }
