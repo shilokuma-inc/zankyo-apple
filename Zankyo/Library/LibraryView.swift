@@ -4,7 +4,8 @@ import SwiftUI
 ///
 /// 右上の「選択」で曲を複数選び、画面下のボタンでまとめて消せる
 ///
-/// ハートを付けた曲（お気に入り）だけに絞り込める。ハートは右へのスワイプ・長押しのメニュー・曲の詳細で付け外しする
+/// ハートを付けた曲（お気に入り）だけに絞り込める。絞り込みは一覧の上のタブ（`LibraryFilterTabs`）で、押すかタブのバーを横にスワイプして切り替える。
+/// ハートは右へのスワイプ・長押しのメニュー・曲の詳細で付け外しする
 ///
 /// 付属のサンプル楽曲も同じように並び、消せる。消したサンプル楽曲は「サンプル楽曲を戻す」で入れ直せる
 ///
@@ -121,18 +122,6 @@ struct LibraryView: View {
 
     private var list: some View {
         List {
-            Section {
-                Picker("表示する曲", selection: $filter) {
-                    ForEach(Filter.allCases) { filter in
-                        Text(filter.title).tag(filter)
-                    }
-                }
-                .pickerStyle(.segmented)
-                // 選んでいる間は絞り込みを変えない（見えていない曲を選んだまま消さないため）
-                .disabled(isSelecting)
-                .listRowBackground(Color.clear)
-                .listRowInsets(EdgeInsets())
-            }
             if visibleEntries.isEmpty {
                 ContentUnavailableView {
                     Label("お気に入りはまだありません", systemImage: "heart")
@@ -162,6 +151,17 @@ struct LibraryView: View {
             }
         }
         .animation(.default, value: visibleEntries)
+        // 絞り込みのタブは一覧の外（上）に置く。一覧の行の中に置くと、行の横の動き（swipe actions）にタブのスワイプを取られる
+        .safeAreaInset(edge: .top, spacing: 0) {
+            LibraryFilterTabs(selection: $filter)
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel("表示する曲")
+                // 選んでいる間は絞り込みを変えない（見えていない曲を選んだまま消さないため）
+                .disabled(isSelecting)
+                .padding(.horizontal)
+                // 上の大きな見出しまで板を広げない
+                .background(.bar, ignoresSafeAreaEdges: [])
+        }
         .safeAreaInset(edge: .bottom) {
             if isSelecting {
                 deleteBar
