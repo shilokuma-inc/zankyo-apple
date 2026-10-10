@@ -71,12 +71,12 @@ struct ResultView: View {
                 Button(action: onClose) {
                     Label("閉じる", systemImage: "xmark")
                 }
-                .buttonStyle(NeonButtonStyle())
+                .buttonStyle(PlayButtonStyle())
                 if let onRetry {
                     Button(action: onRetry) {
                         Label("もう一度", systemImage: "arrow.counterclockwise")
                     }
-                    .buttonStyle(NeonButtonStyle(prominent: true))
+                    .buttonStyle(PlayButtonStyle(prominent: true))
                 }
             }
             .padding([.horizontal, .bottom])
