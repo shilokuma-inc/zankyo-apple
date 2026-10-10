@@ -9,7 +9,7 @@ import SwiftUI
 ///
 /// 付属のサンプル楽曲も同じように並び、消せる。消したサンプル楽曲は「サンプル楽曲を戻す」で入れ直せる
 ///
-/// ジャケットを押すと試聴でき、試聴している曲の行は縁を光らせる。試聴は一覧と曲の詳細を行き来しても鳴り続ける
+/// ジャケットを押すと試聴でき、試聴している曲はジャケットの印が停止になる。試聴は一覧と曲の詳細を行き来しても鳴り続ける
 struct LibraryView: View {
     enum Filter: String, CaseIterable, Identifiable {
         case all
@@ -27,7 +27,7 @@ struct LibraryView: View {
 
     let library: LibraryStore
     let downloads: DownloadModel
-    /// 曲の試聴。各行のジャケットを押すと試聴し、試聴している行の縁を光らせる
+    /// 曲の試聴。各行のジャケットを押すと試聴し、試聴している行はジャケットの印を停止にする
     let preview: SongPreviewCenter
     let motion: MotionMonitor
     let highScores: HighScoreStore
@@ -256,7 +256,6 @@ struct LibraryView: View {
         }
         // 文字をボタンの色にしない
         .buttonStyle(.plain)
-        .coverCardListRow()
         .accessibilityAddTraits(isSelecting && isSelected ? .isSelected : [])
         .accessibilityHint(isSelecting ? (isSelected ? "選ぶのをやめます" : "まとめて消す曲に選びます") : "難易度を選んで遊びます")
         // 選んでいる間は、1 曲ずつの操作（スワイプ・長押しのメニュー）を出さない
