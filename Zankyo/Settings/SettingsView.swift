@@ -186,10 +186,10 @@ private struct ThemeSwatch: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background { PlayfieldBackdrop() }
-        .clipShape(.rect(cornerRadius: 12))
+        .clipShape(.rect(cornerRadius: 4))
         .overlay {
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(palette.laser.opacity(0.6), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 4)
+                .stroke(palette.ink.opacity(0.2), lineWidth: 1)
         }
         .accessibilityHidden(true)
     }
