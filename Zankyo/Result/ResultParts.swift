@@ -38,84 +38,52 @@ struct SongBanner: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
             .overlay {
-                Capsule().stroke(palette.laser.opacity(0.7), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 2).stroke(palette.laser.opacity(0.7), lineWidth: 1)
             }
     }
 }
 
-/// 大きく光るランク。現れるときは大きく光ってから縮んで収まり、その後はゆっくり光を明滅させる（「視差効果を減らす」では明滅させない）
+/// 大きく出すランク。動かさず、光らせず、文字の濃さだけで見せる
 struct RankEmblem: View {
     let rank: Rank
-    let isShown: Bool
 
     @Environment(\.palette) private var palette
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        let color = rankColor
         Text(rank.rawValue)
-            .font(.system(size: 96, weight: .black, design: .rounded))
+            .displayFont(.display(size: 96, weight: .bold))
             .foregroundStyle(palette.ink)
-            .shadow(color: palette.glow(color), radius: 6)
-            .phaseAnimator(reduceMotion || !isShown ? [1.0] : [1.0, 0.55]) { content, phase in
-                content
-                    .shadow(color: palette.glow(color, phase), radius: 24)
-                    .shadow(color: palette.glow(color, 0.6 * phase), radius: 48)
-            } animation: { _ in
-                .easeInOut(duration: 1.4)
-            }
-            .scaleEffect(isShown || reduceMotion ? 1 : 2.2)
-            .opacity(isShown ? 1 : 0)
             .accessibilityLabel("ランク \(rank.rawValue)")
-    }
-
-    /// ランクの光の色。上のランクほど目立つ色にする
-    private var rankColor: Color {
-        switch rank {
-        case .rankSS: palette.anyDirection.color
-        case .rankS: palette.laser
-        case .rankA: palette.right.color
-        case .rankB: palette.vertical.color
-        case .rankC, .rankD, .rankE: palette.warning
-        }
     }
 }
 
-/// 「ハイスコア更新」「フルコンボ」の光るバッジ
-struct ResultBadge: View {
+/// 「ハイスコア更新」「フルコンボ」のバッジ。文字の前に自作の印を置き、角の小さい枠で囲む（光らせない）
+struct ResultBadge<Mark: Shape>: View {
     let title: String
-    let systemImage: String
+    /// 文字の前に置く印（`ResultMarks.swift`）
+    let mark: Mark
     let color: NeonColor
 
     @Environment(\.palette) private var palette
+    @ScaledMetric(relativeTo: .subheadline) private var markSize: CGFloat = 15
 
     var body: some View {
-        Label(title, systemImage: systemImage)
-            .font(.system(.subheadline, design: .rounded, weight: .heavy))
+        Label {
+            Text(title)
+        } icon: {
+            mark
+                .frame(width: markSize, height: markSize)
+        }
+            .font(.subheadline.weight(.semibold))
             .foregroundStyle(palette.textColor(for: color))
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
             .background {
-                Capsule().fill(color.color.opacity(0.15))
+                RoundedRectangle(cornerRadius: 2).fill(color.color.opacity(0.12))
             }
             .overlay {
-                Capsule().stroke(color.color, lineWidth: 1.5)
+                RoundedRectangle(cornerRadius: 2).stroke(color.color, lineWidth: 1)
             }
-            .shadow(color: palette.glow(color.color, 0.8), radius: 10)
-    }
-}
-
-/// 数え上がる点数。`value` を動かしたアニメーションの途中の値を、整数にして出す
-struct CountingNumber: View, Animatable {
-    var value: Double
-
-    var animatableData: Double {
-        get { value }
-        set { value = newValue }
-    }
-
-    var body: some View {
-        Text(Int(value.rounded()), format: .number)
     }
 }
 
@@ -125,8 +93,6 @@ struct BreakdownPanel: View {
     let style: PlayStyle
     let rules: ScoringRules
     let maxCombo: Int
-    /// 棒の伸び具合（0〜1）。現れるときに伸ばす
-    let progress: CGFloat
 
     @Environment(\.palette) private var palette
 
@@ -134,7 +100,7 @@ struct BreakdownPanel: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("判定の内訳")
-                    .font(.system(.headline, design: .rounded, weight: .heavy))
+                    .font(.headline)
                     .foregroundStyle(palette.laser)
                 Spacer()
                 Text("最大コンボ \(maxCombo) / \(breakdown.noteCount)")
@@ -156,16 +122,16 @@ struct BreakdownPanel: View {
                     .foregroundStyle(palette.ink.opacity(0.75))
             }
             if let mean = breakdown.meanTimingError {
-                TimingGauge(meanTimingError: mean, hitWindow: rules.hitWindow, progress: progress)
+                TimingGauge(meanTimingError: mean, hitWindow: rules.hitWindow)
             }
         }
         .padding(16)
         .background {
-            RoundedRectangle(cornerRadius: 20)
-                .fill(palette.panel.opacity(0.55))
+            RoundedRectangle(cornerRadius: 4)
+                .fill(palette.panel.opacity(0.85))
                 .overlay {
-                    RoundedRectangle(cornerRadius: 20)
-                        .stroke(palette.laser.opacity(0.45), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 4)
+                        .stroke(palette.ink.opacity(0.15), lineWidth: 1)
                 }
         }
     }
@@ -176,15 +142,14 @@ struct BreakdownPanel: View {
             Text(title)
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(palette.ink)
-            Capsule()
+            Rectangle()
                 .fill(color.opacity(0.15))
                 .frame(height: 8)
                 .overlay(alignment: .leading) {
                     GeometryReader { proxy in
-                        Capsule()
+                        Rectangle()
                             .fill(color)
-                            .frame(width: proxy.size.width * fraction * progress)
-                            .shadow(color: palette.glow(color, 0.8), radius: 4)
+                            .frame(width: proxy.size.width * fraction)
                     }
                 }
                 .gridColumnAlignment(.leading)
@@ -204,7 +169,6 @@ struct TimingGauge: View {
     let meanTimingError: TimeInterval
     /// 目盛りの端に当たるずれ（判定の時間窓）
     let hitWindow: TimeInterval
-    let progress: CGFloat
 
     @Environment(\.palette) private var palette
 
@@ -241,7 +205,7 @@ struct TimingGauge: View {
             let width = proxy.size.width
             let ratio = hitWindow > 0 ? min(max(meanTimingError / hitWindow, -1), 1) : 0
             ZStack {
-                Capsule()
+                Rectangle()
                     .fill(palette.ink.opacity(0.12))
                     .frame(height: 6)
                 Rectangle()
@@ -250,8 +214,7 @@ struct TimingGauge: View {
                 Circle()
                     .fill(palette.laser)
                     .frame(width: 14, height: 14)
-                    .shadow(color: palette.glow(palette.laser), radius: 6)
-                    .offset(x: (width / 2 - 7) * CGFloat(ratio) * progress)
+                    .offset(x: (width / 2 - 7) * CGFloat(ratio))
             }
             .frame(width: width, height: proxy.size.height)
         }
@@ -268,27 +231,29 @@ struct TimingGauge: View {
     }
 }
 
-/// 点の内訳。1 ノーツあたりの「振りの強さ」と「タイミング」の点の平均を光る棒で見せ、次に気をつけるとよいことと、スコアの仕組みへの入り口を置く
+/// 点の内訳。1 ノーツあたりの「振りの強さ」と「タイミング」の点の平均を棒で見せ、次に気をつけるとよいことと、スコアの仕組みへの入り口を置く
 struct PointsPanel: View {
     let breakdown: ScoreBreakdown
-    /// 棒の伸び具合（0〜1）。現れるときに伸ばす
-    let progress: CGFloat
     let onShowGuide: () -> Void
 
     @Environment(\.palette) private var palette
+    /// アドバイスの前に置く墨の点の大きさ
+    @ScaledMetric(relativeTo: .subheadline) private var adviceMarkSize: CGFloat = 13
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("点の内訳（1 ノーツの平均）")
-                .font(.system(.headline, design: .rounded, weight: .heavy))
+                .font(.headline)
                 .foregroundStyle(palette.laser)
             meter("振りの強さ", value: breakdown.averageSwing, max: CutScore.maxSwing, color: palette.right.color)
             meter("タイミング", value: breakdown.averageAccuracy, max: CutScore.maxAccuracy, color: palette.vertical.color)
             if let advice = breakdown.advice {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Image(systemName: "lightbulb.fill")
+                    InkDropMark()
                         .foregroundStyle(palette.textColor(for: palette.anyDirection))
-                        .shadow(color: palette.glow(palette.anyDirection.color, 0.8), radius: 6)
+                        .frame(width: adviceMarkSize, height: adviceMarkSize)
+                        .alignmentGuide(.firstTextBaseline) { $0[.bottom] }
+                        .accessibilityHidden(true)
                     Text(advice.message)
                         .font(.subheadline)
                         .foregroundStyle(palette.ink)
@@ -303,20 +268,20 @@ struct PointsPanel: View {
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
                     .overlay {
-                        Capsule().stroke(palette.laser.opacity(0.7), lineWidth: 1)
+                        RoundedRectangle(cornerRadius: 4).stroke(palette.laser.opacity(0.7), lineWidth: 1)
                     }
-                    .contentShape(.capsule)
+                    .contentShape(.rect(cornerRadius: 4))
             }
             .buttonStyle(.plain)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
         .background {
-            RoundedRectangle(cornerRadius: 20)
-                .fill(palette.panel.opacity(0.55))
+            RoundedRectangle(cornerRadius: 4)
+                .fill(palette.panel.opacity(0.85))
                 .overlay {
-                    RoundedRectangle(cornerRadius: 20)
-                        .stroke(palette.laser.opacity(0.45), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 4)
+                        .stroke(palette.ink.opacity(0.15), lineWidth: 1)
                 }
         }
     }
@@ -333,15 +298,14 @@ struct PointsPanel: View {
                     .font(.subheadline.monospacedDigit().weight(.bold))
                     .foregroundStyle(palette.ink)
             }
-            Capsule()
+            Rectangle()
                 .fill(color.opacity(0.15))
                 .frame(height: 8)
                 .overlay(alignment: .leading) {
                     GeometryReader { proxy in
-                        Capsule()
+                        Rectangle()
                             .fill(color)
-                            .frame(width: proxy.size.width * fraction * progress)
-                            .shadow(color: palette.glow(color, 0.8), radius: 4)
+                            .frame(width: proxy.size.width * fraction)
                     }
                 }
                 .accessibilityHidden(true)

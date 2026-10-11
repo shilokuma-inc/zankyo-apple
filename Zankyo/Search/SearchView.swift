@@ -47,7 +47,6 @@ struct SearchView: View {
         List {
             ForEach(model.maps) { map in
                 SearchResultRow(map: map, downloads: downloads)
-                    .coverCardListRow()
             }
             if model.hasNextPage || model.nextPageError != nil {
                 nextPageRow

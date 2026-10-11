@@ -129,7 +129,7 @@ struct PlayView: View {
                 } else if session.phase == .ready, !session.canStart {
                     MotionRequirementView(status: session.input.status)
                         .padding()
-                        .background(palette.panel.opacity(0.6), in: .rect(cornerRadius: 24))
+                        .background(palette.panel.opacity(0.85), in: .rect(cornerRadius: 4))
                         .padding()
                 }
             }
@@ -237,17 +237,17 @@ struct PlayView: View {
                     Text("曲を再生できませんでした。")
                         .foregroundStyle(palette.ink)
                     Button("閉じる", action: onExit)
-                        .buttonStyle(NeonButtonStyle(prominent: true))
+                        .buttonStyle(PlayButtonStyle(prominent: true))
                 }
             }
         } else if session.phase == .ready, !session.canStart {
             Button("戻る", action: onExit)
-                .buttonStyle(NeonButtonStyle())
+                .buttonStyle(PlayButtonStyle())
         } else if !isMenuShown {
             Button(action: pause) {
                 Label("一時停止", systemImage: "pause.fill")
             }
-            .buttonStyle(NeonButtonStyle())
+            .buttonStyle(PlayButtonStyle())
         }
     }
 

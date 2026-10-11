@@ -1,10 +1,10 @@
 import SwiftUI
 
-/// 背景の光の演出（Beat Saber の照明にならう）。レーンを囲むリング・左右から振るレーザー・判定の線のまわりの中央の光を、
-/// 光の状態（`LightState`）に合わせて描く。奥の光は画面全体の背景（`PlayfieldBackdrop`）が描く
+/// 背景の光の演出。譜面の照明（リング・左右のレーザー・中央の光）を、光の輪やにじみではなく刃の形の線（`blade`）で描く。
+/// 光の状態（`LightState`）に合わせて線の濃さ・傾き・振りを変える。奥の光は画面全体の背景（`PlayfieldBackdrop`）が描く
 ///
-/// レーンより奥に描き、リングとレーザーはノーツの通り道を避けるので、ノーツは暗いレーンの上で読める。
-/// にじみを使わないテーマ（`glowIntensity` が 0）でも、線と色だけで光って見えるようにする
+/// レーンより奥に描き、リングとレーザーの線はノーツの通り道を避けるので、ノーツはレーンの上で読める。
+/// どのテーマでもにじませず（ぼかしを使わない）、線と色だけで見せる
 struct PlayfieldLights: View {
     let geometry: PlayfieldGeometry
     let state: LightState
@@ -18,11 +18,11 @@ struct PlayfieldLights: View {
 
     var body: some View {
         Canvas { [palette, state] context, size in
-            Self.drawCenter(&context, geometry: geometry, light: state.center, palette: palette)
-            // ノーツの通り道（レーンの少し外まで）には、リングとレーザーを描かない
+            // ノーツの通り道（レーンの少し外まで）には、線を描かない（中央の光の線も、判定の線と見まちがえないよう左右だけに出す）
             var outside = Path(CGRect(origin: .zero, size: size))
             outside.addPath(Self.lane(geometry: geometry, widening: 1.15))
             context.clip(to: outside, style: FillStyle(eoFill: true))
+            Self.drawCenter(&context, geometry: geometry, light: state.center, palette: palette)
             Self.drawRings(&context, geometry: geometry, light: state.rings, rotation: state.ringRotation, palette: palette)
             Self.drawLasers(&context, size: size, state: state, isLeft: true, palette: palette)
             Self.drawLasers(&context, size: size, state: state, isLeft: false, palette: palette)
@@ -38,7 +38,7 @@ struct PlayfieldLights: View {
         }
     }
 
-    /// レーンを囲む八角形のリング。奥ほど小さく細く、回すと傾く
+    /// リングの代わりに、レーンの左右へ横に払う刃の線。奥ほど短く細く、回すと傾く
     private static func drawRings(
         _ context: inout GraphicsContext,
         geometry: PlayfieldGeometry,
@@ -52,16 +52,18 @@ struct PlayfieldLights: View {
         for (index, depth) in ringDepths.enumerated() {
             let y = geometry.y(remaining: geometry.approachTime * (1 - depth))
             let scale = geometry.scale(atY: y)
-            let radius = geometry.laneHalfWidth * scale * 1.9
-            let ring = octagon(center: CGPoint(x: geometry.centerX, y: y), radius: radius, rotation: rotation + Double(index) * 0.12)
+            let inner = geometry.laneHalfWidth * scale * 1.25
+            let outer = geometry.laneHalfWidth * scale * 2.6
+            let tilt = (outer - inner) * 0.35 * sin(rotation + Double(index) * 0.12)
             let opacity = 0.6 * intensity * Double(0.4 + 0.6 * scale)
-            if palette.glowIntensity > 0 {
-                context.drawLayer { layer in
-                    layer.addFilter(.blur(radius: 6))
-                    layer.stroke(ring, with: .color(color.opacity(opacity * palette.glowIntensity)), lineWidth: 6 * scale)
-                }
+            for sign in [-1.0, 1.0] {
+                let blade = blade(
+                    from: CGPoint(x: geometry.centerX + sign * inner, y: y),
+                    to: CGPoint(x: geometry.centerX + sign * outer, y: y - sign * tilt),
+                    width: max(3 * scale, 1.5)
+                )
+                context.fill(blade, with: .color(color.opacity(opacity)))
             }
-            context.stroke(ring, with: .color(color.opacity(opacity)), lineWidth: max(2 * scale, 1))
         }
     }
 
@@ -85,23 +87,13 @@ struct PlayfieldLights: View {
             // 水平から下へ傾け、位相に合わせて振る（左右で向きを鏡にする）
             let angle = 0.5 + 0.18 * Double(index) + 0.3 * sin(phase + Double(index) * 0.8)
             let direction = CGVector(dx: cos(angle) * (isLeft ? 1 : -1), dy: sin(angle))
-            beams.move(to: origin)
-            beams.addLine(to: CGPoint(x: origin.x + direction.dx * length, y: origin.y + direction.dy * length))
+            let end = CGPoint(x: origin.x + direction.dx * length, y: origin.y + direction.dy * length)
+            beams.addPath(blade(from: origin, to: end, width: 4))
         }
-        let opacity = 0.75 * intensity
-        if palette.glowIntensity > 0 {
-            context.drawLayer { layer in
-                layer.addFilter(.blur(radius: 7))
-                layer.stroke(beams, with: .color(color.opacity(opacity * palette.glowIntensity)), lineWidth: 9)
-            }
-        }
-        context.stroke(beams, with: .color(color.opacity(opacity)), lineWidth: 2.5)
-        if palette.colorScheme == .dark {
-            context.stroke(beams, with: .color(.white.opacity(0.5 * opacity)), lineWidth: 0.8)
-        }
+        context.fill(beams, with: .color(color.opacity(0.75 * intensity)))
     }
 
-    /// 中央の光。判定の線のまわりの床を照らす
+    /// 中央の光。判定の線のまわりに線を添える
     private static func drawCenter(
         _ context: inout GraphicsContext,
         geometry: PlayfieldGeometry,
@@ -111,21 +103,13 @@ struct PlayfieldLights: View {
         let intensity = min(light.intensity, 1.4)
         guard intensity > 0.01 else { return }
         let color = color(of: light, palette: palette)
-        let radius = geometry.laneHalfWidth * 2.2
-        // 円のグラデーションを縦につぶして、縁まで滑らかに消える楕円にする。下はレーンの枠（下端）に収める
-        let squash = min(0.45, max(geometry.size.height - geometry.hitY, 1) / radius)
-        context.drawLayer { layer in
-            layer.translateBy(x: geometry.centerX, y: geometry.hitY)
-            layer.scaleBy(x: 1, y: squash)
-            layer.fill(
-                Path(ellipseIn: CGRect(x: -radius, y: -radius, width: radius * 2, height: radius * 2)),
-                with: .radialGradient(
-                    Gradient(colors: [color.opacity(0.4 * intensity), color.opacity(0)]),
-                    center: .zero,
-                    startRadius: 0,
-                    endRadius: radius
-                )
-            )
+        // 判定の線の少し上と下に、レーンの外まで届く刃の線を 1 本ずつ引く（レーンの中は描かない）
+        let half = geometry.laneHalfWidth * 2.4
+        let opacity = 0.45 * intensity
+        for offset in [-10.0, 10.0] {
+            let y = geometry.hitY + offset
+            let blade = blade(from: CGPoint(x: geometry.centerX - half, y: y), to: CGPoint(x: geometry.centerX + half, y: y), width: 2)
+            context.fill(blade, with: .color(color.opacity(opacity)))
         }
     }
 
@@ -143,17 +127,17 @@ struct PlayfieldLights: View {
         return path
     }
 
-    private static func octagon(center: CGPoint, radius: CGFloat, rotation: Double) -> Path {
+    /// 刃の形の線。両端で細く尖り、`start` から 4 割のところで最も太い（`width`）。にじみを使わず、払った筆や刃の跡に見せる
+    static func blade(from start: CGPoint, to end: CGPoint, width: CGFloat) -> Path {
+        let length = hypot(end.x - start.x, end.y - start.y)
+        guard length > 0 else { return Path() }
+        let normal = CGVector(dx: -(end.y - start.y) / length * width / 2, dy: (end.x - start.x) / length * width / 2)
+        let widest = CGPoint(x: start.x + (end.x - start.x) * 0.4, y: start.y + (end.y - start.y) * 0.4)
         var path = Path()
-        for corner in 0..<8 {
-            let angle = rotation + Double(corner) * .pi / 4 + .pi / 8
-            let point = CGPoint(x: center.x + radius * cos(angle), y: center.y + radius * sin(angle))
-            if corner == 0 {
-                path.move(to: point)
-            } else {
-                path.addLine(to: point)
-            }
-        }
+        path.move(to: start)
+        path.addLine(to: CGPoint(x: widest.x + normal.dx, y: widest.y + normal.dy))
+        path.addLine(to: end)
+        path.addLine(to: CGPoint(x: widest.x - normal.dx, y: widest.y - normal.dy))
         path.closeSubpath()
         return path
     }

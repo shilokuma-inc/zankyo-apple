@@ -9,7 +9,7 @@ nonisolated struct ThemePalette: Sendable, Hashable {
     let colorScheme: ColorScheme
     /// ボタン・選択中のタブなどの色（`.tint`）。白い文字を載せても、画面の背景の上でも読める濃さにする
     let accent: Color
-    /// アプリ全体の書体（`.fontDesign`）。プレイ画面の数字は読みやすさを優先して丸ゴシックのまま
+    /// アプリ全体の書体（`.fontDesign`）。プレイ画面・結果画面の数字と欧文の見出しは、テーマによらず同梱の欧文フォント（`Font.display`）で描く
     let fontDesign: Font.Design
 
     /// 空間の色（上が奥）
@@ -55,6 +55,12 @@ nonisolated struct ThemePalette: Sendable, Hashable {
         color.opacity(opacity * glowIntensity)
     }
 
+    /// ノーツの上に描く矢印の色。明るい色のノーツには墨の側、暗い色のノーツには生成りの側の色を載せ、どの色のノーツでも矢印が読めるようにする
+    func markColor(for neon: NeonColor) -> Color {
+        let (light, dark) = colorScheme == .dark ? (ink, panel) : (panel, ink)
+        return neon.luminance > 0.5 ? dark : light
+    }
+
     /// ノーツの色で書く文字の色。明るい空間では光る側の色だと背景に溶けて読めないので、影の側の色にする
     func textColor(for neon: NeonColor) -> Color {
         colorScheme == .dark ? neon.color : neon.deep
@@ -79,9 +85,11 @@ nonisolated struct NeonColor: Sendable, Hashable {
     var color: Color { Color(red: red, green: green, blue: blue) }
     /// 影の側の暗い色
     var deep: Color { Color(red: red * shade, green: green * shade, blue: blue * shade) }
+    /// 明るさの目安（0〜1。sRGB の値をそのまま重み付けして足す）
+    var luminance: Double { 0.2126 * red + 0.7152 * green + 0.0722 * blue }
 }
 
 extension EnvironmentValues {
     /// 選んでいるテーマの配色
-    @Entry var palette: ThemePalette = .cyberpunk
+    @Entry var palette: ThemePalette = .zankyo
 }

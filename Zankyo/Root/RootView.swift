@@ -10,8 +10,8 @@ struct RootView: View {
     }
 
     @State private var selection: Tab = .library
-    /// 保存していない・知らない値なら既定のサイバーパンクにする
-    @AppStorage(AppTheme.storageKey) private var theme: AppTheme = .cyberpunk
+    /// 保存していない・知らない値なら既定の斬響にする
+    @AppStorage(AppTheme.storageKey) private var theme: AppTheme = .zankyo
     @State private var searchModel: SearchModel
     @State private var downloads: DownloadModel
     @State private var calibration: CalibrationModel

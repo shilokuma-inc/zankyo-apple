@@ -1,23 +1,21 @@
 import SwiftUI
 
 /// 一覧の 1 曲。マッパー名を必ず出す（Discussion #3 Q9。譜面ページへのリンクは曲の詳細画面に出す）。
-/// 背景にジャケット画像をぼかして敷き、曲ごとの色が行全体で分かるようにする
+/// `List` の標準の行に、ジャケットのサムネイルと曲の情報を並べる
 struct LibraryRow: View {
     let entry: LibraryEntry
     let size: Int64
     let isFavorite: Bool
     /// まとめて消す曲を選んでいる間は、選んだかどうか。ふつうの一覧では nil
     let isSelected: Bool?
-    /// この曲を試聴している（カードの縁を光らせる）
+    /// この曲を試聴している（サムネイルの印を停止にする）
     let isPreviewing: Bool
     /// 試聴のために音源を読んでいる
     let isLoadingPreview: Bool
     /// ジャケットを押したとき（試聴を始める・止める）
     let onTogglePreview: () -> Void
 
-    @Environment(\.palette) private var palette
-
-    /// ジャケット画像。サムネイルと背景の両方に使う
+    /// ジャケット画像（サムネイル）
     @State private var cover: CGImage?
 
     var body: some View {
@@ -32,7 +30,7 @@ struct LibraryRow: View {
             }
     }
 
-    /// 1 曲分のカード。`cover` は読み込んだジャケット画像（読み込み中・失敗時は nil）で、サムネイルと背景の両方に使う
+    /// 1 曲分の行。`cover` は読み込んだジャケット画像（読み込み中・失敗時は nil）
     private func content(cover: Image?) -> some View {
         HStack(spacing: 12) {
             HStack(alignment: .top, spacing: 12) {
@@ -68,15 +66,8 @@ struct LibraryRow: View {
             Spacer(minLength: 0)
             trailingMark
         }
-        .coverCard(cover)
-        .overlay {
-            if isSelected == true {
-                RoundedRectangle(cornerRadius: 20)
-                    .strokeBorder(.tint, lineWidth: 3)
-            } else if isPreviewing {
-                PreviewGlow(color: palette.accent)
-            }
-        }
+        // 行の余白も押せるようにする（行全体が曲の詳細を開くボタン）
+        .contentShape(.rect)
     }
 
     /// 右端の印。ふつうは開けることを示す矢印、選んでいる間は選んだかどうかの丸
@@ -144,34 +135,5 @@ struct LibraryRow: View {
         }
         .frame(width: 28, height: 28)
         .accessibilityHidden(true)
-    }
-}
-
-/// 試聴している曲のカードの縁の光。ゆっくり明滅させる（視差効果を減らす設定では明滅させない）
-private struct PreviewGlow: View {
-    let color: Color
-
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    var body: some View {
-        if reduceMotion {
-            border(intensity: 1)
-        } else {
-            PhaseAnimator([0.45, 1.0]) { intensity in
-                border(intensity: intensity)
-            } animation: { _ in
-                .easeInOut(duration: 0.9)
-            }
-        }
-    }
-
-    private func border(intensity: Double) -> some View {
-        RoundedRectangle(cornerRadius: 20, style: .continuous)
-            .strokeBorder(color, lineWidth: 2.5)
-            // 行の上下の余白（6pt）より広げると、隣の行との境で光が切れて角ばって見えるので、その中に収める
-            .shadow(color: color.opacity(0.9 * intensity), radius: 2 + 2 * intensity)
-            .shadow(color: color.opacity(0.7 * intensity), radius: 5 * intensity)
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
     }
 }

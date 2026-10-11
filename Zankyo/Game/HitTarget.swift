@@ -3,7 +3,7 @@ import SwiftUI
 /// 判定の線の上の、ノーツと同じ形のターゲット枠。降りてきたノーツがこの枠にぴったり収まった瞬間がヒットのタイミング
 ///
 /// 近づくノーツごとに、そのノーツの色の枠を外から縮め、ぴったりの瞬間にターゲット枠と重ねる（線の上の位置を読まなくても、
-/// 枠が重なる瞬間でタイミングが分かる）。ぴったりの瞬間を過ぎたら、ターゲット枠を一瞬光らせる。ノーツより奥に描く
+/// 枠が重なる瞬間でタイミングが分かる）。ぴったりの瞬間を過ぎたら、ターゲット枠を一瞬濃く太くする（光らせない）。ノーツより奥に描く
 struct HitTarget: View {
     /// まだ判定していないノーツ
     struct Note {
@@ -16,7 +16,7 @@ struct HitTarget: View {
 
     let notes: [Note]
     /// 直前に判定したノーツの、判定の線に届くまでの残り秒。判定したノーツは `notes` から外れるので、
-    /// ぴったりの瞬間の前後に切ったときもターゲット枠を光らせるために別に受け取る。無ければ nil
+    /// ぴったりの瞬間の前後に切ったときもターゲット枠を強調するために別に受け取る。無ければ nil
     var judgedRemaining: TimeInterval?
     /// 判定の線の上でのノーツの大きさ
     let noteSize: CGFloat
@@ -34,7 +34,6 @@ struct HitTarget: View {
                     Self.frame(size: size * scale)
                         .stroke(color, lineWidth: 3)
                         .frame(width: size * scale, height: size * scale)
-                        .shadow(color: palette.glow(color), radius: 6)
                         .opacity(PlayfieldGeometry.cueOpacity(remaining: note.remaining))
                 }
             }
@@ -44,13 +43,12 @@ struct HitTarget: View {
             Self.frame(size: size)
                 .stroke(palette.ink.opacity(0.45 + 0.55 * flash), lineWidth: 2 + 2 * flash)
                 .frame(width: size, height: size)
-                .shadow(color: palette.glow(palette.laser, 0.6 + 0.4 * flash), radius: 4 + 10 * flash)
         }
     }
 
     /// ノーツ（`NoteBlock`）と同じ角の丸めの枠
     private static func frame(size: CGFloat) -> RoundedRectangle {
-        RoundedRectangle(cornerRadius: size * 0.2, style: .continuous)
+        RoundedRectangle(cornerRadius: size * NoteBlock.cornerRatio)
     }
 }
 
@@ -63,5 +61,5 @@ struct HitTarget: View {
         noteSize: 64
     )
     .padding(80)
-    .background(ThemePalette.cyberpunk.spaceBottom)
+    .background(ThemePalette.zankyo.spaceBottom)
 }
