@@ -22,7 +22,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - 「切る」判定は **AirPods のモーションセンサー**（`CMHeadphoneMotionManager`）で取る。顔の振り向きや、顔でリズムを取る動きで遊べる味付けにする。
   AirPods が無い・対応していない環境向けの代替入力（タップなど）は、仕様の決定事項に従う
 - 曲・譜面の取得やゲーム体験で人間の判断が要る点（著作権・配信条件・判定の厳しさ・難易度の扱いなど）は、
-  ループの ask / decision の規則に従って扱う（`.claude/ralph/README.md`）
+  ループの ask / decision の規則に従って扱う（ralph-kit の `README.md`）
 
 ## 構成
 
