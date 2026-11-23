@@ -4,7 +4,7 @@ import SwiftUI
 /// どれも塗りつぶして使う形にしてあり、`.fill`（または `foregroundStyle`）で色を付ける
 
 /// フルコンボの印。筆で一周を描き、終わりを少しだけ閉じない円（円相）。描き始めを太く、終わりへ向けて細く払う
-struct EnsoMark: Shape {
+nonisolated struct EnsoMark: Shape {
     func path(in rect: CGRect) -> Path {
         let side = min(rect.width, rect.height)
         let widest = side * 0.2
@@ -31,7 +31,7 @@ struct EnsoMark: Shape {
 }
 
 /// ハイスコア更新の印。角印の枠の中に「一」（一番）の線を 1 本引く
-struct SealMark: Shape {
+nonisolated struct SealMark: Shape {
     func path(in rect: CGRect) -> Path {
         let side = min(rect.width, rect.height)
         let frame = CGRect(x: rect.midX - side / 2, y: rect.midY - side / 2, width: side, height: side)
@@ -54,7 +54,7 @@ struct SealMark: Shape {
 }
 
 /// アドバイスの印。筆を置いて払った墨の点（読点のようなしずくの形）。丸い頭から右下へ細く払う
-struct InkDropMark: Shape {
+nonisolated struct InkDropMark: Shape {
     func path(in rect: CGRect) -> Path {
         let side = min(rect.width, rect.height)
         let origin = CGPoint(x: rect.midX - side / 2, y: rect.midY - side / 2)

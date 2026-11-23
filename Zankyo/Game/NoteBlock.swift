@@ -49,7 +49,7 @@ struct NoteBlock: View {
 }
 
 /// 下向きの楔形の矢印。先を尖らせ、根元を浅くえぐって刃先のように見せる
-private struct ArrowMark: Shape {
+private nonisolated struct ArrowMark: Shape {
     func path(in rect: CGRect) -> Path {
         var path = Path()
         path.move(to: CGPoint(x: rect.minX, y: rect.minY + rect.height * 0.2))
