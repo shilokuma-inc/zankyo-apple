@@ -94,7 +94,7 @@ struct JudgementEffect: View {
 }
 
 /// 枠の左端から右端へ引く刃の形（`PlayfieldLights.blade`）。太さは枠の高さ
-private nonisolated struct BladeShape: Shape {
+nonisolated private struct BladeShape: Shape {
     func path(in rect: CGRect) -> Path {
         PlayfieldLights.blade(from: CGPoint(x: rect.minX, y: rect.midY), to: CGPoint(x: rect.maxX, y: rect.midY), width: rect.height)
     }
