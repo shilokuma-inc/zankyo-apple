@@ -128,7 +128,7 @@ struct PlayfieldLights: View {
     }
 
     /// 刃の形の線。両端で細く尖り、`start` から 4 割のところで最も太い（`width`）。にじみを使わず、払った筆や刃の跡に見せる
-    static func blade(from start: CGPoint, to end: CGPoint, width: CGFloat) -> Path {
+    nonisolated static func blade(from start: CGPoint, to end: CGPoint, width: CGFloat) -> Path {
         let length = hypot(end.x - start.x, end.y - start.y)
         guard length > 0 else { return Path() }
         let normal = CGVector(dx: -(end.y - start.y) / length * width / 2, dy: (end.x - start.x) / length * width / 2)
